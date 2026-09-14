@@ -614,7 +614,8 @@ namespace Arcade.Compose
 
 		public void UpdateResolution()
 		{
-			if (GameplayCamera)
+			var cameraManager = ArcCameraManager.Instance;
+			if (GameplayCamera && cameraManager)
 			{
 				TopBar.DOComplete();
 				BottomBar.DOComplete();
@@ -622,7 +623,7 @@ namespace Arcade.Compose
 				RightBar.DOComplete();
 				GameplayCamera.DOComplete();
 				GameplayCamera.rect = IsEditorMode ? EditorModeGameplayCameraRect : new Rect(0, 0, 1, 1);
-				ArcCameraManager.Instance.ResetCamera();
+				cameraManager.ResetCamera();
 			}
 		}
 	}

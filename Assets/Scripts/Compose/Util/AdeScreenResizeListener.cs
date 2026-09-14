@@ -8,7 +8,9 @@ namespace Arcade.Compose.UI
 	{
 		protected void OnRectTransformDimensionsChange()
 		{
-			ArcadeComposeManager.Instance?.UpdateResolution();
+			if (!Application.isPlaying || !isActiveAndEnabled) return;
+			var manager = ArcadeComposeManager.Instance;
+			if (manager && manager.isActiveAndEnabled) manager.UpdateResolution();
 		}
 
 	}

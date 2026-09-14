@@ -69,6 +69,8 @@ namespace Arcade.Gameplay
 
 		public void ResetCamera()
 		{
+			// Canvas resize callbacks can arrive while scene objects are being destroyed.
+			if (!GameplayCamera || !SkyInputLabel) return;
 			GameplayCamera.fieldOfView = Is16By9 ? 50 : 65;
 			GameplayCamera.nearClipPlane = 1f / 100f;
 			GameplayCamera.farClipPlane = 10000f;
