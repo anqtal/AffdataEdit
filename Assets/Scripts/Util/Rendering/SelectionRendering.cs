@@ -62,6 +62,7 @@ namespace Arcade.Util.Rendering
 				);
 				RenderTextureDescriptor descriptor = cameraData.cameraTargetDescriptor;
 				descriptor.colorFormat = RenderTextureFormat.ARGB32;
+				descriptor.depthBufferBits = 32;
 				TextureHandle selectionMaskDepth = UniversalRenderer.CreateRenderGraphTexture(
 					renderGraph, descriptor, "selection depth", false
 				);
@@ -79,7 +80,7 @@ namespace Arcade.Util.Rendering
 
 					builder.UseRendererList(passData.objectsInSelection);
 					builder.SetRenderAttachment(selectionMaskColor, 0);
-					builder.SetRenderAttachmentDepth(selectionMaskDepth, 0);
+					builder.SetRenderAttachmentDepth(selectionMaskDepth, AccessFlags.ReadWrite);
 					builder.SetRenderFunc((MaskPassData data, RasterGraphContext context) => ExecuteMaskPass(data, context));
 				}
 
@@ -92,8 +93,9 @@ namespace Arcade.Util.Rendering
 				{
 					passData.src = selectionMaskColor;
 					passData.material = selectionBlitMaterial;
-					builder.UseTexture(selectionMaskColor, 0);
-					builder.SetRenderAttachment(activeColorTexture, 0);
+					builder.UseTexture(selectionMaskColor, AccessFlags.Read);
+					// Alpha blending reads the existing camera color.
+					builder.SetRenderAttachment(activeColorTexture, 0, AccessFlags.ReadWrite);
 					builder.SetRenderFunc((BlitPassData data, RasterGraphContext context) => ExecuteBlitPass(data, context));
 				}
 			}
