@@ -375,17 +375,9 @@ namespace Arcade.Compose
 				Screen.SetResolution(Screen.currentResolution.width, Screen.currentResolution.height, FullScreenMode.FullScreenWindow);
 				return;
 			}
-			Debug.Log($"[dpi]{Screen.dpi}");
-			float scaleRatio = Screen.dpi / 96f;
-			if (scaleRatio <= 0.01f)
-			{
-				scaleRatio = 1f;
-			}
-			// here we do not check format of string
-			string[] dimensions = resolution.Split('x');
-			int width = Mathf.RoundToInt(int.Parse(dimensions[0], CultureInfo.InvariantCulture) * scaleRatio);
-			int height = Mathf.RoundToInt(int.Parse(dimensions[1], CultureInfo.InvariantCulture) * scaleRatio);
-			Screen.SetResolution(width, height, FullScreenMode.Windowed);
+			Vector2Int size = AdeScreenResolution.GetWindowedSize(resolution, Screen.mainWindowDisplayInfo.workArea);
+			Debug.Log($"[window] requested={resolution}, applied={size.x}x{size.y}");
+			Screen.SetResolution(size.x, size.y, FullScreenMode.Windowed);
 		}
 		public void SetTargetFramerate(int fps)
 		{
@@ -541,7 +533,6 @@ namespace Arcade.Compose
 				}
 				ResolutionDropdown.interactable = !ArcadePreference.Fullscreen;
 				FullscreenToggle.SetIsOnWithoutNotify(ArcadePreference.Fullscreen);
-				Screen.fullScreen = ArcadePreference.Fullscreen;
 				SetResolution(ArcadePreference.ScreenResolution, ArcadePreference.Fullscreen);
 				bool targetFramerateHit = false;
 				for (int i = 0; i < TargetFramerateDropdown.options.Count; i++)
