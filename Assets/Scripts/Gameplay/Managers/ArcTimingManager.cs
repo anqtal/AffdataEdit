@@ -44,7 +44,8 @@ namespace Arcade.Gameplay
 		public List<ArcTiming> Timings { get => timings; }
 		private float Velocity
 		{
-			get => settingVelocity / 3 * 2.65f;
+			// Alpha: displayed speed * 30; SettingVelocity stores displayed speed * 30.
+			get => settingVelocity;
 		}
 
 		public int SettingVelocity
