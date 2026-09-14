@@ -1,16 +1,16 @@
-# Arcade-plus
+# AffdataEdit
 
 Arcade is a utility used to edit and preview aff files. The original Arcade repository was taken down due to [GitHub's DMCA takedown policy](https://docs.github.com/en/site-policy/content-removal-policies/dmca-takedown-policy) (see [the DMCA takedown request](https://github.com/github/dmca/blob/master/2019/02/2019-02-27-Arcaea.md)). The author of the original Arcade, [cnSchwarzer](https://github.com/cnSchwarzer) aka Sch, refused to remove copyrighted content owned by Lowiro, the developer of Arcaea. Sch used a Chinese code hosting platform after that instead.
 
-This project, Arcade-plus brings it back to GitHub. It does not contain any copyrighted content, but uses a skinning feature instead. We also have better commit messages and less bugs. What's more, we will add some new features, get some redesigns and do some performance optimizations.
+AffdataEdit is based on Arcade-plus, which brought it back to GitHub. It does not contain any copyrighted content, but uses a skinning feature instead. We also have better commit messages and less bugs. What's more, we will add some new features, get some redesigns and do some performance optimizations.
 
 The original commit history of Sch are not being included in this repository, since they contain copyrighted content.
 
 ## Q&A
 
-### Arcade-plus does not work on my OS!
+### AffdataEdit does not work on my OS!
 
-Arcade-plus is only completely tested on Latest Windows 11. However it should work on Windows 8 or 10 as well. Older versions of Windows are not supported.
+AffdataEdit is only completely tested on Latest Windows 11. However it should work on Windows 8 or 10 as well. Older versions of Windows are not supported.
 
 Also, macOS and Linux support is experimental for now, if you find any bug that only happens on your OS, please help us by opening a bug-fixing pull request.
 
@@ -24,7 +24,7 @@ Since UI Layout has been completely reworked in this fork, adding localization f
 
 Due to copyright issue, we can not use old graphic and sound assets. You need to find a set of skin yourself to make it back. The documentation of skinning is not available now, but you can read our implementation of skinning system to know the structure of skin folder for now.
 
-### I want to contribute to Arcade-plus!
+### I want to contribute to AffdataEdit!
 
 Pull requests are always welcomed. But beware: please make sure you **do not update Unity** in your pull request. You can see our current using Unity version in [ProjectVersion.txt](ProjectSettings\ProjectVersion.txt).
 

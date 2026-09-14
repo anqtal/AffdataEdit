@@ -7,19 +7,19 @@ using System.Globalization;
 
 public class ArcadeBuild
 {
-	[MenuItem("Arcade/Test build")]
+	[MenuItem("AffdataEdit/Test build")]
 	public static void TestBuild()
 	{
 		UnityEngine.Debug.Log(BuildPipeline.BuildPlayer(
 			 new BuildPlayerOptions()
 			 {
-				 locationPathName = "Build/x64/Arcade-plus.exe",
+				 locationPathName = "Build/x64/AffdataEdit.exe",
 				 scenes = new string[] { "Assets/_Scenes/ArcEditor.unity" },
 				 target = BuildTarget.StandaloneWindows64,
 				 options = BuildOptions.AllowDebugging & BuildOptions.Development,
 			 }).summary.result.ToString());
 	}
-	[MenuItem("Arcade/UpdateBuildTime")]
+	[MenuItem("AffdataEdit/UpdateBuildTime")]
 	public static void UpdateBuildTime()
 	{
 		DateTime buildTime = DateTime.Now;
@@ -27,12 +27,12 @@ public class ArcadeBuild
 		File.WriteAllText(Path.Combine(Directory.GetCurrentDirectory(), "Assets/Misc/BuildTimestamp.txt"), $"{buildTime.Ticks.ToString(CultureInfo.InvariantCulture)}");
 		AssetDatabase.Refresh();
 	}
-	[MenuItem("Arcade/Build")]
+	[MenuItem("AffdataEdit/Build")]
 	public static void Build()
 	{
 		BuildArcade(false);
 	}
-	[MenuItem("Arcade/Build and zip")]
+	[MenuItem("AffdataEdit/Build and zip")]
 	public static void BuildAndZip()
 	{
 		BuildArcade(true);
@@ -44,7 +44,7 @@ public class ArcadeBuild
 		UnityEngine.Debug.Log(BuildPipeline.BuildPlayer(
 			 new BuildPlayerOptions()
 			 {
-				 locationPathName = "Build/x86/Arcade-plus.exe",
+				 locationPathName = "Build/x86/AffdataEdit.exe",
 				 scenes = new string[] { "Assets/_Scenes/ArcEditor.unity" },
 				 target = BuildTarget.StandaloneWindows,
 				 options = BuildOptions.None,
@@ -52,7 +52,7 @@ public class ArcadeBuild
 		UnityEngine.Debug.Log(BuildPipeline.BuildPlayer(
 			 new BuildPlayerOptions()
 			 {
-				 locationPathName = "Build/x64/Arcade-plus.exe",
+				 locationPathName = "Build/x64/AffdataEdit.exe",
 				 scenes = new string[] { "Assets/_Scenes/ArcEditor.unity" },
 				 target = BuildTarget.StandaloneWindows64,
 				 options = BuildOptions.None,
@@ -60,7 +60,7 @@ public class ArcadeBuild
 		UnityEngine.Debug.Log(BuildPipeline.BuildPlayer(
 			 new BuildPlayerOptions()
 			 {
-				 locationPathName = "Build/mac/Arcade-plus.app",
+				 locationPathName = "Build/mac/AffdataEdit.app",
 				 scenes = new string[] { "Assets/_Scenes/ArcEditor.unity" },
 				 target = BuildTarget.StandaloneOSX,
 				 options = BuildOptions.None,
@@ -68,7 +68,7 @@ public class ArcadeBuild
 		UnityEngine.Debug.Log(BuildPipeline.BuildPlayer(
 			 new BuildPlayerOptions()
 			 {
-				 locationPathName = "Build/linux/Arcade-plus",
+				 locationPathName = "Build/linux/AffdataEdit",
 				 scenes = new string[] { "Assets/_Scenes/ArcEditor.unity" },
 				 target = BuildTarget.StandaloneLinux64,
 				 options = BuildOptions.None,

@@ -35391,7 +35391,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: "\u6B22\u8FCE\u4F7F\u7528 Arcade-plus\n\u8BF7\u70B9\u51FB\u53F3\u4E0A\u89D2\u6B4C\u66F2\u5C01\u9762\u6253\u5F00\u8C31\u9762\u6587\u4EF6\u5939"
+  m_Text: "\u6B22\u8FCE\u4F7F\u7528 AffdataEdit\n\u8BF7\u70B9\u51FB\u53F3\u4E0A\u89D2\u6B4C\u66F2\u5C01\u9762\u6253\u5F00\u8C31\u9762\u6587\u4EF6\u5939"
 --- !u!222 &1006388399
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -69106,7 +69106,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: Arcade-plus <size=20>forked from Arcade</size>
+  m_Text: AffdataEdit <size=20>forked from Arcade</size>
 --- !u!222 &1914979119
 CanvasRenderer:
   m_ObjectHideFlags: 0
