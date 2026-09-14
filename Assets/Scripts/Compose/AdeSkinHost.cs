@@ -192,6 +192,7 @@ namespace Arcade.Compose
 			public Color ComboTextColorLight;
 			public Color ComboTextColorConflict;
 			public Texture2D ParticleNote;
+			public Texture2D ParticleNoteConflict;
 			public Color ParticleArcStartColor;
 			public Color ParticleArcEndColor;
 			public Sprite BackgroundLight;
@@ -926,7 +927,7 @@ namespace Arcade.Compose
 			internalDefaultThemeData.Light.ComboTextColor = rawDefaultData.ComboTextColorLight;
 			internalDefaultThemeData.Conflict.ComboTextColor = rawDefaultData.ComboTextColorConflict;
 			internalDefaultThemeData.Light.ParticleNote = new Labelled<Texture2D> { value = rawDefaultData.ParticleNote, label = "<internal>" };
-			internalDefaultThemeData.Conflict.ParticleNote = new Labelled<Texture2D> { value = rawDefaultData.ParticleNote, label = "<internal>" };
+			internalDefaultThemeData.Conflict.ParticleNote = new Labelled<Texture2D> { value = rawDefaultData.ParticleNoteConflict != null ? rawDefaultData.ParticleNoteConflict : rawDefaultData.ParticleNote, label = "<internal:conflict>" };
 			internalDefaultThemeData.Light.ParticleArcStartColor = rawDefaultData.ParticleArcStartColor;
 			internalDefaultThemeData.Conflict.ParticleArcStartColor = rawDefaultData.ParticleArcStartColor;
 			internalDefaultThemeData.Light.ParticleArcEndColor = rawDefaultData.ParticleArcEndColor;

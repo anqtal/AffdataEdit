@@ -50208,22 +50208,22 @@ MonoBehaviour:
     SfxArcTapModel: {fileID: -2432090755550338912, guid: 116184ff4745fd847a4f127565c3fc01,
       type: 3}
     ConnectionLineColorLight: {r: 0.47058824, g: 0.78431374, b: 0.8627451, a: 1}
-    ConnectionLineColorConflict: {r: 0.6666667, g: 0.32941177, b: 0.627451, a: 1}
+    ConnectionLineColorConflict: {r: 0.6666667, g: 0.39215687, b: 0.627451, a: 1}
     HoldNoteLight: {fileID: 21300000, guid: bcf15edc8a15d004bbd5b46b8d6f72c6, type: 3}
     HoldNoteConflict: {fileID: 21300000, guid: 63adfb10c5ddc7042a7db2b237544113, type: 3}
     HoldNoteHighlightLight: {fileID: 21300000, guid: bee87fb5e4e323c40888deb880401f0e,
       type: 3}
     HoldNoteHighlightConflict: {fileID: 21300000, guid: 91452620d38a8fc408c0e405d78d526b,
       type: 3}
-    ArcRedLow: {r: 1, g: 0.5882353, b: 0.8627451, a: 1}
-    ArcBlueLow: {r: 0.047058824, g: 0.83137256, b: 0.83137256, a: 1}
-    ArcGreenLow: {r: 0, g: 1, b: 0.47592807, a: 1}
-    ArcUnknownLow: {r: 0.8, g: 0.8, b: 0.8, a: 1}
-    ArcRedHigh: {r: 1, g: 0.5882353, b: 0.8627451, a: 1}
-    ArcBlueHigh: {r: 0.047058824, g: 0.83137256, b: 0.83137256, a: 1}
-    ArcGreenHigh: {r: 0, g: 1, b: 0.47592807, a: 1}
-    ArcUnknownHigh: {r: 0.8, g: 0.8, b: 0.8, a: 1}
-    ArcVoid: {r: 0.53333336, g: 0.46666667, b: 0.6666667, a: 1}
+    ArcRedLow: {r: 0.941176471, g: 0.411764706, b: 0.603921569, a: 1}
+    ArcBlueLow: {r: 0.0980392157, g: 0.62745098, b: 0.921568627, a: 1}
+    ArcGreenLow: {r: 0.156862745, g: 0.784313725, b: 0.117647059, a: 1}
+    ArcUnknownLow: {r: 0.666666667, g: 0.666666667, b: 0.666666667, a: 1}
+    ArcRedHigh: {r: 1, g: 0.588235294, b: 0.862745098, a: 1}
+    ArcBlueHigh: {r: 0.0470588235, g: 0.831372549, b: 0.831372549, a: 1}
+    ArcGreenHigh: {r: 0.145098039, g: 1, b: 0.423529412, a: 1}
+    ArcUnknownHigh: {r: 0.862745098, g: 0.862745098, b: 0.862745098, a: 1}
+    ArcVoid: {r: 0.568627451, g: 0.470588235, b: 0.666666667, a: 1}
     ArcDesignant: {r: 1, g: 0.2, b: 0.4, a: 0}
     ArcTapDesignant: {r: 1, g: 0.2, b: 0.4, a: 0}
     TrackLight: {fileID: 21300000, guid: 5ff43f330b63ad246963a3aea13bd701, type: 3}
@@ -50239,8 +50239,9 @@ MonoBehaviour:
     ComboTextColorLight: {r: 0.47058824, g: 0.23529412, b: 0.47058824, a: 1}
     ComboTextColorConflict: {r: 0.5882353, g: 0.39215687, b: 0.6862745, a: 1}
     ParticleNote: {fileID: 2800000, guid: d23fe8e7de9b1304ca9ac76f661ed945, type: 3}
-    ParticleArcStartColor: {r: 0.4, g: 0.2, b: 0.4, a: 1}
-    ParticleArcEndColor: {r: 0.4, g: 0.2, b: 0.8, a: 1}
+    ParticleNoteConflict: {fileID: 2800000, guid: c5426e5f71b74013a13336177562b0b6, type: 3}
+    ParticleArcStartColor: {r: 0.5, g: 0.3, b: 0.5, a: 1.5}
+    ParticleArcEndColor: {r: 0.2, g: 0.06, b: 0.4, a: 1.5}
     BackgroundLight: {fileID: 21300000, guid: a33eb9b4465b67342a06175a10e5056a, type: 3}
     BackgroundConflict: {fileID: 21300000, guid: 79f56f18357d1c548992f9d5f127fa81,
       type: 3}
@@ -61516,15 +61517,15 @@ MonoBehaviour:
   SfxArcTapCoreMaterial: {fileID: 2100000, guid: de3e3b432742eb84aa6828b396678f4e,
     type: 2}
   ArcMaterial: {fileID: 2100000, guid: fc19cc416dce47b4ba4772e4ad59ac87, type: 2}
-  ArcRedLow: {r: 1, g: 0.5882353, b: 0.8627451, a: 1}
-  ArcBlueLow: {r: 0.047058824, g: 0.83137256, b: 0.83137256, a: 1}
-  ArcGreenLow: {r: 0.13725491, g: 1, b: 0.42352942, a: 1}
-  ArcUnknownLow: {r: 0.8, g: 0.8, b: 0.8, a: 0}
-  ArcRedHigh: {r: 1, g: 0.5882353, b: 0.8627451, a: 1}
-  ArcBlueHigh: {r: 0.047058824, g: 0.83137256, b: 0.83137256, a: 1}
-  ArcGreenHigh: {r: 0.13725491, g: 1, b: 0.42352942, a: 1}
-  ArcUnknownHigh: {r: 0.8, g: 0.8, b: 0.8, a: 0}
-  ArcVoid: {r: 0.53333336, g: 0.46666667, b: 0.6666667, a: 1}
+  ArcRedLow: {r: 0.941176471, g: 0.411764706, b: 0.603921569, a: 1}
+  ArcBlueLow: {r: 0.0980392157, g: 0.62745098, b: 0.921568627, a: 1}
+  ArcGreenLow: {r: 0.156862745, g: 0.784313725, b: 0.117647059, a: 1}
+  ArcUnknownLow: {r: 0.666666667, g: 0.666666667, b: 0.666666667, a: 1}
+  ArcRedHigh: {r: 1, g: 0.588235294, b: 0.862745098, a: 1}
+  ArcBlueHigh: {r: 0.0470588235, g: 0.831372549, b: 0.831372549, a: 1}
+  ArcGreenHigh: {r: 0.145098039, g: 1, b: 0.423529412, a: 1}
+  ArcUnknownHigh: {r: 0.862745098, g: 0.862745098, b: 0.862745098, a: 1}
+  ArcVoid: {r: 0.568627451, g: 0.470588235, b: 0.666666667, a: 1}
   ArcDesignant: {r: 1, g: 0.2, b: 0.4, a: 0}
   ArcTapDesignant: {r: 1, g: 0.2, b: 0.4, a: 0}
   ShadowColor: {r: 0.3529412, g: 0.3529412, b: 0.3529412, a: 0.3529412}
