@@ -29,7 +29,7 @@ Shader "SelectionRendering/SelectionBlit"
                 float4 color = SAMPLE_TEXTURE2D_X(_BlitTexture, sampler_PointClamp, input.texcoord);
 
                 if(color.a>0.1f){
-                    return _SelectionColor*_SelectionColor.a;
+                    return float4(_SelectionColor.rgb * _SelectionColor.a, _SelectionColor.a);
                 }
 
                 int insideCount=0;
@@ -47,7 +47,7 @@ Shader "SelectionRendering/SelectionBlit"
                 }
 
                 if(insideCount>=1){
-                    return _OutlineColor*_OutlineColor.a;
+                    return float4(_OutlineColor.rgb * _OutlineColor.a, _OutlineColor.a);
                 }
                 return float4(0, 0, 0, 0);
             }
