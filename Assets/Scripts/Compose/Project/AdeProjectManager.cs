@@ -336,6 +336,14 @@ namespace Arcade.Compose
 			LoadDifficulty(CurrentProjectMetadata.LastWorkingDifficulty);
 		}
 
+		public static float ResolveBaseBpm(float configuredBpm, IEnumerable<ArcTiming> timings)
+		{
+			if (configuredBpm != 0) return configuredBpm;
+			// Match Alpha when the project has no explicit speed reference.
+			return timings?.Where(t => t.Bpm > 0).OrderBy(t => t.Timing)
+				.FirstOrDefault()?.Bpm ?? 100;
+		}
+
 		private void LoadMetadata()
 		{
 			try
@@ -464,9 +472,9 @@ namespace Arcade.Compose
 			}
 
 			float rawBaseBpm = audioOverrided ?
-				CurrentProjectMetadata.Difficulties[CurrentDifficulty] == null ? 0 : CurrentProjectMetadata.Difficulties[difficulty].BaseBpm :
+				CurrentProjectMetadata.Difficulties[difficulty] == null ? 0 : CurrentProjectMetadata.Difficulties[difficulty].BaseBpm :
 				CurrentProjectMetadata.BaseBpm;
-			ArcTimingManager.Instance.BaseBpm = rawBaseBpm == 0 ? 100 : rawBaseBpm;
+			ArcTimingManager.Instance.BaseBpm = ResolveBaseBpm(rawBaseBpm, chart?.Timings);
 			BaseBpm.interactable = true;
 			BaseBpm.text = ArcTimingManager.Instance.BaseBpm.ToString(CultureInfo.InvariantCulture);
 
