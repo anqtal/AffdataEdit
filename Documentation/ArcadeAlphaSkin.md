@@ -43,3 +43,11 @@ The loaded scene contains both particle texture references and the Alpha Arc pal
 All imported texture dimensions match their source; the 17 PNG source files match decoded pixels exactly.
 The six JPEG conversions differ from Pillow decoding by at most 4/255 per channel due to decoder differences.
 Full chart playback and a standalone rebuild were not performed for this asset change.
+
+## Scroll speed and particle blending follow-up
+
+- Scroll velocity now uses the stored speed directly (UI speed × 30), matching Alpha's `bpm × (highSpeed × 180 / baseBpm) / 6`. Removed the previous integer division and 2.65 coefficient.
+- Tap shader keeps RGB premultiplication and uses SrcAlpha / OneMinusSrcAlpha, as Alpha's Judge shader/material do.
+- Long shader retains Additive blending and now uses the alpha of texture × particle color for both premultiplication and output alpha, matching Alpha's HoldJudge shader.
+- Six EditMode travel-distance regression cases passed, including fine increments, maximum speed, doubled BPM and negative BPM. Both Shader Graph assets imported without shader errors.
+- Automated full-frame particle capture was inconclusive: the MCP capture reported recursive PlayerLoop execution; no standalone visual comparison was completed.
