@@ -19,6 +19,8 @@ public class AdeAutoResizeScrollView : MonoBehaviour, ILayoutElement
 	[SerializeField] private float m_Max = 100;
 	public float max { get { return m_Max; } set { if (m_Max == value) { return; } else { m_Max = value; SetDirty(); } } }
 	public float flexibleWidth { get { return -1; } }
+	public float maxWidth { get { return -1; } }
+	public float maxHeight { get { return -1; } }
 	public float minWidth { get { return -1; } }
 	public float preferredWidth { get { return -1; } }
 	public float flexibleHeight { get { return -1; } }

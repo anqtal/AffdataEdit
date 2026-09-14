@@ -6,6 +6,10 @@ AffdataEdit is based on Arcade-plus, which brought it back to GitHub. It does no
 
 The original commit history of Sch are not being included in this repository, since they contain copyrighted content.
 
+## Unity 6.6 upgrade
+
+The editor upgrade also updates the Unity packages and UniTask. The unsupported Asset Bundle Browser editor tool was removed because it uses TreeView APIs removed in Unity 6.6; runtime AssetBundle loading is unchanged.
+
 ## Q&A
 
 ### AffdataEdit does not work on my OS!
@@ -26,7 +30,7 @@ Due to copyright issue, we can not use old graphic and sound assets. You need to
 
 ### I want to contribute to AffdataEdit!
 
-Pull requests are always welcomed. But beware: please make sure you **do not update Unity** in your pull request. You can see our current using Unity version in [ProjectVersion.txt](ProjectSettings\ProjectVersion.txt).
+Use **Unity 6.6 (6000.6.0f1)** to open and build this project. The exact editor version is recorded in [ProjectVersion.txt](ProjectSettings/ProjectVersion.txt). Pull requests are welcome; keep the editor version consistent unless an upgrade is intentional.
 
 We are planning to add some documentation for this project, but unfortunately for now you can only read the code. Sorry for that.
 
