@@ -144,8 +144,17 @@ namespace Arcade.Gameplay
 				noteSideData.ArcRedHigh, noteSideData.ArcBlueHigh, noteSideData.ArcGreenHigh, noteSideData.ArcUnknownHigh,
 				noteSideData.ArcVoid, noteSideData.ArcDesignant, noteSideData.ArcTapDesignant);
 		}
-		public void SetThemeSideSkin(AdeSkinHost.ThemeSideData themeSideData)
+		private bool darkShadow;
+        public Color GetShadowTint(bool trace = false)
+        {
+            var color = darkShadow ? Color.white : Color.black;
+            color.a = (darkShadow ? (trace ? 10f : 20f) : (trace ? 30f : 50f)) / 255f;
+            return color;
+        }
+
+        public void SetThemeSideSkin(AdeSkinHost.ThemeSideData themeSideData, Side side = Side.Light)
 		{
+            darkShadow = side == Side.Conflict;
 			foreach (SpriteRenderer trackComponent in TrackComponents)
 			{
 				trackComponent.sprite = themeSideData.Track.value;
@@ -163,7 +172,6 @@ namespace Arcade.Gameplay
 				criticalLineExtra.sprite = themeSideData.CriticalLineExtra.value;
 			}
 			Color ComboTextColor = themeSideData.ComboTextColor;
-			ComboTextColor.a = 0.75f;
 			ComboText.color = ComboTextColor;
 			ArcEffectManager.Instance.SetTapEffectTexture(themeSideData.ParticleNote.value);
 			ArcEffectManager.Instance.SetParticleArcColor(themeSideData.ParticleArcStartColor, themeSideData.ParticleArcEndColor);

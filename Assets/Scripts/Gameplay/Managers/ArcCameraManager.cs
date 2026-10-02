@@ -18,6 +18,7 @@ namespace Arcade.Gameplay
 		public float EnwidenRatio = 0;
 
 		[HideInInspector]
+		[System.NonSerialized]
 		public List<ArcCamera> Cameras = new List<ArcCamera>();
 
 		[HideInInspector]

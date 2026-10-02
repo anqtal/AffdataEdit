@@ -13,6 +13,7 @@ namespace Arcade.Gameplay
 		}
 
 		[HideInInspector]
+		[System.NonSerialized]
 		public List<ArcTap> Taps = new List<ArcTap>();
 		[HideInInspector]
 		public readonly float[] Lanes = { 10.625f, 6.375f, 2.125f, -2.125f, -6.375f, -10.625f };
@@ -72,7 +73,7 @@ namespace Arcade.Gameplay
 				}
 				t.Enable = true;
 				float pos = t.Position / 1000f;
-				t.transform.localPosition = new Vector3(Lanes[t.Track], pos, 0);
+				t.transform.localPosition = new Vector3(t.WorldX, pos, 0);
 				if (ArcCameraManager.Instance.EditorCamera)
 					t.transform.localScale = new Vector3(1.53f, 2, 1);
 				else
@@ -94,7 +95,7 @@ namespace Arcade.Gameplay
 				if (currentTiming > t.Timing && currentTiming <= t.Timing + 150)
 				{
 					t.Judged = true;
-					if (ArcGameplayManager.Instance.IsPlaying) ArcEffectManager.Instance.PlayTapNoteEffectAt(new Vector2(Lanes[t.Track], 0));
+					if (ArcGameplayManager.Instance.IsPlaying) ArcEffectManager.Instance.PlayTapNoteEffectAt(new Vector2(t.WorldX, 0));
 				}
 				else if (currentTiming > t.Timing + 150)
 				{

@@ -260,6 +260,7 @@ namespace Arcade.Compose.Feature
 			UpdateFieldsState();
 		}
 
+		[System.NonSerialized]
 		public CancellationTokenSource RecordingCancellation;
 
 		private async UniTask Record(CancellationToken cancellationToken)

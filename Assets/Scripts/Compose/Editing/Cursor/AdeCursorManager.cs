@@ -363,6 +363,34 @@ namespace Arcade.Compose
 			}
 		}
 
+		public async UniTask<float> SelectFloatLane(IProgress<float> progress, CancellationToken cancellationToken)
+		{
+			if (currentSelectTaskType != null)
+			{
+				throw new Exception("Cannot select two thing at the same time");
+			}
+
+			currentSelectTaskType = SelectTaskType.Track;
+			try
+			{
+				while (true)
+				{
+					await UniTask.NextFrame(cancellationToken);
+					if (AdeGameplayContentInputHandler.InputActive && IsTrackHit)
+					{
+						progress.Report((8.5f - trackHit.point.x) / 17f);
+						if (Mouse.current.leftButton.wasPressedThisFrame)
+						{
+							return (8.5f - trackHit.point.x) / 17f;
+						}
+					}
+				}
+			}
+			finally
+			{
+				currentSelectTaskType = null;
+			}
+		}
 		public async UniTask<int> SelectTrack(IProgress<int> progress, CancellationToken cancellationToken, bool timingForArc = false)
 		{
 			if (currentSelectTaskType != null)

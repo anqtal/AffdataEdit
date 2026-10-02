@@ -38,10 +38,12 @@ namespace Arcade.Util.Rendering
 			class MaskPassData
 			{
 				public RendererListHandle objectsInSelection;
+				public Rect viewport;
 			}
 			class BlitPassData
 			{
 				public TextureHandle src;
+				public Rect viewport;
 				public Material material;
 			}
 
@@ -77,6 +79,8 @@ namespace Arcade.Util.Rendering
 				using (var builder = renderGraph.AddRasterRenderPass<MaskPassData>("Selection Mask", out var passData))
 				{
 					passData.objectsInSelection = renderGraph.CreateRendererList(rendererListParams);
+					// URP's intermediate descriptor already has the camera viewport dimensions.
+					passData.viewport = new Rect(0, 0, descriptor.width, descriptor.height);
 
 					builder.UseRendererList(passData.objectsInSelection);
 					builder.SetRenderAttachment(selectionMaskColor, 0);
@@ -92,6 +96,10 @@ namespace Arcade.Util.Rendering
 				using (var builder = renderGraph.AddRasterRenderPass<BlitPassData>("Selection Outline", out var passData))
 				{
 					passData.src = selectionMaskColor;
+					// After the final blit, the destination is the full target again. Place the
+					// viewport-sized mask in the same pixel rectangle as the camera's image.
+					passData.viewport = resourceData.isActiveTargetBackBuffer
+						? cameraData.camera.pixelRect : new Rect(0, 0, descriptor.width, descriptor.height);
 					passData.material = selectionBlitMaterial;
 					builder.UseTexture(selectionMaskColor, AccessFlags.Read);
 					// Alpha blending reads the existing camera color.
@@ -103,11 +111,13 @@ namespace Arcade.Util.Rendering
 			static void ExecuteMaskPass(MaskPassData data, RasterGraphContext context)
 			{
 				context.cmd.ClearRenderTarget(true, true, Color.clear);
+				context.cmd.SetViewport(data.viewport);
 				context.cmd.DrawRendererList(data.objectsInSelection);
 			}
 
 			static void ExecuteBlitPass(BlitPassData data, RasterGraphContext context)
 			{
+				context.cmd.SetViewport(data.viewport);
 				Blitter.BlitTexture(context.cmd, data.src, new Vector4(1, 1, 0, 0), data.material, 0);
 			}
 		}

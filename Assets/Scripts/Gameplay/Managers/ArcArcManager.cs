@@ -14,6 +14,7 @@ namespace Arcade.Gameplay
 		}
 
 		[HideInInspector]
+		[System.NonSerialized]
 		public List<ArcArc> Arcs = new List<ArcArc>();
 
 		public GameObject ArcNotePrefab, ArcTapPrefab, SfxArcTapPrefab, ConnectionPrefab;
@@ -214,8 +215,12 @@ namespace Arcade.Gameplay
 				else
 				{
 					t.arcRenderer.EnableEffect = false;
-					t.arcRenderer.Highlight = true;
-					t.arcRenderer.Alpha = 0.85f * (125 / 255f);
+					bool customTrace = t.LineType == ArcLineType.TrueIsVoid && t.TimingGroup != null
+                        && (t.TimingGroup.UseTraceColor || t.TimingGroup.TraceBodyGold);
+                    t.arcRenderer.Highlight = !customTrace;
+                    t.arcRenderer.Alpha = customTrace
+                        ? 0.65f * ((t.TimingGroup.TraceBodyGold ? 188 : 125) / 255f)
+                        : 0.85f * (125 / 255f);
 				}
 				t.arcRenderer.UpdateArc();
 			}
@@ -258,7 +263,7 @@ namespace Arcade.Gameplay
 			int currentTiming = ArcGameplayManager.Instance.ChartTiming;
 			foreach (ArcArc arc in Arcs)
 			{
-				if (arc.NoInput())
+				if (arc.NoInput() || arc.Designant)
 				{
 					continue;
 				}
@@ -399,6 +404,7 @@ namespace Arcade.Gameplay
 			{
 				arc.arcRenderer.JudgeEffect.SetVector4("StartColor", particleArcStartColor);
 				arc.arcRenderer.JudgeEffect.SetVector4("EndColor", particleArcEndColor);
+                arc.arcRenderer.JudgeEffect.GetComponent<ArcLongNoteEffect>()?.RefreshSkin();
 			}
 		}
 
@@ -441,6 +447,7 @@ namespace Arcade.Gameplay
 			foreach (ArcArc arc in Arcs)
 			{
 				arc.arcRenderer.JudgeEffect.SetTexture("Texture", texture);
+                arc.arcRenderer.JudgeEffect.GetComponent<ArcLongNoteEffect>()?.RefreshSkin();
 			}
 		}
 	}

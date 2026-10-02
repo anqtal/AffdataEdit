@@ -13,6 +13,7 @@ namespace Arcade.Gameplay
 		}
 
 		[HideInInspector]
+		[System.NonSerialized]
 		public List<ArcHold> Holds = new List<ArcHold>();
 		[HideInInspector]
 		public readonly float[] Lanes = { 10.625f, 6.375f, 2.125f, -2.125f, -6.375f, -10.625f };
@@ -60,7 +61,7 @@ namespace Arcade.Gameplay
 			foreach (var t in Holds)
 			{
 				int duration = t.EndTiming - t.Timing;
-				if (!timing.ShouldTryRender(t.Timing, t.TimingGroup, duration) || t.Judged || t.GroupHide())
+				if (!timing.ShouldTryRender(t.Timing, t.TimingGroup, duration, note: !t.IsEditing) || (t.Judged && !t.IsEditing) || t.GroupHide())
 				{
 					t.Enable = false;
 					continue;
@@ -68,7 +69,7 @@ namespace Arcade.Gameplay
 				t.Position = timing.CalculatePositionByTiming(t.Timing, t.TimingGroup);
 				float endPosition = timing.CalculatePositionByTiming(t.EndTiming, t.TimingGroup);
 				t.Enable = true;
-				if (t.Judging || (t.NoInput() && t.Timing < ArcGameplayManager.Instance.ChartTiming))
+				if (!t.IsEditing && (t.Judging || (t.NoInput() && t.Timing < ArcGameplayManager.Instance.ChartTiming)))
 				{
 					t.Position = 0;
 				}
@@ -93,7 +94,7 @@ namespace Arcade.Gameplay
 				}
 				float pos = t.Position / 1000f;
 				float length = (endPosition - t.Position) / 1000f;
-				t.transform.localPosition = new Vector3(Lanes[t.Track], pos, 0);
+				t.transform.localPosition = new Vector3(t.WorldX, pos, 0);
 				t.transform.localScale = new Vector3(1.53f, length / 3.79f, 1);
 				t.boxCollider.center = new Vector3(0, t.boxCollider.size.y / 2);
 
@@ -133,6 +134,12 @@ namespace Arcade.Gameplay
 			ArcEffectManager.Instance.ResetHoldNoteEffect();
 			foreach (var t in Holds)
 			{
+                if (t.IsEditing)
+                {
+                    t.Judged = false;
+                    t.Judging = false;
+                    continue;
+                }
 				if (t.NoInput())
 				{
 					continue;
@@ -146,7 +153,8 @@ namespace Arcade.Gameplay
 						if (ArcGameplayManager.Instance.IsPlaying && t.ShouldPlayAudio) ArcEffectManager.Instance.PlayTapSound();
 						t.AudioPlayed = true;
 					}
-					ArcEffectManager.Instance.SetHoldNoteEffect(t.Track, true);
+					if (t.FloatLane.HasValue) ArcEffectManager.Instance.SetFloatHoldNoteEffect(t);
+                    else ArcEffectManager.Instance.SetHoldNoteEffect(t.Track, true);
 				}
 				else if (currentTiming > t.EndTiming)
 				{

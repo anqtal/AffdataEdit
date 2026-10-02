@@ -1,6 +1,8 @@
+using Arcade.Audio;
 using System;
 using System.Collections.Generic;
 using Arcade.Compose;
+using Arcade.Gameplay.Chart;
 using Arcade.Util.Pooling;
 using UnityEngine;
 using UnityEngine.VFX;
@@ -15,7 +17,6 @@ namespace Arcade.Gameplay
 		private void Awake()
 		{
 			Instance = this;
-			Source.time = 0;
 		}
 		private void Start()
 		{
@@ -24,6 +25,7 @@ namespace Arcade.Gameplay
 			for (int i = 0; i < 6; ++i)
 			{
 				HoldNoteEffectPosition[i] = HoldNoteEffects[i].transform.position;
+                ArcLongNoteEffect.Get(HoldNoteEffects[i]);
 			};
 		}
 
@@ -33,36 +35,62 @@ namespace Arcade.Gameplay
 		public VisualEffect[] HoldNoteEffects = new VisualEffect[6];
 		public Vector3[] HoldNoteEffectPosition = new Vector3[6];
 		public Transform EffectLayer;
-		public AudioClip TapAudio, ArcAudio;
-		public AudioSource Source;
+		[System.NonSerialized] public BassClip TapAudio, ArcAudio;
 
-		public Dictionary<string, AudioClip> SpecialEffectAudios = new Dictionary<string, AudioClip>();
+		[System.NonSerialized]
+		public Dictionary<string, BassClip> SpecialEffectAudios = new Dictionary<string, BassClip>();
 
-		private bool[] holdEffectStatus = new bool[6];
-		private bool[] holdEffectPlaying = new bool[6];
+		private sealed class FloatHoldEffect
+        {
+            public VisualEffect Effect;
+            public bool Requested;
+        }
+        private readonly Dictionary<ArcHold, FloatHoldEffect> floatHoldEffects = new Dictionary<ArcHold, FloatHoldEffect>();
+
+        public void SetFloatHoldNoteEffect(ArcHold note)
+        {
+            if (!floatHoldEffects.TryGetValue(note, out var state))
+            {
+                var go = new GameObject("FloatLane hold hit", typeof(VisualEffect));
+                go.layer = HoldNoteEffects[0].gameObject.layer;
+                go.transform.SetParent(HoldNoteEffects[0].transform.parent, false);
+                var effect = go.GetComponent<VisualEffect>();
+                effect.visualEffectAsset = HoldNoteEffects[0].visualEffectAsset;
+                effect.SetVector4("StartColor", HoldNoteEffects[0].GetVector4("StartColor"));
+                effect.SetVector4("EndColor", HoldNoteEffects[0].GetVector4("EndColor"));
+                effect.SetTexture("Texture", HoldNoteEffects[0].GetTexture("Texture"));
+                ArcLongNoteEffect.Get(effect);
+                effect.name = "FloatLane hold hit";
+                effect.Stop();
+                state = new FloatHoldEffect { Effect = effect };
+                floatHoldEffects.Add(note, state);
+            }
+            state.Requested = true;
+            state.Effect.transform.position = EffectPlane.GetPositionOnPlane(new Vector2(note.WorldX, 0));
+        }
+
+        public void RemoveFloatHoldNoteEffect(ArcHold note)
+        {
+            if (!floatHoldEffects.TryGetValue(note, out var state)) return;
+            if (state.Effect) Destroy(state.Effect.gameObject);
+            floatHoldEffects.Remove(note);
+        }
+
+        private bool[] holdEffectStatus = new bool[6];
 		private GameObjectPool<ArcTapNoteEffectComponent> tapNoteEffectPool;
 		private GameObjectPool<ArcTapNoteEffectComponent> sfxTapNoteEffectPool;
 
 		void Update()
-		{
+        {
+            foreach (var state in floatHoldEffects.Values)
+            {
+                ArcLongNoteEffect.Get(state.Effect).SetEmission(state.Requested);
+            }
 			for (int track = 0; track < 6; track++)
 			{
 				HoldNoteEffects[track].transform.position = EffectPlane.GetPositionOnPlane(HoldNoteEffectPosition[track]);
 				bool show = holdEffectStatus[track];
-				if (show != holdEffectPlaying[track])
-				{
-					holdEffectPlaying[track] = show;
-					if (show)
-					{
-						HoldNoteEffects[track].Play();
-						HoldNoteEffects[track].Simulate(1f / 60f, 60);
-					}
-					else
-					{
-						HoldNoteEffects[track].Stop();
-						HoldNoteEffects[track].Simulate(1f / 60f, 60);
-					}
-				}
+                ArcLongNoteEffect.Get(HoldNoteEffects[track]).SetEmission(show);
 			}
 		}
 		public void SetHoldNoteEffect(int track, bool show)
@@ -73,7 +101,7 @@ namespace Arcade.Gameplay
 			}
 		}
 
-		public void AddSpecialEffectAudio(string effect, AudioClip audio)
+		public void AddSpecialEffectAudio(string effect, BassClip audio)
 		{
 			SpecialEffectAudios.Add(effect, audio);
 		}
@@ -107,29 +135,30 @@ namespace Arcade.Gameplay
 			{
 				if (SpecialEffectAudios.ContainsKey(arcTapEffect))
 				{
-					ArcAudioManager.Instance.Source.PlayOneShot(SpecialEffectAudios[arcTapEffect]);
+					BassAudio.PlayOneShot(SpecialEffectAudios[arcTapEffect], true);
 				}
 				else
 				{
-					Source.PlayOneShot(ArcAudio);
+					BassAudio.PlayOneShot(ArcAudio);
 				}
 			}
 			else
 			{
-				Source.PlayOneShot(TapAudio);
+				BassAudio.PlayOneShot(TapAudio);
 			}
 		}
 		public void PlayTapSound()
 		{
-			Source.PlayOneShot(TapAudio);
+			BassAudio.PlayOneShot(TapAudio);
 		}
 		public void PlayArcSound()
 		{
-			Source.PlayOneShot(ArcAudio);
+			BassAudio.PlayOneShot(ArcAudio);
 		}
 		public void ResetHoldNoteEffect()
 		{
 			for (int i = 0; i < 6; ++i) SetHoldNoteEffect(i, false);
+            foreach (var state in floatHoldEffects.Values) state.Requested = false;
 		}
 
 		public void SetParticleArcColor(Color particleArcStartColor, Color particleArcEndColor)
@@ -139,8 +168,15 @@ namespace Arcade.Gameplay
 			{
 				holdEffect.SetVector4("StartColor", particleArcStartColor);
 				holdEffect.SetVector4("EndColor", particleArcEndColor);
+                holdEffect.GetComponent<ArcLongNoteEffect>()?.RefreshSkin();
 			}
-			ArcArcManager.Instance.SetParticleArcColor(particleArcStartColor, particleArcEndColor);
+			foreach (var state in floatHoldEffects.Values)
+            {
+                state.Effect.SetVector4("StartColor", particleArcStartColor);
+                state.Effect.SetVector4("EndColor", particleArcEndColor);
+                state.Effect.GetComponent<ArcLongNoteEffect>()?.RefreshSkin();
+            }
+            ArcArcManager.Instance.SetParticleArcColor(particleArcStartColor, particleArcEndColor);
 		}
 
 		internal void SetTapEffectTexture(Texture2D particleTap)
@@ -165,8 +201,10 @@ namespace Arcade.Gameplay
 			foreach (VisualEffect holdEffect in HoldNoteEffects)
 			{
 				holdEffect.SetTexture("Texture", texture);
+                holdEffect.GetComponent<ArcLongNoteEffect>()?.RefreshSkin();
 			}
-			ArcArcManager.Instance.SetParticleArcTexture(texture);
+			foreach (var state in floatHoldEffects.Values) { state.Effect.SetTexture("Texture", texture); state.Effect.GetComponent<ArcLongNoteEffect>()?.RefreshSkin(); }
+            ArcArcManager.Instance.SetParticleArcTexture(texture);
 		}
 	}
 }

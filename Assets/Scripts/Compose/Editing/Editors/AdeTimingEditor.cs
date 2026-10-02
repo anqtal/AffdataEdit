@@ -305,12 +305,14 @@ namespace Arcade.Compose.Editing
 		private readonly List<ArcTap> taps;
 		private readonly List<ArcHold> holds;
 		private readonly List<ArcArc> arcs;
+		private readonly List<ArcSlide> slides;
 		public RemoveTimingGroup(ArcTimingGroup timingGroup)
 		{
 			this.timingGroup = timingGroup;
 			this.taps = ArcTapNoteManager.Instance.Taps.Where((tap) => tap.TimingGroup == timingGroup).ToList();
 			this.holds = ArcHoldNoteManager.Instance.Holds.Where((hold) => hold.TimingGroup == timingGroup).ToList();
 			this.arcs = ArcArcManager.Instance.Arcs.Where((arc) => arc.TimingGroup == timingGroup).ToList();
+			this.slides = ArcSlideManager.Instance.Slides.Where(slide => slide.TimingGroup == timingGroup).ToList();
 		}
 		public string Name
 		{
@@ -321,6 +323,11 @@ namespace Arcade.Compose.Editing
 		}
 		public void Do()
 		{
+			foreach (var slide in slides)
+			{
+				AdeSelectionManager.Instance.DeselectNote(slide);
+				ArcSlideManager.Instance.Remove(slide);
+			}
 			foreach (var tap in taps)
 			{
 				AdeSelectionManager.Instance.DeselectNote(tap);
@@ -348,6 +355,7 @@ namespace Arcade.Compose.Editing
 		}
 		public void Undo()
 		{
+			foreach (var slide in slides) ArcSlideManager.Instance.Add(slide);
 			foreach (var tap in taps)
 			{
 				ArcTapNoteManager.Instance.Add(tap);

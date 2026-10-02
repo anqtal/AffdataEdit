@@ -23,6 +23,9 @@ namespace Arcade.Compose.Editing
 		public RectTransform MoveTiming, MoveTrack, MoveEndTiming, MoveStartPos, MoveEndPos;
 
 		public Image IsVoidIntermediate;
+        private RectTransform smoothnessRow, designantRow;
+        private InputField smoothnessInput;
+        private Toggle designantToggle;
 		public void OnNoteSelect(ArcNote note)
 		{
 			UpdateFields();
@@ -49,9 +52,56 @@ namespace Arcade.Compose.Editing
 			curveTypeDropdownHelper = new DropdownHelper<ArcCurveType?>(CurveType.GetComponentInChildren<Dropdown>());
 			colorDropdownHelper = new DropdownHelper<int?>(Color.GetComponentInChildren<Dropdown>());
 			timingGroupDropdownHelper = new DropdownHelper<ArcTimingGroupOption?>(TimingGroup.GetComponentInChildren<Dropdown>());
-			AdeSelectionManager.Instance.NoteEventListeners.Add(this);
+			CreateArcExtensionRows();
+            Track.GetComponentInChildren<InputField>(true).contentType = InputField.ContentType.Standard;
+            Track.GetComponentInChildren<InputField>(true).characterLimit = 0;
+            AdeSelectionManager.Instance.NoteEventListeners.Add(this);
 			AdeCommandManager.Instance.onCommandExecuted += OnCommandExecuted;
 		}
+
+        private void CreateArcExtensionRows()
+        {
+            smoothnessRow = Instantiate(EndTiming, EndTiming.parent);
+            smoothnessRow.name = "Arc Smoothness";
+            smoothnessRow.GetComponentsInChildren<Text>(true)[0].text = "平滑度";
+            foreach (var button in smoothnessRow.GetComponentsInChildren<Button>(true)) button.gameObject.SetActive(false);
+            smoothnessInput = smoothnessRow.GetComponentInChildren<InputField>(true);
+            smoothnessInput.contentType = InputField.ContentType.DecimalNumber;
+            smoothnessInput.onEndEdit = new InputField.EndEditEvent();
+            smoothnessInput.onValueChanged = new InputField.OnChangeEvent();
+            smoothnessInput.onEndEdit.AddListener(text => HandleValueChange(text,
+                (string raw, ref float result) =>
+                {
+                    if (!float.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out result)
+                        || float.IsNaN(result) || float.IsInfinity(result) || result < 1)
+                        return new ValueChangeErrorMessage { message = "平滑度必须为不小于 1 的有限数值" };
+                    return null;
+                }, (value, note) => null, (value, note) => ((ArcArc)note).Smoothness = value));
+            designantRow = Instantiate(IsVoid, IsVoid.parent);
+            designantRow.name = "Arc Designant";
+            designantRow.GetComponentsInChildren<Text>(true)[0].text = "Designant";
+            foreach (var image in designantRow.GetComponentsInChildren<Image>(true))
+                if (image.name == IsVoidIntermediate.name) image.enabled = false;
+            designantToggle = designantRow.GetComponentInChildren<Toggle>(true);
+            designantToggle.interactable = true;
+            designantToggle.onValueChanged = new Toggle.ToggleEvent();
+            designantToggle.onValueChanged.AddListener(value =>
+            {
+                var commands = new List<ICommand>();
+                foreach (var note in AdeSelectionManager.Instance.SelectedNotes)
+                {
+                    if (!(note is ArcArc arc)) continue;
+                    var edited = (ArcArc)arc.Clone();
+                    edited.LineType = value ? ArcLineType.Designant : arc.ArcTaps.Count > 0 ? ArcLineType.TrueIsVoid : ArcLineType.FalseNotVoid;
+                    commands.Add(new EditArcEventCommand(arc, edited));
+                }
+                if (commands.Count > 0) AdeCommandManager.Instance.Add(new BatchCommand(commands.ToArray(), "修改 Designant"));
+            });
+            smoothnessRow.SetSiblingIndex(TimingGroup.GetSiblingIndex());
+            designantRow.SetSiblingIndex(TimingGroup.GetSiblingIndex());
+            smoothnessRow.gameObject.SetActive(false);
+            designantRow.gameObject.SetActive(false);
+        }
 
 		private void OnDestroy()
 		{
@@ -62,7 +112,14 @@ namespace Arcade.Compose.Editing
 		public void UpdateFields()
 		{
 			List<ArcNote> selected = AdeSelectionManager.Instance.SelectedNotes;
-			int count = selected.Count;
+            if (smoothnessRow)
+            {
+                UpdateField(note => note is ArcArc, note => ((ArcArc)note).EffectiveSmoothness.ToString(CultureInfo.InvariantCulture), "-",
+                    active => smoothnessRow.gameObject.SetActive(active), value => smoothnessInput.SetTextWithoutNotify(value));
+                UpdateField<bool?>(note => note is ArcArc, note => ((ArcArc)note).Designant, null,
+                    active => designantRow.gameObject.SetActive(active), value => designantToggle.SetIsOnWithoutNotify(value == true));
+            }
+            int count = selected.Count;
 			if (count == 0)
 			{
 				Panel.gameObject.SetActive(false);
@@ -101,7 +158,7 @@ namespace Arcade.Compose.Editing
 				);
 				UpdateField(
 					(note) => note is ArcTap || note is ArcHold,
-					(note) => note is ArcTap ? (note as ArcTap).Track.ToString(CultureInfo.InvariantCulture) : (note as ArcHold).Track.ToString(CultureInfo.InvariantCulture),
+					(note) => note is ArcTap ? LanePosition.Format(((ArcTap)note).Track, ((ArcTap)note).FloatLane) : LanePosition.Format(((ArcHold)note).Track, ((ArcHold)note).FloatLane),
 					"-",
 					(active) => Track.gameObject.SetActive(active),
 					(data) => Track.GetComponentInChildren<InputField>().SetTextWithoutNotify(data)
@@ -385,6 +442,8 @@ namespace Arcade.Compose.Editing
 				},
 				(value, note) =>
 				{
+					if (note is ArcSlide slide && ((long)slide.EndTiming - value < 2 || (long)slide.EndTiming - value > int.MaxValue))
+						return new ValueChangeErrorMessage { message = "Slide 时长无效（至少 2ms）" };
 					if (note is ArcHold hold)
 					{
 						if (hold.EndTiming <= value)
@@ -428,39 +487,26 @@ namespace Arcade.Compose.Editing
 				}
 			);
 		}
-		public void OnTrack(InputField inputField)
-		{
-			HandleValueChange(
-				inputField.text,
-				(string raw, ref int result) =>
-				{
-					if (!int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out result))
-					{
-						return new ValueChangeErrorMessage { message = "轨道数值格式错误" };
-					}
-					if (result < 0 || result > 5)
-					{
-						return new ValueChangeErrorMessage { message = "轨道只能为 0 - 5" };
-					}
-					return null;
-				},
-				(value, note) =>
-				{
-					return null;
-				},
-				(value, note) =>
-				{
-					if (note is ArcTap tap)
-					{
-						tap.Track = value;
-					}
-					if (note is ArcHold hold)
-					{
-						hold.Track = value;
-					}
-				}
-			);
-		}
+        public void OnTrack(InputField inputField)
+        {
+            HandleValueChange(inputField.text,
+                (string raw, ref string result) =>
+                {
+                    int track; float? lane;
+                    if (!LanePosition.TryParse(raw, out track, out lane))
+                        return new ValueChangeErrorMessage { message = "轨道：整数 0～5，或 FloatLane 小数（0.5 为中央）" };
+                    result = raw;
+                    return null;
+                },
+                (value, note) => null,
+                (value, note) =>
+                {
+                    int track; float? lane;
+                    LanePosition.TryParse(value, out track, out lane);
+                    if (note is ArcTap tap) { tap.Track = track; tap.FloatLane = lane; }
+                    if (note is ArcHold hold) { hold.Track = track; hold.FloatLane = lane; }
+                });
+        }
 		public void OnEndTiming(InputField inputField)
 		{
 			HandleValueChange(
@@ -479,6 +525,8 @@ namespace Arcade.Compose.Editing
 				},
 				(value, note) =>
 				{
+					if (note is ArcSlide slide && ((long)value - slide.Timing < 2 || (long)value - slide.Timing > int.MaxValue))
+						return new ValueChangeErrorMessage { message = "Slide 时长无效（至少 2ms）" };
 					if (note is ArcHold)
 					{
 						var hold = note as ArcHold;
@@ -761,6 +809,7 @@ namespace Arcade.Compose.Editing
 
 		private bool IsValidTiming(ArcNote note, int timing)
 		{
+			if (note is ArcSlide slide) return (long)slide.EndTiming - timing >= 2 && (long)slide.EndTiming - timing <= int.MaxValue;
 			if (note is ArcArc arc)
 			{
 				if (timing > arc.EndTiming)
@@ -807,6 +856,9 @@ namespace Arcade.Compose.Editing
 			EditArcEventCommand command = new EditArcEventCommand(note, newNote);
 
 			AdeCommandManager.Instance.Prepare(command);
+            var editingHold = note as ArcHold;
+            bool wasEditing = editingHold != null && editingHold.IsEditing;
+            if (editingHold != null) editingHold.IsEditing = true;
 			try
 			{
 				while (true)
@@ -823,6 +875,7 @@ namespace Arcade.Compose.Editing
 							(note as ArcTap)?.SetupArcTapConnection();
 							(note as ArcArc)?.CalculateJudgeTimings();
 							(note as ArcHold)?.CalculateJudgeTimings();
+							(note as ArcSlide)?.Rebuild();
 							if (note is ArcArc) ArcArcManager.Instance.CalculateArcRelationship();
 							ArcGameplayManager.Instance.ResetJudge();
 						}
@@ -841,12 +894,17 @@ namespace Arcade.Compose.Editing
 				AdeSelectionManager.Instance.SelectNote(note);
 				throw ex;
 			}
+            finally
+            {
+                if (editingHold != null) editingHold.IsEditing = wasEditing;
+            }
 			AdeCommandManager.Instance.Commit();
 			AdeSelectionManager.Instance.SelectNote(note);
 		}
 
 		private bool IsValidEndTiming(ArcNote note, int timing)
 		{
+			if (note is ArcSlide slide) return (long)timing - slide.Timing >= 2 && (long)timing - slide.Timing <= int.MaxValue;
 			if (note is ArcArc arc)
 			{
 				if (timing < arc.Timing)
@@ -880,7 +938,7 @@ namespace Arcade.Compose.Editing
 				return;
 			}
 			ArcNote note = selected[0];
-			if (!(note is ArcArc || note is ArcHold))
+			if (!(note is ArcArc || note is ArcHold || note is ArcSlide))
 			{
 				return;
 			}
@@ -890,6 +948,9 @@ namespace Arcade.Compose.Editing
 			EditArcEventCommand command = new EditArcEventCommand(note, newNote);
 
 			AdeCommandManager.Instance.Prepare(command);
+            var editingHold = note as ArcHold;
+            bool wasEditing = editingHold != null && editingHold.IsEditing;
+            if (editingHold != null) editingHold.IsEditing = true;
 			try
 			{
 				while (true)
@@ -898,19 +959,12 @@ namespace Arcade.Compose.Editing
 					{
 						if (IsValidEndTiming(note, endTiming))
 						{
-							if (note is ArcArc)
-							{
-								(note as ArcArc).EndTiming = endTiming;
-								(newNote as ArcArc).EndTiming = endTiming;
-							}
-							else if (note is ArcHold)
-							{
-								(note as ArcHold).EndTiming = endTiming;
-								(newNote as ArcHold).EndTiming = endTiming;
-							}
+							((ArcLongNote)note).EndTiming = endTiming;
+							((ArcLongNote)newNote).EndTiming = endTiming;
 							(note as ArcArc)?.Rebuild();
 							(note as ArcArc)?.CalculateJudgeTimings();
 							(note as ArcHold)?.CalculateJudgeTimings();
+							(note as ArcSlide)?.Rebuild();
 							if (note is ArcArc) ArcArcManager.Instance.CalculateArcRelationship();
 							ArcGameplayManager.Instance.ResetJudge();
 						}
@@ -929,6 +983,10 @@ namespace Arcade.Compose.Editing
 				AdeSelectionManager.Instance.SelectNote(note);
 				throw ex;
 			}
+            finally
+            {
+                if (editingHold != null) editingHold.IsEditing = wasEditing;
+            }
 			AdeCommandManager.Instance.Commit();
 			AdeSelectionManager.Instance.SelectNote(note);
 		}
@@ -1039,6 +1097,18 @@ namespace Arcade.Compose.Editing
 			AdeCommandManager.Instance.Prepare(command);
 			try
 			{
+                bool isFloat = note is ArcTap ? ((ArcTap)note).FloatLane.HasValue : ((ArcHold)note).FloatLane.HasValue;
+                if (isFloat)
+                {
+                    Action<float> updateLane = lane =>
+                    {
+                        if (note is ArcTap tap) { tap.FloatLane = lane; ((ArcTap)newNote).FloatLane = lane; tap.SetupArcTapConnection(); }
+                        if (note is ArcHold hold) { hold.FloatLane = lane; ((ArcHold)newNote).FloatLane = lane; }
+                    };
+                    updateLane(await AdeCursorManager.Instance.SelectFloatLane(Progress.Create(updateLane), cancellationToken));
+                }
+                else
+
 				while (true)
 				{
 					Action<int> updateTrack = (int track) =>
@@ -1057,6 +1127,7 @@ namespace Arcade.Compose.Editing
 							}
 							(note as ArcTap)?.SetupArcTapConnection();
 							(note as ArcHold)?.CalculateJudgeTimings();
+							(note as ArcSlide)?.Rebuild();
 						}
 					};
 					var newTrack = await AdeCursorManager.Instance.SelectTrack(Progress.Create(updateTrack), cancellationToken);

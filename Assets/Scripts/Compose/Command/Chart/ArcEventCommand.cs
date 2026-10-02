@@ -21,6 +21,9 @@ namespace Arcade.Compose.Command
 		{
 			switch (@event)
 			{
+				case ArcSlide note:
+					ArcSlideManager.Instance.Add(note);
+					break;
 				case ArcTap note:
 					ArcTapNoteManager.Instance.Add(note);
 					break;
@@ -38,7 +41,11 @@ namespace Arcade.Compose.Command
 			{
 				AdeSelectionManager.Instance.DeselectNote(note);
 			}
-			if (@event is ArcTap tap)
+			if (@event is ArcSlide slide)
+			{
+				ArcSlideManager.Instance.Remove(slide);
+			}
+			else if (@event is ArcTap tap)
 			{
 				ArcTapNoteManager.Instance.Remove(tap);
 			}
@@ -76,7 +83,11 @@ namespace Arcade.Compose.Command
 			{
 				AdeSelectionManager.Instance.DeselectNote(note);
 			}
-			if (@event is ArcTap tap)
+			if (@event is ArcSlide slide)
+			{
+				ArcSlideManager.Instance.Remove(slide);
+			}
+			else if (@event is ArcTap tap)
 			{
 				ArcTapNoteManager.Instance.Remove(tap);
 			}
@@ -95,7 +106,11 @@ namespace Arcade.Compose.Command
 		}
 		public void Undo()
 		{
-			if (@event is ArcTap tap)
+			if (@event is ArcSlide slide)
+			{
+				ArcSlideManager.Instance.Add(slide);
+			}
+			else if (@event is ArcTap tap)
 			{
 				ArcTapNoteManager.Instance.Add(tap);
 			}

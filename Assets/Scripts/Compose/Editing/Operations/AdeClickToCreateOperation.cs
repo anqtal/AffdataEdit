@@ -20,7 +20,8 @@ namespace Arcade.Compose.Operation
 		Tap = 1,
 		Hold = 2,
 		Arc = 3,
-		ArcTap = 4
+		ArcTap = 4,
+		Slide = 5
 	}
 	public enum ClickToCreateArctapMode
 	{
@@ -379,6 +380,26 @@ namespace Arcade.Compose.Operation
 			return false;
 		}
 
+		private async UniTask ExecuteAddSlide(CancellationToken cancellationToken)
+		{
+			int start = AdeCursorManager.Instance.AttachedTiming;
+			var note = new ArcSlide { Timing = start, EndTiming = start + 500, TimingGroup = AdeTimingEditor.Instance.currentTimingGroup };
+			AdeCommandManager.Instance.Prepare(new AddArcEventCommand(note));
+			try
+			{
+				Action<Vector2> setStart = p => { note.StartCenter = note.EndCenter = Mathf.Clamp(p.x, ArcSlide.MinX + note.StartWidth / 2, ArcSlide.MaxX - note.StartWidth / 2); note.Rebuild(); };
+				setStart(await AdeCursorManager.Instance.SelectCoordinate(start, Progress.Create(setStart), cancellationToken));
+				Action<int> setEndTime = t => { note.EndTiming = Mathf.Max(start + 2, t); note.Rebuild(); };
+				setEndTime(await AdeCursorManager.Instance.SelectTiming(Progress.Create(setEndTime), cancellationToken, true));
+				Action<Vector2> setEnd = p => { note.EndCenter = Mathf.Clamp(p.x, ArcSlide.MinX + note.EndWidth / 2, ArcSlide.MaxX - note.EndWidth / 2); note.Rebuild(); };
+				setEnd(await AdeCursorManager.Instance.SelectCoordinate(note.EndTiming, Progress.Create(setEnd), cancellationToken));
+				AdeCommandManager.Instance.Commit();
+				AdeSelectionManager.Instance.DeselectAllNotes();
+				AdeSelectionManager.Instance.SelectNote(note);
+			}
+			catch (OperationCanceledException) { AdeCommandManager.Instance.Cancel(); throw; }
+		}
+
 		private async UniTask ExecuteAddHold(CancellationToken cancellationToken)
 		{
 			int track = AdeCursorManager.Instance.AttachedTrack;
@@ -560,6 +581,11 @@ namespace Arcade.Compose.Operation
 								cancellation = cancellation,
 							});
 						}
+					}
+					else if (mode == ClickToCreateMode.Slide)
+					{
+						var cancellation = new CancellationTokenSource();
+						return AdeOperationResult.FromOngoingOperation(new AdeOngoingOperation { task = ExecuteAddSlide(cancellation.Token).WithExceptionLogger(), cancellation = cancellation });
 					}
 					else if (mode == ClickToCreateMode.Hold)
 					{

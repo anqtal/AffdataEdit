@@ -1,3 +1,4 @@
+using Arcade.Audio;
 using UnityEngine;
 using Arcade.Gameplay.Chart;
 using UnityEngine.Events;
@@ -23,6 +24,7 @@ namespace Arcade.Gameplay
 		private void Awake()
 		{
 			Instance = this;
+			gameObject.AddComponent<ArcSlideManager>();
 		}
 		private void Start()
 		{
@@ -93,6 +95,7 @@ namespace Arcade.Gameplay
 		}
 
 		public UnityEvent OnChartLoad = new UnityEvent();
+		[System.NonSerialized]
 		public OnMusicFinishedEvent OnMusicFinished = new OnMusicFinishedEvent();
 		public ArcChart Chart { get; set; }
 
@@ -111,8 +114,8 @@ namespace Arcade.Gameplay
 
 		private void Update()
 		{
-			deltaDspTime = AudioSettings.dspTime - lastDspTime;
-			lastDspTime = AudioSettings.dspTime;
+			deltaDspTime = BassAudio.Clock - lastDspTime;
+			lastDspTime = BassAudio.Clock;
 			if (IsPlaying)
 			{
 				float playBackSpeed = ArcAudioManager.Instance.PlayBackSpeed;
@@ -123,10 +126,7 @@ namespace Arcade.Gameplay
 					if (deltaDspTime > 0f && (AudioTimingWithoutGlobalOffset >= 0 || ArcAudioManager.Instance.Timing > 0))
 					{
 						float delta = AudioTimingWithoutGlobalOffset - t;
-						int bufferLength;
-						int numBuffers;
-						AudioSettings.GetDSPBufferSize(out bufferLength, out numBuffers);
-						float maxDelta = 2 * (float)bufferLength / (float)AudioSettings.outputSampleRate;
+                        const float maxDelta = .04f;
 						if (Mathf.Abs(delta) > maxDelta)
 						{
 							AudioTimingWithoutGlobalOffset = t;
@@ -140,7 +140,7 @@ namespace Arcade.Gameplay
 				Stop();
 			}
 		}
-		public bool Load(ArcChart chart, AudioClip audio)
+		public bool Load(ArcChart chart, BassClip audio)
 		{
 			if (audio == null || chart == null) return false;
 
@@ -155,6 +155,7 @@ namespace Arcade.Gameplay
 			ArcTapNoteManager.Instance.Load(chart.Taps);
 			ArcHoldNoteManager.Instance.Load(chart.Holds);
 			ArcArcManager.Instance.Load(chart.Arcs);
+			ArcSlideManager.Instance.Load(chart.Slides);
 			ArcCameraManager.Instance.Load(chart.Cameras);
 			ArcSceneControlManager.Instance.Load(chart.SceneControl);
 
@@ -163,11 +164,13 @@ namespace Arcade.Gameplay
 		}
 		public void Clean()
 		{
+            ArcAudioManager.Instance.ReleaseVoice();
 			AudioTiming = 0;
 			ArcTimingManager.Instance.Clean();
 			ArcTapNoteManager.Instance.Clean();
 			ArcHoldNoteManager.Instance.Clean();
 			ArcArcManager.Instance.Clean();
+			ArcSlideManager.Instance.Clean();
 			ArcCameraManager.Instance.Clean();
 			ArcSceneControlManager.Instance.Clean();
 			Chart = null;
@@ -176,6 +179,8 @@ namespace Arcade.Gameplay
 
 		public void ResetJudge()
 		{
+            foreach (var effect in FindObjectsByType<ArcLongNoteEffect>()) effect.ResetState();
+			if (ArcSlideManager.Instance) ArcSlideManager.Instance.ResetFeedback();
 			if (Chart != null)
 			{
 				foreach (var t in Chart.Arcs)
@@ -195,9 +200,9 @@ namespace Arcade.Gameplay
 		{
 			AudioTimingWithoutGlobalOffset = -3f;
 			ResetJudge();
-			ArcAudioManager.Instance.Source.Stop();
+			ArcAudioManager.Instance.Stop();
 			ArcAudioManager.Instance.Timing = 0;
-			ArcAudioManager.Instance.Source.PlayDelayed(3);
+			ArcAudioManager.Instance.PlayDelayed(3 / ArcAudioManager.Instance.PlayBackSpeed);
 			IsPlaying = true;
 		}
 
@@ -205,9 +210,9 @@ namespace Arcade.Gameplay
 		{
 			if (AudioTimingWithoutGlobalOffset < 0)
 			{
-				ArcAudioManager.Instance.Source.Stop();
+				ArcAudioManager.Instance.Stop();
 				ArcAudioManager.Instance.Timing = 0;
-				ArcAudioManager.Instance.Source.PlayDelayed(-AudioTimingWithoutGlobalOffset);
+				ArcAudioManager.Instance.PlayDelayed(-AudioTimingWithoutGlobalOffset / ArcAudioManager.Instance.PlayBackSpeed);
 			}
 			else
 			{
@@ -235,6 +240,9 @@ namespace Arcade.Gameplay
 
 		public ArcNote FindNoteByRaycastHit(RaycastHit h)
 		{
+			foreach (var slide in Chart.Slides)
+				if (slide.Instance == h.transform.gameObject)
+					return ArcSlideVisual.IsWithinRenderDistance(h.point.z) ? slide : null;
 			foreach (var tap in Chart.Taps) if (tap.Instance.Equals(h.transform.gameObject)) return tap;
 			foreach (var hold in Chart.Holds) if (hold.Instance.Equals(h.transform.gameObject)) return hold;
 			foreach (var arc in Chart.Arcs)

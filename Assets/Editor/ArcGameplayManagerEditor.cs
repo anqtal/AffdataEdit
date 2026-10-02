@@ -6,7 +6,7 @@ using System.Globalization;
 [CustomEditor(typeof(ArcGameplayManager))]
 public class ArcGameplayManagerEditor : Editor
 {
-	private AudioClip clip;
+	private Arcade.Audio.BassClip clip;
 	private string affPath;
 	private int setTiming = 0;
 	public override void OnInspectorGUI()
@@ -18,7 +18,7 @@ public class ArcGameplayManagerEditor : Editor
 		{
 			ArcCameraManager.Instance.ResetCamera();
 		}
-		clip = EditorGUILayout.ObjectField("Clip", clip, typeof(AudioClip), true) as AudioClip;
+		clip = EditorGUILayout.ObjectField("Clip", clip, typeof(Arcade.Audio.BassClip), true) as Arcade.Audio.BassClip;
 		affPath = EditorGUILayout.TextField("Aff", affPath);
 		if (GUILayout.Button("Load"))
 		{

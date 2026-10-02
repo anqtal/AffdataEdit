@@ -10,6 +10,7 @@ namespace Arcade.Compose.Editing
 	public class AdeTimingItem : MonoBehaviour
 	{
 		public InputField ItemInputField;
+		[System.NonSerialized]
 		public ArcTiming TimingReference;
 		public RectTransform RectTransform;
 		public Button AddBtn, RemoveBtn;

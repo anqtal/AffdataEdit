@@ -33,7 +33,6 @@ using ParserRuleContext = Antlr4.Runtime.ParserRuleContext;
 /// of the available methods.
 /// </summary>
 [System.CodeDom.Compiler.GeneratedCode("ANTLR", "4.8")]
-[System.CLSCompliant(false)]
 public partial class ArcaeaFileFormatBaseListener : IArcaeaFileFormatListener {
 	/// <summary>
 	/// Enter a parse tree produced by <see cref="ArcaeaFileFormatParser.value"/>.

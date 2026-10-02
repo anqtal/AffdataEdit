@@ -57,6 +57,8 @@ namespace Arcade.Gameplay
 					total += 1;
 				}
 			}
+			foreach (var slide in ArcSlideManager.Instance.Slides)
+				total += CountSlideJudgements(slide, slide.EndTiming);
 			if (total == 0) return 0;
 			return 10000000d / total;
 		}
@@ -120,7 +122,15 @@ namespace Arcade.Gameplay
 					}
 				}
 			}
+			foreach (var slide in ArcSlideManager.Instance.Slides)
+				note += CountSlideJudgements(slide, timing);
 			return note;
+		}
+		private static int CountSlideJudgements(ArcSlide slide, int timing)
+		{
+			return slide.CountJudgements(timing,
+				ArcTimingManager.Instance.CalculateBpmByTiming(slide.Timing, slide.TimingGroup),
+				ArcGameplayManager.Instance.TimingPointDensityFactor);
 		}
 		private int CalculateScore(int timing)
 		{

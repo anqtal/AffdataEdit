@@ -103,6 +103,11 @@ namespace Arcade.Compose.Operation
 									newEndTiming = GetNextSnappedTiming(newTiming);
 								}
 							}
+							if (note is ArcSlide && (long)newEndTiming - newTiming < 2)
+							{
+								if (newTiming > int.MaxValue - 2) continue;
+								newEndTiming = Mathf.Max(newTiming + 2, GetNextSnappedTiming(newTiming));
+							}
 							(newNote as ArcLongNote).EndTiming = newEndTiming;
 						}
 					}

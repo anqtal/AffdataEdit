@@ -32,12 +32,14 @@ namespace Arcade.Aff
 	{
 		public int Timing;
 		public int Track;
+		public float? FloatLane;
 	}
 	public class RawAffHold : IRawAffNestableItem
 	{
 		public int Timing;
 		public int EndTiming;
 		public int Track;
+		public float? FloatLane;
 	}
 	public class RawAffTiming : IRawAffNestableItem
 	{
@@ -59,6 +61,12 @@ namespace Arcade.Aff
 		public ArcLineType LineType;
 		public float? Smoothness;
 		public List<RawAffArctap> ArcTaps;
+	}
+	public class RawAffSlide : IRawAffNestableItem
+	{
+		public int Timing, EndTiming, LeftCurve, RightCurve;
+		public bool IsFloor;
+		public float StartCenter, StartWidth, EndCenter, EndWidth;
 	}
 	public class RawAffCamera : IRawAffNestableItem
 	{
@@ -246,11 +254,17 @@ namespace Arcade.Aff
 			}
 			else if (item is RawAffTap tap)
 			{
-				writer.WriteLine($"{intent}({tap.Timing.ToString(CultureInfo.InvariantCulture)},{tap.Track.ToString(CultureInfo.InvariantCulture)});");
+				writer.WriteLine($"{intent}({tap.Timing.ToString(CultureInfo.InvariantCulture)},{LanePosition.Format(tap.Track, tap.FloatLane)});");
 			}
 			else if (item is RawAffHold hold)
 			{
-				writer.WriteLine($"{intent}hold({hold.Timing.ToString(CultureInfo.InvariantCulture)},{hold.EndTiming.ToString(CultureInfo.InvariantCulture)},{hold.Track.ToString(CultureInfo.InvariantCulture)});");
+				writer.WriteLine($"{intent}hold({hold.Timing.ToString(CultureInfo.InvariantCulture)},{hold.EndTiming.ToString(CultureInfo.InvariantCulture)},{LanePosition.Format(hold.Track, hold.FloatLane)});");
+			}
+			else if (item is RawAffSlide slide)
+			{
+				writer.WriteLine(intent + string.Format(CultureInfo.InvariantCulture,
+					"slide({0},{1},{2:0.################################################},{3:0.################################################},{4:0.################################################},{5:0.################################################},{6},{7},{8});", slide.Timing, slide.EndTiming,
+					(double)slide.StartCenter, (double)slide.StartWidth, (double)slide.EndCenter, (double)slide.EndWidth, slide.LeftCurve, slide.RightCurve, slide.IsFloor ? "true" : "false"));
 			}
 			else if (item is RawAffArc arc)
 			{
@@ -260,7 +274,7 @@ namespace Arcade.Aff
 				}
 				writer.WriteLine($"{intent}arc({arc.Timing.ToString(CultureInfo.InvariantCulture)},{arc.EndTiming.ToString(CultureInfo.InvariantCulture)},{arc.XStart.ToString("f2", CultureInfo.InvariantCulture)},{arc.XEnd.ToString("f2", CultureInfo.InvariantCulture)}" +
 					$",{ArcCurveTypeStrings[arc.CurveType]},{arc.YStart.ToString("f2", CultureInfo.InvariantCulture)},{arc.YEnd.ToString("f2", CultureInfo.InvariantCulture)},{arc.Color},{arc.Effect},{ArcLineTypeStrings[arc.LineType]}"
-					 + (arc.Smoothness == null ? "" : $",{arc.Smoothness.Value.ToString("f2", CultureInfo.InvariantCulture)}") + ")" +
+					 + (arc.Smoothness == null ? "" : $",{arc.Smoothness.Value.ToString("0.0######", CultureInfo.InvariantCulture)}") + ")" +
 					(arc.ArcTaps.Count > 0 ? $"[{string.Join(",", arc.ArcTaps.Select(e => $"arctap({e.Timing.ToString(CultureInfo.InvariantCulture)})"))}]" : "") +
 					";");
 			}
@@ -404,6 +418,10 @@ namespace Arcade.Aff
 				{
 					GenTiming(context);
 				}
+				else if (tag == "slide")
+				{
+					GenSlide(context);
+				}
 				else if (tag == "arc")
 				{
 					GenArc(context);
@@ -460,20 +478,21 @@ namespace Arcade.Aff
 				return;
 			}
 			var timing = CheckValueType<RawAffInt>(context.values().value()[0], "tap", "时间");
-			var track = CheckValueType<RawAffInt>(context.values().value()[1], "tap", "轨道");
-			if (timing == null || track == null)
+			int track; float? floatLane;
+            bool validLane = LanePosition.TryParse(context.values().value()[1].GetText(), out track, out floatLane);
+			if (timing == null)
 			{
 				return;
 			}
 			bool valueError = false;
-			if (track.data > 5 || track.data < 0)
+			if (!validLane)
 			{
 				chart.warning.Add($"第 {(context.values().value()[1].Start.Line + lineOffset).ToString(CultureInfo.InvariantCulture)} 行第 {(context.values().value()[1].Start.Column + 1).ToString(CultureInfo.InvariantCulture)} 列，tap 事件的轨道参数超过范围，此 tap 将被忽略");
 				valueError = true;
 			}
 			if (!valueError)
 			{
-				context.value = new RawAffTap() { Timing = timing.data, Track = track.data };
+				context.value = new RawAffTap() { Timing = timing.data, Track = track, FloatLane = floatLane };
 			}
 		}
 		void GenHold(ArcaeaFileFormatParser.EventContext context)
@@ -486,8 +505,9 @@ namespace Arcade.Aff
 			}
 			var timing = CheckValueType<RawAffInt>(context.values().value()[0], "hold", "时间");
 			var endTiming = CheckValueType<RawAffInt>(context.values().value()[1], "hold", "结束时间");
-			var track = CheckValueType<RawAffInt>(context.values().value()[2], "hold", "轨道");
-			if (timing == null || endTiming == null || track == null)
+			int track; float? floatLane;
+            bool validLane = LanePosition.TryParse(context.values().value()[2].GetText(), out track, out floatLane);
+			if (timing == null || endTiming == null)
 			{
 				return;
 			}
@@ -499,14 +519,14 @@ namespace Arcade.Aff
 				timing = endTiming;
 				endTiming = tmp;
 			}
-			if (track.data > 5 || track.data < 0)
+			if (!validLane)
 			{
 				chart.warning.Add($"第 {(context.values().value()[2].Start.Line + lineOffset).ToString(CultureInfo.InvariantCulture)} 行第 {(context.values().value()[2].Start.Column + 1).ToString(CultureInfo.InvariantCulture)} 列，hold 事件的轨道参数超过范围，此 hold 将被忽略");
 				valueError = true;
 			}
 			if (!valueError)
 			{
-				context.value = new RawAffHold() { Timing = timing.data, EndTiming = endTiming.data, Track = track.data };
+				context.value = new RawAffHold() { Timing = timing.data, EndTiming = endTiming.data, Track = track, FloatLane = floatLane };
 			}
 		}
 		void GenTiming(ArcaeaFileFormatParser.EventContext context)
@@ -535,6 +555,38 @@ namespace Arcade.Aff
 				context.value = new RawAffTiming() { Timing = timing.data, Bpm = bpm.data, BeatsPerLine = segment.data };
 			}
 		}
+		void GenSlide(ArcaeaFileFormatParser.EventContext context)
+		{
+			RejectSubevents(context, "slide");
+			RejectSegment(context, "slide");
+			if (context.values() == null || (context.values().value().Length != 8 && context.values().value().Length != 9))
+			{
+				chart.error.Add($"第 {context.Start.Line + lineOffset} 行：slide 需要 8 个参数，以及可选的 isfloor 布尔参数。");
+				return;
+			}
+			var v = context.values().value();
+			int start, end, left, right;
+			bool isFloor = false;
+			float sc, sw, ec, ew;
+			if (!int.TryParse(v[0].GetText(), NumberStyles.Integer, CultureInfo.InvariantCulture, out start)
+				|| !int.TryParse(v[1].GetText(), NumberStyles.Integer, CultureInfo.InvariantCulture, out end)
+				|| !float.TryParse(v[2].GetText(), NumberStyles.Float, CultureInfo.InvariantCulture, out sc)
+				|| !float.TryParse(v[3].GetText(), NumberStyles.Float, CultureInfo.InvariantCulture, out sw)
+				|| !float.TryParse(v[4].GetText(), NumberStyles.Float, CultureInfo.InvariantCulture, out ec)
+				|| !float.TryParse(v[5].GetText(), NumberStyles.Float, CultureInfo.InvariantCulture, out ew)
+				|| !int.TryParse(v[6].GetText(), NumberStyles.Integer, CultureInfo.InvariantCulture, out left)
+				|| !int.TryParse(v[7].GetText(), NumberStyles.Integer, CultureInfo.InvariantCulture, out right)
+				|| (v.Length == 9 && !bool.TryParse(v[8].GetText(), out isFloor))
+				|| (long)end - start < 2 || (long)end - start > int.MaxValue || left < 0 || left > 2 || right < 0 || right > 2
+				|| !ArcSlide.ValidShape(sc, sw, ec, ew, left, right))
+			{
+				chart.error.Add($"第 {context.Start.Line + lineOffset} 行：slide 参数无效；需要至少 2ms、有效范围及 0/1/2 曲线。");
+				return;
+			}
+			context.value = new RawAffSlide { Timing = start, EndTiming = end, StartCenter = sc,
+				StartWidth = sw, EndCenter = ec, EndWidth = ew, LeftCurve = left, RightCurve = right, IsFloor = isFloor };
+		}
+
 		void GenArc(ArcaeaFileFormatParser.EventContext context)
 		{
 			RejectSegment(context, "arc");

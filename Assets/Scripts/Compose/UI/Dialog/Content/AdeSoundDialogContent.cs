@@ -1,3 +1,4 @@
+using Arcade.Audio;
 using System;
 using System.IO;
 using UnityEngine;
@@ -18,7 +19,6 @@ namespace Arcade.Compose.Dialog
 		public static AdeSoundDialogContent Instance { get; private set; }
 
 		public AdeNumberInputWithSlider ChartAudioInput, EffectAudioInput;
-		public AudioSource ChartSource, EffectSource;
 		private SoundPreferences preferences;
 		public string PreferencesSavePath
 		{
@@ -63,8 +63,8 @@ namespace Arcade.Compose.Dialog
 			{
 				ChartAudioInput.SetValueWithoutNotify(preferences.Chart);
 				EffectAudioInput.SetValueWithoutNotify(preferences.Effect);
-				ChartSource.volume = preferences.Chart;
-				EffectSource.volume = preferences.Effect;
+				BassAudio.MusicVolume = preferences.Chart;
+				BassAudio.EffectVolume = preferences.Effect;
 			}
 		}
 		private void Save()
@@ -76,7 +76,7 @@ namespace Arcade.Compose.Dialog
 		{
 			val = Mathf.Clamp(val, 0, 1);
 			preferences.Chart = val;
-			ChartSource.volume = val;
+			BassAudio.MusicVolume = val;
 			Save();
 			ChartAudioInput.SetValueWithoutNotify(preferences.Chart);
 		}
@@ -84,7 +84,7 @@ namespace Arcade.Compose.Dialog
 		{
 			val = Mathf.Clamp(val, 0, 1);
 			preferences.Effect = val;
-			EffectSource.volume = val;
+			BassAudio.EffectVolume = val;
 			Save();
 			EffectAudioInput.SetValueWithoutNotify(preferences.Effect);
 		}

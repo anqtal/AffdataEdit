@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Events;
 using Arcade.Gameplay.Chart;
 using Arcade.Compose.MarkingMenu;
 using Arcade.Gameplay;
@@ -20,6 +21,7 @@ namespace Arcade.Compose.Operation
 
 		public MarkingMenuItem CopyItem;
 		public MarkingMenuItem CutItem;
+        private MarkingMenuItem horizontalCutItem;
 
 		public override bool IsOnlyMarkingMenu => false;
 		public override MarkingMenuItem[] MarkingMenuItems
@@ -29,7 +31,8 @@ namespace Arcade.Compose.Operation
 				if (!ArcGameplayManager.Instance.IsLoaded) return null;
 				if (AdeCursorManager.Instance == null) return null;
 				if (AdeSelectionManager.Instance.SelectedNotes.Count == 0) return null;
-				return new MarkingMenuItem[] { CopyItem, CutItem };
+				return horizontalCutItem && AdeSelectionManager.Instance.SelectedNotes.Exists(note => note is ArcArc arc && arc.IsVoid)
+                    ? new[] { CopyItem, CutItem, horizontalCutItem } : new[] { CopyItem, CutItem };
 			}
 		}
 
@@ -37,6 +40,86 @@ namespace Arcade.Compose.Operation
 		{
 			Instance = this;
 		}
+
+        private void Start()
+        {
+            horizontalCutItem = Instantiate(CutItem, CutItem.transform.parent);
+            horizontalCutItem.name = "Horizontal cut";
+            horizontalCutItem.StartupText = "水平剪切";
+            horizontalCutItem.HasSubMenu = false;
+            horizontalCutItem.SubItems = new MarkingMenuItem[0];
+            horizontalCutItem.OnHangOver = new UnityEvent();
+            horizontalCutItem.OnConfirmed = new UnityEvent();
+            horizontalCutItem.OnConfirmed.AddListener(ManuallyExecuteHorizontalCut);
+            horizontalCutItem.gameObject.SetActive(false);
+        }
+
+        private void OnDestroy()
+        {
+            if (horizontalCutItem) Destroy(horizontalCutItem.gameObject);
+        }
+
+        public void ManuallyExecuteHorizontalCut()
+        {
+            AdeOperationManager.Instance.TryExecuteOperation(() =>
+            {
+                var cancellation = new CancellationTokenSource();
+                return new AdeOngoingOperation
+                {
+                    task = ExecuteHorizontalCut(cancellation.Token).WithExceptionLogger(),
+                    cancellation = cancellation,
+                };
+            });
+        }
+
+        private async UniTask ExecuteHorizontalCut(CancellationToken cancellationToken)
+        {
+            if (!ArcGameplayManager.Instance.IsLoaded) return;
+            var selection = AdeSelectionManager.Instance.SelectedNotes.ToArray();
+            var arcs = selection.OfType<ArcArc>().Where(arc => arc.IsVoid)
+                .OrderBy(arc => arc.Timing).ToArray();
+            if (arcs.Length == 0) return;
+
+            var originals = arcs.Select(arc => (ArcArc)arc.Clone()).ToArray();
+            var moved = arcs.Select(arc => (ArcArc)arc.Clone()).ToArray();
+            var command = new BatchCommand(arcs.Select((arc, i) =>
+                (ICommand)new EditArcEventCommand(arc, moved[i])).ToArray(), "水平剪切");
+            int cursorTiming = Mathf.Max(arcs[0].Timing, ArcGameplayManager.Instance.ChartTiming);
+            float offset = 0;
+            AdeSelectionManager.Instance.DeselectAllNotes();
+            AdeCommandManager.Instance.Prepare(command);
+            AdeToast.Instance.Show("水平剪切：以最早黑线的起点定位，左键确认，Esc 取消");
+            try
+            {
+                Action<Vector2> updatePosition = point =>
+                {
+                    float nextOffset = point.x - originals[0].XStart;
+                    if (Mathf.Approximately(nextOffset, offset)) return;
+                    offset = nextOffset;
+                    for (int i = 0; i < moved.Length; i++)
+                    {
+                        // Apply one shared offset from the original positions to preserve the shape.
+                        moved[i].XStart = originals[i].XStart + offset;
+                        moved[i].XEnd = originals[i].XEnd + offset;
+                    }
+                    command.Do();
+                };
+                var coordinate = await AdeCursorManager.Instance.SelectCoordinate(cursorTiming,
+                    Progress.Create(updatePosition), cancellationToken);
+                updatePosition(coordinate);
+                if (Mathf.Approximately(offset, 0)) AdeCommandManager.Instance.Cancel();
+                else AdeCommandManager.Instance.Commit();
+            }
+            catch
+            {
+                AdeCommandManager.Instance.Cancel();
+                throw;
+            }
+            finally
+            {
+                foreach (var note in selection) AdeSelectionManager.Instance.SelectNote(note);
+            }
+        }
 
 		private async UniTask ExecuteCopyOrCut(bool isCut, CancellationToken cancellationToken)
 		{
