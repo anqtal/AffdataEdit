@@ -1,0 +1,23 @@
+using System.IO;
+using UnityEditor;
+using UnityEditor.Build;
+using UnityEditor.Build.Reporting;
+
+public static class WindowsCiBuild
+{
+    public static void Build()
+    {
+        const string output = "Build/Windows/AffdataEdit.exe";
+        Directory.CreateDirectory(Path.GetDirectoryName(output));
+        BuildReport report = BuildPipeline.BuildPlayer(new BuildPlayerOptions
+        {
+            scenes = new[] { "Assets/_Scenes/ArcEditor.unity" },
+            locationPathName = output,
+            target = BuildTarget.StandaloneWindows64,
+            options = BuildOptions.StrictMode
+        });
+        if (report.summary.result != BuildResult.Succeeded || report.summary.totalWarnings != 0)
+            throw new BuildFailedException($"Windows build: {report.summary.result}, " +
+                $"{report.summary.totalErrors} errors, {report.summary.totalWarnings} warnings.");
+    }
+}

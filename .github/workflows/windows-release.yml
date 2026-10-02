@@ -1,0 +1,91 @@
+name: Windows build and R2 update
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: windows-release
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      R2_ACCOUNT_ID: ${{ vars.R2_ACCOUNT_ID }}
+      R2_BUCKET: ${{ vars.R2_BUCKET }}
+      R2_PUBLIC_URL: ${{ vars.R2_PUBLIC_URL }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+      - name: Check required configuration
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: |
+          for name in R2_ACCOUNT_ID R2_BUCKET R2_PUBLIC_URL R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY UNITY_EMAIL UNITY_PASSWORD; do
+            if [ -z "${!name}" ]; then echo "::error::Missing GitHub secret/variable: $name"; exit 1; fi
+          done
+          if [ -z "$UNITY_LICENSE" ] && [ -z "$UNITY_SERIAL" ]; then
+            echo "::error::Set UNITY_LICENSE or UNITY_SERIAL in GitHub Secrets"; exit 1
+          fi
+      - uses: actions/cache@v4
+        with:
+          path: Library
+          key: windows-library-${{ hashFiles('ProjectSettings/ProjectVersion.txt', 'Packages/**') }}-${{ github.sha }}
+          restore-keys: |
+            windows-library-${{ hashFiles('ProjectSettings/ProjectVersion.txt', 'Packages/**') }}-
+      - uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+        with:
+          unityVersion: auto
+          targetPlatform: StandaloneWindows64
+          buildMethod: WindowsCiBuild.Build
+          versioning: None
+      - name: Include latest independent updater
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download --repo anqtal/AffdataEdit-Updater --pattern AffdataEdit-Updater.exe --pattern SHA256SUMS --dir "$RUNNER_TEMP/updater"
+          (cd "$RUNNER_TEMP/updater" && sha256sum --check SHA256SUMS)
+          cp "$RUNNER_TEMP/updater/AffdataEdit-Updater.exe" Build/Windows/
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          url = os.environ['R2_PUBLIC_URL'].rstrip('/') + '/windows/latest.json'
+          Path('Build/Windows/updater-config.json').write_text(json.dumps({'manifestUrl': url}), encoding='utf-8')
+          PY
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Publish file objects and update manifest
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: |
+          python -m pip install boto3
+          python Tools/Release/publish.py
+      - name: Publish Windows release and remove previous releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="build-${GITHUB_RUN_NUMBER}-${GITHUB_RUN_ATTEMPT}"
+          (cd Build/Windows && zip -qr "$RUNNER_TEMP/AffdataEdit-Windows-x64.zip" .)
+          gh release create "$tag" "$RUNNER_TEMP/AffdataEdit-Windows-x64.zip" --target "$GITHUB_SHA" --title "AffdataEdit Windows $tag" --notes "Windows x64. Commit: $GITHUB_SHA. Launch AffdataEdit-Updater.exe to update." --latest
+          gh api --paginate "repos/$GITHUB_REPOSITORY/releases" --jq '.[].tag_name' > "$RUNNER_TEMP/release-tags"
+          while IFS= read -r old; do
+            if [ "$old" != "$tag" ]; then gh release delete "$old" --yes --cleanup-tag; fi
+          done < "$RUNNER_TEMP/release-tags"
