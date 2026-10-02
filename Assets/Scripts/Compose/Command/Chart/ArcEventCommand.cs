@@ -41,26 +41,18 @@ namespace Arcade.Compose.Command
             float margin = Mathf.Min(arc.XStart - ArcSlide.MinX, ArcSlide.MaxX - arc.XStart,
                 arc.XEnd - ArcSlide.MinX, ArcSlide.MaxX - arc.XEnd);
             float width = Mathf.Min(1f / 3, margin * 2);
-            int curve = arc.CurveType == ArcCurveType.Si || arc.CurveType == ArcCurveType.SiSi || arc.CurveType == ArcCurveType.SiSo ? 1
+            int curve = arc.CurveType == ArcCurveType.B ? 3
+                : arc.CurveType == ArcCurveType.Si || arc.CurveType == ArcCurveType.SiSi || arc.CurveType == ArcCurveType.SiSo ? 1
                 : arc.CurveType == ArcCurveType.So || arc.CurveType == ArcCurveType.SoSi || arc.CurveType == ArcCurveType.SoSo ? 2 : 0;
-            // Slide has no Bezier easing. Approximate B with connected linear segments.
-            int count = arc.CurveType == ArcCurveType.B ? (int)System.Math.Min(32, duration / 2) : 1;
-            var slides = new ArcSlide[count];
-            for (int i = 0; i < count; i++)
+            var slide = new ArcSlide
             {
-                int start = (int)(arc.Timing + duration * i / count);
-                int end = (int)(arc.Timing + duration * (i + 1) / count);
-                var slide = new ArcSlide
-                {
-                    Timing = start, EndTiming = end, TimingGroup = arc.TimingGroup,
-                    StartCenter = ArcAlgorithm.X(arc.XStart, arc.XEnd, (float)((start - (double)arc.Timing) / duration), arc.CurveType),
-                    EndCenter = ArcAlgorithm.X(arc.XStart, arc.XEnd, (float)((end - (double)arc.Timing) / duration), arc.CurveType),
-                    StartWidth = width, EndWidth = width, LeftCurve = curve, RightCurve = curve,
-                    IsFloor = false,
-                };
-                if (!slide.IsValid) return false;
-                slides[i] = slide;
-            }
+                Timing = arc.Timing, EndTiming = arc.EndTiming, TimingGroup = arc.TimingGroup,
+                StartCenter = arc.XStart, EndCenter = arc.XEnd,
+                StartWidth = width, EndWidth = width, LeftCurve = curve, RightCurve = curve,
+                IsFloor = false,
+            };
+            if (!slide.IsValid) return false;
+            var slides = new[] { slide };
             command = new ConvertArcToSlideCommand(arc, slides);
             return true;
         }

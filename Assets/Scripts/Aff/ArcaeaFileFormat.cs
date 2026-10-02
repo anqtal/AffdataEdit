@@ -555,6 +555,12 @@ namespace Arcade.Aff
 				context.value = new RawAffTiming() { Timing = timing.data, Bpm = bpm.data, BeatsPerLine = segment.data };
 			}
 		}
+        private static bool TryParseSlideCurve(string value, out int curve)
+        {
+            if (value == "b") { curve = 3; return true; }
+            return int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out curve);
+        }
+
 		void GenSlide(ArcaeaFileFormatParser.EventContext context)
 		{
 			RejectSubevents(context, "slide");
@@ -574,13 +580,13 @@ namespace Arcade.Aff
 				|| !float.TryParse(v[3].GetText(), NumberStyles.Float, CultureInfo.InvariantCulture, out sw)
 				|| !float.TryParse(v[4].GetText(), NumberStyles.Float, CultureInfo.InvariantCulture, out ec)
 				|| !float.TryParse(v[5].GetText(), NumberStyles.Float, CultureInfo.InvariantCulture, out ew)
-				|| !int.TryParse(v[6].GetText(), NumberStyles.Integer, CultureInfo.InvariantCulture, out left)
-				|| !int.TryParse(v[7].GetText(), NumberStyles.Integer, CultureInfo.InvariantCulture, out right)
+				|| !TryParseSlideCurve(v[6].GetText(), out left)
+				|| !TryParseSlideCurve(v[7].GetText(), out right)
 				|| (v.Length == 9 && !bool.TryParse(v[8].GetText(), out isFloor))
-				|| (long)end - start < 2 || (long)end - start > int.MaxValue || left < 0 || left > 2 || right < 0 || right > 2
+				|| (long)end - start < 2 || (long)end - start > int.MaxValue || left < 0 || left > 3 || right < 0 || right > 3
 				|| !ArcSlide.ValidShape(sc, sw, ec, ew, left, right))
 			{
-				chart.error.Add($"第 {context.Start.Line + lineOffset} 行：slide 参数无效；需要至少 2ms、有效范围及 0/1/2 曲线。");
+				chart.error.Add($"第 {context.Start.Line + lineOffset} 行：slide 参数无效；需要至少 2ms、有效范围及 0/1/2/3（b）曲线。");
 				return;
 			}
 			context.value = new RawAffSlide { Timing = start, EndTiming = end, StartCenter = sc,
