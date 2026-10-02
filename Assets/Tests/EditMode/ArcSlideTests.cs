@@ -132,15 +132,15 @@ public class ArcSlideTests
     }
 
     [Test]
-    public void LegacySlidesStayInSkyAndFloorUsesLanePlaneAndWidth()
+    public void LegacySlidesStayInSkyAndMirroringPreservesHorizontalGeometry()
     {
         var note = new ArcChart(Parse("slide(0,500,0.5,0.3,0.5,0.3,0,0);")).Slides[0];
         Assert.That(note.IsFloor, Is.False);
         Assert.That(note.WorldHeight, Is.EqualTo(5.5f));
         note.IsFloor = true;
-        Assert.That(note.WorldHeight, Is.EqualTo(0));
-        Assert.That(note.WorldX(.125f), Is.EqualTo(6.375f));
-        Assert.That(note.WorldX(.875f), Is.EqualTo(-6.375f));
+        Assert.That(note.WorldHeight, Is.EqualTo(0).Within(0.000001f));
+        Assert.That(note.WorldX(.125f), Is.EqualTo(3.1875f));
+        Assert.That(note.WorldX(.875f), Is.EqualTo(-3.1875f));
         var next = (ArcSlide)note.Clone(); next.Timing = 500; next.EndTiming = 1000; next.IsFloor = false;
         Arcade.Gameplay.ArcSlideManager.UpdateConnections(new[] { note, next });
         Assert.That(note.IsGroupTail, Is.True);
