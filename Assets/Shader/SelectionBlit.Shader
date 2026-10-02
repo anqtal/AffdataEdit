@@ -26,7 +26,7 @@ Shader "SelectionRendering/SelectionBlit"
             half4 frag (Varyings input) : SV_Target
             {
                 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
-                float4 color = SAMPLE_TEXTURE2D_X(_BlitTexture, sampler_PointClamp, input.texcoord);
+                float4 color = SAMPLE_TEXTURE2D_X_LOD(_BlitTexture, sampler_PointClamp, input.texcoord, 0);
 
                 if(color.a>0.1f){
                     return float4(_SelectionColor.rgb * _SelectionColor.a, _SelectionColor.a);
@@ -34,13 +34,13 @@ Shader "SelectionRendering/SelectionBlit"
 
                 int insideCount=0;
 
-                float2 texelSize=1.0/_BlitTextureSize;
+                float2 texelSize=1.0/_BlitTextureSize.xy;
                 for(int i=0;i<SAMPLE_COUNT;i++){
                     float s;
                     float c;
                     sincos(radians(360.0f/((float)SAMPLE_COUNT)*((float)i)),s,c);
                     float2 uv=input.texcoord+float2(s,c)*texelSize*_SampleDistance;
-                    float4 sampleColor = SAMPLE_TEXTURE2D_X(_BlitTexture, sampler_PointClamp, uv);
+                    float4 sampleColor = SAMPLE_TEXTURE2D_X_LOD(_BlitTexture, sampler_PointClamp, uv, 0);
                     if(sampleColor.a>0.1f){
                         insideCount+=1;
                     }

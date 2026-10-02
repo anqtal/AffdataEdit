@@ -54,7 +54,7 @@ Shader "Arcade/Track"
 			v2f vert (appdata v)
 			{
 				v2f o;
-				o.vertex = TransformObjectToHClip(v.vertex);
+				o.vertex = TransformObjectToHClip(v.vertex.xyz);
 				o.uv = v.uv;
 				o.color = v.color*_Color;
 				return o;

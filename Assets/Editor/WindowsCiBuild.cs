@@ -19,5 +19,7 @@ public static class WindowsCiBuild
         if (report.summary.result != BuildResult.Succeeded || report.summary.totalWarnings != 0)
             throw new BuildFailedException($"Windows build: {report.summary.result}, " +
                 $"{report.summary.totalErrors} errors, {report.summary.totalWarnings} warnings.");
+        foreach (string backup in Directory.GetDirectories("Build/Windows", "*_BackUpThisFolder_ButDontShipItWithYourGame"))
+            Directory.Delete(backup, true);
     }
 }

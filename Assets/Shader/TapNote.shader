@@ -39,7 +39,7 @@ Shader "Arcade/TapNote"
 			v2f vert (appdata v)
 			{
 				v2f o;
-				o.vertex = TransformObjectToHClip(v.vertex);
+				o.vertex = TransformObjectToHClip(v.vertex.xyz);
 				o.uv = v.uv;
 				return o;
 			}
