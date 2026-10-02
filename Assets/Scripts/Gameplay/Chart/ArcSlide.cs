@@ -9,8 +9,9 @@ namespace Arcade.Gameplay.Chart
         public float StartCenter = 0.5f, StartWidth = 1f / 3, EndCenter = 0.5f, EndWidth = 1f / 3;
         public int LeftCurve, RightCurve;
         public bool IsFloor;
-        public float WorldHeight => IsFloor ? 0f : ArcAlgorithm.ArcYToWorld(1);
-        public float WorldWidth => IsFloor ? 17f : 8.5f;
+        // Ground is the mirrored sky plane: Arc Y = -2/9 (approximately -0.22).
+        public float WorldHeight => ArcAlgorithm.ArcYToWorld(IsFloor ? -2f / 9f : 1f);
+        public float WorldWidth => 8.5f;
         public float WorldX(float normalizedX) => WorldWidth * (0.5f - normalizedX);
         public ArcTimingGroup TimingGroup { get; set; }
         // Derived runtime identity; never copied or serialized as chart data.

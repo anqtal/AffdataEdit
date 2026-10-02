@@ -34,8 +34,8 @@ namespace Arcade.Compose.UI
             endRange = RangeRow(editor.EndPos, "结束范围", false);
             leftCurve = CurveRow(editor.CurveType, "左侧曲线", true);
             rightCurve = CurveRow(editor.CurveType, "右侧曲线", false);
-            var floorRow = Instantiate(editor.IsVoid, editor.IsVoid.parent); floorRow.name = "地面 Slide";
-            floorRow.GetComponentsInChildren<Text>(true)[0].text = "地面 Slide";
+            var floorRow = Instantiate(editor.IsVoid, editor.IsVoid.parent); floorRow.name = "天地镜像";
+            floorRow.GetComponentsInChildren<Text>(true)[0].text = "天地镜像";
             isFloor = floorRow.GetComponentInChildren<Toggle>(true);
             isFloor.onValueChanged = new Toggle.ToggleEvent();
             isFloor.onValueChanged.AddListener(value => Apply(note => note.IsFloor = value));

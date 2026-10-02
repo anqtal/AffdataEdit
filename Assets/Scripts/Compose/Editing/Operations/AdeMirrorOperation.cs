@@ -27,8 +27,11 @@ namespace Arcade.Compose.Operation
 				if (!ArcGameplayManager.Instance.IsLoaded) return null;
 				if (AdeCursorManager.Instance == null) return null;
 				if (AdeSelectionManager.Instance.SelectedNotes.Count == 0) return null;
-				return verticalEntry && AdeSelectionManager.Instance.SelectedNotes.Exists(note => note is ArcArc)
-                    ? new[] { Entry, verticalEntry, convertToSlideEntry } : new[] { Entry };
+				var items = new List<MarkingMenuItem> { Entry };
+                var selected = AdeSelectionManager.Instance.SelectedNotes;
+                if (verticalEntry && selected.Exists(note => note is ArcArc || note is ArcSlide)) items.Add(verticalEntry);
+                if (convertToSlideEntry && selected.Exists(note => note is ArcArc)) items.Add(convertToSlideEntry);
+                return items.ToArray();
 			}
 		}
 
@@ -70,6 +73,13 @@ namespace Arcade.Compose.Operation
             float top = ArcAlgorithm.WorldYToArc(ArcSceneControlManager.Instance.SkyInput.localPosition.y);
             foreach (var note in AdeSelectionManager.Instance.SelectedNotes)
             {
+                if (note is ArcSlide slide)
+                {
+                    var mirrored = (ArcSlide)slide.Clone();
+                    mirrored.IsFloor = !slide.IsFloor;
+                    commands.Add(new EditArcEventCommand(slide, mirrored));
+                    continue;
+                }
                 if (!(note is ArcArc arc)) continue;
                 var flipped = (ArcArc)arc.Clone();
                 flipped.YStart = top - arc.YStart;
