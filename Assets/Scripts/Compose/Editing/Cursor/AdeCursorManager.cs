@@ -316,7 +316,7 @@ namespace Arcade.Compose
 				while (true)
 				{
 					await UniTask.NextFrame(cancellationToken);
-					if (AdeGameplayContentInputHandler.InputActive && IsTrackHit)
+					if (ArcadeComposeManager.Instance.IsEditorMode && AdeGameplayContentInputHandler.InputActive && IsTrackHit)
 					{
 						progress.Report(AttachedTiming);
 						if (Mouse.current.leftButton.wasPressedThisFrame)
@@ -346,7 +346,7 @@ namespace Arcade.Compose
 				while (true)
 				{
 					await UniTask.NextFrame(cancellationToken);
-					if (AdeGameplayContentInputHandler.InputActive && IsWallHit)
+					if (ArcadeComposeManager.Instance.IsEditorMode && AdeGameplayContentInputHandler.InputActive && IsWallHit)
 					{
 						progress.Report(AttachedCoordinate);
 						if (Mouse.current.leftButton.wasPressedThisFrame)
@@ -376,7 +376,7 @@ namespace Arcade.Compose
 				while (true)
 				{
 					await UniTask.NextFrame(cancellationToken);
-					if (AdeGameplayContentInputHandler.InputActive && IsTrackHit)
+					if (ArcadeComposeManager.Instance.IsEditorMode && AdeGameplayContentInputHandler.InputActive && IsTrackHit)
 					{
 						progress.Report((8.5f - trackHit.point.x) / 17f);
 						if (Mouse.current.leftButton.wasPressedThisFrame)
@@ -404,7 +404,7 @@ namespace Arcade.Compose
 				while (true)
 				{
 					await UniTask.NextFrame(cancellationToken);
-					if (AdeGameplayContentInputHandler.InputActive && IsTrackHit)
+					if (ArcadeComposeManager.Instance.IsEditorMode && AdeGameplayContentInputHandler.InputActive && IsTrackHit)
 					{
 						progress.Report(AttachedTrack);
 						if (Mouse.current.leftButton.wasPressedThisFrame)

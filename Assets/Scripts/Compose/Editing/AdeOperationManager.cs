@@ -68,6 +68,7 @@ namespace Arcade.Compose
 				}
 				return;
 			}
+			if (!ArcadeComposeManager.Instance.IsEditorMode) return;
 			foreach (var operation in operations)
 			{
 				var result = operation.TryExecuteOperation();
