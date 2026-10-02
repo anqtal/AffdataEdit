@@ -140,7 +140,7 @@ namespace Arcade.Gameplay
                 }
                 if (effect == null) continue;
                 effect.Object.transform.position = new Vector3(0, slide.WorldHeight + (slide.IsFloor ? .025f : 0), -.01f);
-                effect.Object.transform.localScale = new Vector3(slide.WorldWidth / .8f, slide.IsFloor ? 1f : .75f, 1);
+                effect.Object.transform.localScale = new Vector3(slide.WorldWidth * 2f / .8f, slide.IsFloor ? 1f : .75f, 1);
                 effect.Object.transform.rotation = Quaternion.Euler(slide.IsFloor ? 90 : 0, 180, 0);
                 effect.Renderer.sharedMaterial = slide.IsFloor ? floorGlowMaterial : glowMaterial;
                 if (!hit) effect.Opacity = game.IsPlaying && !slide.GroupHide() && !slide.NoInput()

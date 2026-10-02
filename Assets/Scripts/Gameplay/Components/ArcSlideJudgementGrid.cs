@@ -14,8 +14,8 @@ namespace Arcade.Gameplay
     /// SkyJudgementLineGlow material as <c>_DownscaledGrid</c> and <c>_DownscaledBlurredGrid</c>.
     /// The sky line's pattern IS this grid; they are not two separate effects.
     ///
-    /// Grid size comes from the scene's serialised override (Rows 8, Columns 90), not from the
-    /// C# field defaults (4 and 20) - 1448 triangles, not 80.
+    /// The original grid uses 8 rows and 90 columns. AFF doubles horizontal coverage and
+    /// columns together so extended Slides retain the same triangle density.
     ///
     /// Per-triangle opacity is uploaded to a StructuredBuffer that the grid shader indexes with
     /// SV_VertexID / 3, so the mesh must keep three unshared vertices per triangle and an identity
@@ -25,10 +25,10 @@ namespace Arcade.Gameplay
     {
         // ---- grid shape (scene values, not the C# defaults) --------------------------------
         private const int Rows = 8;
-        private const int Columns = 90;
+        private const int Columns = 180; // Double coverage while preserving triangle density.
         private const float RowHeight = 1f;
-        private const int TrianglesPerRow = Columns * 2 + 1;      // 181
-        private const int TriangleCount = Rows * TrianglesPerRow; // 1448
+        private const int TrianglesPerRow = Columns * 2 + 1;      // 361
+        private const int TriangleCount = Rows * TrianglesPerRow; // 2888
 
         // ---- opacity curve (G:1478-1524) ---------------------------------------------------
         /// <summary>Hold time before a lit triangle starts to fade, seconds.</summary>
@@ -396,7 +396,7 @@ namespace Arcade.Gameplay
         }
 
         /// <summary>
-        /// Nb and ob from G:1356-1368. Note the divisor for Nb is the triangles per row (181), not
+        /// Nb and ob from G:1356-1368. Note the divisor for Nb is the triangles per row, not
         /// the column count - ob then makes the middle rows flicker most and the outer rows least.
         /// </summary>
         private void BuildArrays()
@@ -415,7 +415,8 @@ namespace Arcade.Gameplay
             const float rowSpan = Rows - 1;
             for (int i = 0; i < TriangleCount; i++)
             {
-                columnX[i] = (i % TrianglesPerRow) / (float)TrianglesPerRow;
+                float u = (i % TrianglesPerRow) / (float)TrianglesPerRow;
+                columnX[i] = (u * 2f - 0.6f) / 0.8f;
                 rowWeight[i] = Mathf.Abs(rowCentre - i / TrianglesPerRow) / rowSpan;
             }
         }
