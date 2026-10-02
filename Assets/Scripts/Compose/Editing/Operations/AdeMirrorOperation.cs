@@ -16,6 +16,7 @@ namespace Arcade.Compose.Operation
 
 		public MarkingMenuItem Entry;
 		private MarkingMenuItem verticalEntry;
+        private MarkingMenuItem convertToSlideEntry;
 		private InputAction verticalMirror;
 
 		public override bool IsOnlyMarkingMenu => false;
@@ -27,7 +28,7 @@ namespace Arcade.Compose.Operation
 				if (AdeCursorManager.Instance == null) return null;
 				if (AdeSelectionManager.Instance.SelectedNotes.Count == 0) return null;
 				return verticalEntry && AdeSelectionManager.Instance.SelectedNotes.Exists(note => note is ArcArc)
-                    ? new[] { Entry, verticalEntry } : new[] { Entry };
+                    ? new[] { Entry, verticalEntry, convertToSlideEntry } : new[] { Entry };
 			}
 		}
 
@@ -49,6 +50,15 @@ namespace Arcade.Compose.Operation
             verticalEntry.OnConfirmed = new UnityEvent();
             verticalEntry.OnConfirmed.AddListener(ManuallyFlipVertically);
             verticalEntry.gameObject.SetActive(false);
+            convertToSlideEntry = Instantiate(Entry, Entry.transform.parent);
+            convertToSlideEntry.name = "Convert Arc to Slide";
+            convertToSlideEntry.StartupText = "转换为 Slide";
+            convertToSlideEntry.HasSubMenu = false;
+            convertToSlideEntry.SubItems = new MarkingMenuItem[0];
+            convertToSlideEntry.OnHangOver = new UnityEvent();
+            convertToSlideEntry.OnConfirmed = new UnityEvent();
+            convertToSlideEntry.OnConfirmed.AddListener(ManuallyConvertToSlide);
+            convertToSlideEntry.gameObject.SetActive(false);
             verticalMirror = AdeInputManager.Instance.Hotkeys.Get().FindAction("VerticalMirror", true);
         }
 
@@ -79,9 +89,30 @@ namespace Arcade.Compose.Operation
             });
         }
 
+        private void ManuallyConvertToSlide()
+        {
+            AdeOperationManager.Instance.TryExecuteOperation(() =>
+            {
+                var commands = new List<ICommand>();
+                int skipped = 0;
+                foreach (var note in AdeSelectionManager.Instance.SelectedNotes.ToArray())
+                {
+                    if (!(note is ArcArc arc)) continue;
+                    if (ConvertArcToSlideCommand.TryCreate(arc, out var command)) commands.Add(command);
+                    else skipped++;
+                }
+                if (commands.Count > 0)
+                    AdeCommandManager.Instance.Add(new BatchCommand(commands.ToArray(), "Arc 转换为 Slide"));
+                if (skipped > 0)
+                    AdeToast.Instance.Show($"已跳过 {skipped} 条无法转换的 Arc（时长不足或横坐标超出 Slide 范围）");
+                return null;
+            });
+        }
+
         private void OnDestroy()
         {
             if (verticalEntry) Destroy(verticalEntry.gameObject);
+            if (convertToSlideEntry) Destroy(convertToSlideEntry.gameObject);
         }
 
 		private void MirrorSelectedNotes()
