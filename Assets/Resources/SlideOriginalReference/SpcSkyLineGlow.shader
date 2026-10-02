@@ -103,9 +103,12 @@ Shader "Spc/SkyLineGlow"
             float4 Frag(Varyings i) : SV_Target
             {
                 float2 uv = i.uv;
+                // The expanded quad covers sky X [-0.75, 1.75], including glow margins.
+                // Evaluate the original band in its original coordinate space, not stretched.
+                float originalU = uv.x * 2.0 - 0.5;
 
                 // Rounded-box band around the active sky interval.
-                float2 p = float2((uv.x - _CenterX * 0.8 - 0.1) * 40.0, uv.y * 2.0 - 1.0);
+                float2 p = float2((originalU - _CenterX * 0.8 - 0.1) * 40.0, uv.y * 2.0 - 1.0);
                 float2 d = abs(p) - float2(_Width * 16.8, _Opacity * 0.1) + 0.5;
                 float box = length(max(d, 0.0)) + min(max(d.y, d.x), 0.0);
                 float vfade = 1.0 - 2.0 * abs(0.5 - uv.y);
@@ -115,7 +118,7 @@ Shader "Spc/SkyLineGlow"
                 float g = max(SAMPLE_TEXTURE2D(_DownscaledGrid, sampler_DownscaledGrid, uv).r,
                               SAMPLE_TEXTURE2D(_DownscaledBlurredGrid, sampler_DownscaledBlurredGrid, uv).r);
                 // AFF can contain disjoint simultaneous Slides. Each glow samples only its own range.
-                float skyX = (uv.x - 0.1) / 0.8;
+                float skyX = (originalU - 0.1) / 0.8;
                 g *= step(_CenterX - _Width * 0.5 - 0.015, skyX) * step(skyX, _CenterX + _Width * 0.5 + 0.015);
                 // Source DXBC uses log/exp of the sampled grid directly: a cleared
                 // grid stays exactly zero, with no artificial epsilon haze.
