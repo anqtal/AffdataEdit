@@ -408,8 +408,9 @@ namespace Arcade.Compose
 
 			TimingSliderHandle.sprite = GlowSliderSprite;
 
-			AdeOperationManager.Instance.CancelOngoingOperation();
-			AdeClickToCreate.Instance.Mode = ClickToCreateMode.Idle;
+			// Keep a prepared Hold/Arc edit alive while previewing; cursor pickers pause in player mode.
+			if (!AdeOperationManager.Instance.HasOngoingOperation)
+				AdeClickToCreate.Instance.Mode = ClickToCreateMode.Idle;
 
 			IsEditorMode = false;
 		}
