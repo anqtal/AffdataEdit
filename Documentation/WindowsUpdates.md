@@ -26,6 +26,9 @@
 Unity 版本自动读取 `ProjectSettings/ProjectVersion.txt`。当前 Mono Windows 目标使用
 Linux runner 交叉构建，需要 GameCI 对应版本的编辑器镜像。
 `WindowsCiBuild.Build` 只构建主场景，并拒绝带构建 warning/error 的产物。
+Windows 文件选择器先在 Windows runner 用 MSVC 编译 `Native/Windows/FileBrowser.cpp`，
+再通过 CI artifact 放入 `Assets/SFB/Plugins/Windows`。它直接调用系统 IFileDialog，
+不依赖 Unity 不支持的 Windows Forms。CI 允许这一个生成的未跟踪 DLL 参与构建。
 
 ## R2 发布约定
 

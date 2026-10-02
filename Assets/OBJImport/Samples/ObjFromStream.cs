@@ -1,17 +1,21 @@
 ﻿using Dummiesman;
 using System.IO;
-using System.Text;
+using System.Collections;
 using UnityEngine;
+using UnityEngine.Networking;
 
 public class ObjFromStream : MonoBehaviour {
-	void Start () {
-        //make www
-        var www = new WWW("https://people.sc.fsu.edu/~jburkardt/data/obj/lamp.obj");
-        while (!www.isDone)
-            System.Threading.Thread.Sleep(1);
-        
-        //create stream and load
-        var textStream = new MemoryStream(Encoding.UTF8.GetBytes(www.text));
-        var loadedObj = new OBJLoader().Load(textStream);
+	IEnumerator Start () {
+        using (var request = UnityWebRequest.Get("https://people.sc.fsu.edu/~jburkardt/data/obj/lamp.obj"))
+        {
+            yield return request.SendWebRequest();
+            if (request.result != UnityWebRequest.Result.Success)
+            {
+                Debug.LogError($"Could not download OBJ: {request.error}");
+                yield break;
+            }
+            using (var stream = new MemoryStream(request.downloadHandler.data))
+                new OBJLoader().Load(stream);
+        }
 	}
 }
