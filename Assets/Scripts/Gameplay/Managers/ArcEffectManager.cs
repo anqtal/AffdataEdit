@@ -76,6 +76,25 @@ namespace Arcade.Gameplay
             floatHoldEffects.Remove(note);
         }
 
+        // Alpha deduplicates the two standard hit sounds independently within 10 ms.
+        private const double HitSoundDeduplicationSeconds = 0.010;
+        private double lastTapSoundTime = double.NegativeInfinity;
+        private double lastArcSoundTime = double.NegativeInfinity;
+
+        public void ResetHitSoundDeduplication()
+        {
+            lastTapSoundTime = lastArcSoundTime = double.NegativeInfinity;
+        }
+
+        private void PlayHitSound(BassClip clip, ref double lastPlayedTime)
+        {
+            if (!clip) return;
+            double now = Time.unscaledTimeAsDouble;
+            if (now - lastPlayedTime <= HitSoundDeduplicationSeconds) return;
+            BassAudio.PlayOneShot(clip);
+            lastPlayedTime = now;
+        }
+
         private bool[] holdEffectStatus = new bool[6];
 		private GameObjectPool<ArcTapNoteEffectComponent> tapNoteEffectPool;
 		private GameObjectPool<ArcTapNoteEffectComponent> sfxTapNoteEffectPool;
@@ -139,21 +158,21 @@ namespace Arcade.Gameplay
 				}
 				else
 				{
-					BassAudio.PlayOneShot(ArcAudio);
+					PlayArcSound();
 				}
 			}
 			else
 			{
-				BassAudio.PlayOneShot(TapAudio);
+				PlayTapSound();
 			}
 		}
 		public void PlayTapSound()
 		{
-			BassAudio.PlayOneShot(TapAudio);
+			PlayHitSound(TapAudio, ref lastTapSoundTime);
 		}
 		public void PlayArcSound()
 		{
-			BassAudio.PlayOneShot(ArcAudio);
+			PlayHitSound(ArcAudio, ref lastArcSoundTime);
 		}
 		public void ResetHoldNoteEffect()
 		{
