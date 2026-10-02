@@ -10,6 +10,34 @@ using System.Text.RegularExpressions;
 
 public class ArcSlideTests
 {
+    [TestCase("b")]
+    [TestCase("3")]
+    public void BezierSlideParsesAndMatchesArcHorizontalCurve(string curve)
+    {
+        var chart = Parse($"slide(0,1000,0.2,0.2,0.8,0.2,{curve},{curve});");
+        Assert.That(chart.error, Is.Empty);
+        var slide = new ArcChart(chart).Slides[0];
+        Assert.That(slide.LeftCurve, Is.EqualTo(3));
+        for (int i = 0; i <= 20; i++)
+        {
+            float t = i / 20f;
+            var range = slide.Range(t);
+            Assert.That((range.x + range.y) / 2,
+                Is.EqualTo(Arcade.Gameplay.ArcAlgorithm.B(.2f, .8f, t)).Within(0.000001f));
+        }
+        var raw = (RawAffSlide)slide.IntoRawItem();
+        Assert.That(raw.LeftCurve, Is.EqualTo(3));
+        Assert.That(raw.RightCurve, Is.EqualTo(3));
+    }
+
+    [Test]
+    public void MixedBezierEdgesRejectCrossing()
+    {
+        Assert.That(ArcSlide.ValidShape(.2f, .1f, .8f, .1f, 3, 3), Is.True);
+        Assert.That(ArcSlide.ValidShape(.2f, .01f, .8f, .01f, 1, 3), Is.False);
+        Assert.That(ArcSlide.ValidShape(.2f, .3f, .8f, .3f, 1, 3), Is.True);
+    }
+
     [TestCase(1000, 990, 1010, true, true, true)]
     [TestCase(1000, 1000, 1010, true, true, false)]
     [TestCase(0, 0, 16, false, true, true)]

@@ -35,17 +35,37 @@ namespace Arcade.Gameplay.Chart
         public static float Curve(int kind, float t)
         {
             t = Mathf.Clamp01(t);
-            return kind == 1 ? Mathf.Sin(t * Mathf.PI / 2) : kind == 2 ? 1 - Mathf.Cos(t * Mathf.PI / 2) : t;
+            return kind == 1 ? Mathf.Sin(t * Mathf.PI / 2) : kind == 2 ? 1 - Mathf.Cos(t * Mathf.PI / 2) : kind == 3 ? t * t * (3 - 2 * t) : t;
         }
-        public bool IsValid => EndTiming > (long)Timing + 1 && (long)EndTiming - Timing <= int.MaxValue && LeftCurve >= 0 && LeftCurve <= 2 && RightCurve >= 0 && RightCurve <= 2
+        public bool IsValid => EndTiming > (long)Timing + 1 && (long)EndTiming - Timing <= int.MaxValue && LeftCurve >= 0 && LeftCurve <= 3 && RightCurve >= 0 && RightCurve <= 3
             && ValidShape(StartCenter, StartWidth, EndCenter, EndWidth, LeftCurve, RightCurve);
         public static bool ValidRange(float center, float width) => width > 0 && center - width / 2 >= MinX && center + width / 2 <= MaxX;
         // The two easing functions can cross even when both endpoints are valid.
         // Test the analytic extrema of width, not just sampled mesh rows.
         public static bool ValidShape(float sc, float sw, float ec, float ew, int left, int right)
         {
-            if (!ValidRange(sc, sw) || !ValidRange(ec, ew) || left < 0 || left > 2 || right < 0 || right > 2) return false;
+            if (!ValidRange(sc, sw) || !ValidRange(ec, ew) || left < 0 || left > 3 || right < 0 || right > 3) return false;
             double dl = ec - ew / 2d - (sc - sw / 2d), dr = ec + ew / 2d - (sc + sw / 2d);
+            if (left == right) return true;
+            if (left == 3 || right == 3)
+            {
+                // Certify positivity using a derivative bound, including mixed B/sine edges.
+                double slopeBound = System.Math.Abs(dl) * MaxSlope(left) + System.Math.Abs(dr) * MaxSlope(right);
+                return PositiveWidth(0, 1, 0);
+                double MaxSlope(int curve) => curve == 0 ? 1 : curve == 3 ? 1.5 : System.Math.PI / 2;
+                double Ease(int curve, double t) => curve == 0 ? t : curve == 1 ? System.Math.Sin(t * System.Math.PI / 2)
+                    : curve == 2 ? 1 - System.Math.Cos(t * System.Math.PI / 2) : t * t * (3 - 2 * t);
+                bool PositiveWidth(double from, double to, int depth)
+                {
+                    double mid = (from + to) / 2;
+                    double width = sw + dr * Ease(right, mid) - dl * Ease(left, mid);
+                    if (width <= 0) return false;
+                    if (width > slopeBound * (to - from) / 2) return true;
+                    // Reject unresolved near-touching edges rather than accepting a crossing.
+                    if (depth == 16) return false;
+                    return PositiveWidth(from, mid, depth + 1) && PositiveWidth(mid, to, depth + 1);
+                }
+            }
             double a = 0, b = 0, c = 0, k = System.Math.PI / 2;
             Accumulate(right, dr); Accumulate(left, -dl);
             double radius = System.Math.Sqrt(a * a + b * b);

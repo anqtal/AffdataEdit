@@ -24,7 +24,7 @@ namespace Arcade.Compose.UI
         private AdeSlidePreview preview;
         private MarkingMenuItem menu;
         private bool ready;
-        private static readonly string[] CurveNames = { "直线", "缓出（sin）", "缓入（cos）" };
+        private static readonly string[] CurveNames = { "直线", "缓出（sin）", "缓入（cos）", "平滑（b）" };
 
         private void Start()
         {
