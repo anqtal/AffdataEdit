@@ -78,7 +78,7 @@ namespace Arcade.Aff.Faults
 				for (int k = i + 1; k < chart.Taps.Count; ++k)
 				{
 					if (chart.Taps[i].Timing == chart.Taps[k].Timing
-						&& chart.Taps[i].Track == chart.Taps[k].Track)
+						&& chart.Taps[i].WorldX == chart.Taps[k].WorldX)
 					{
 						Faults.Add(chart.Taps[i]);
 					}
@@ -134,7 +134,7 @@ namespace Arcade.Aff.Faults
 				foreach (var t in chart.Taps)
 				{
 					if (t.Timing >= h.Timing && t.Timing <= h.EndTiming
-						&& t.Track == h.Track)
+						&& t.WorldX == h.WorldX)
 					{
 						Faults.Add(t);
 					}
@@ -157,7 +157,7 @@ namespace Arcade.Aff.Faults
 				{
 					if (chart.Holds[k].Timing <= chart.Holds[i].EndTiming
 						&& chart.Holds[k].Timing >= chart.Holds[i].Timing
-						&& chart.Holds[i].Track == chart.Holds[k].Track)
+						&& chart.Holds[i].WorldX == chart.Holds[k].WorldX)
 					{
 						Faults.Add(chart.Holds[k]);
 					}

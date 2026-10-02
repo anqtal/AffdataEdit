@@ -1,89 +1,64 @@
+using Arcade.Audio;
 using UnityEngine;
-using UnityEngine.Audio;
 using UnityEngine.UI;
 
 namespace Arcade.Gameplay
 {
-	public class ArcAudioManager : MonoBehaviour
-	{
-		public static ArcAudioManager Instance { get; private set; }
-		private void Awake()
-		{
-			Instance = this;
-		}
-
-		public AudioSource Source;
-		public AudioMixerGroup PitchShiftMixerGroup;
-		public AudioMixerGroup DoublePitchShiftMixerGroup;
-		public Text PlayBackSpeedButtonText;
-
-		public float Timing
-		{
-			get
-			{
-				return Source.time;
-			}
-			set
-			{
-				Source.time = value;
-			}
-		}
-		public AudioClip Clip
-		{
-			get
-			{
-				return Source.clip;
-			}
-			set
-			{
-				Source.clip = value;
-			}
-		}
-
-		private float playBackSpeed = 1;
-
-		public float PlayBackSpeed
-		{
-			get
-			{
-				return playBackSpeed;
-			}
-			private set
-			{
-				Source.pitch = value;
-				if (value == 1)
-				{
-					Source.outputAudioMixerGroup = null;
-				}
-				else if (value >= 0.5f)
-				{
-					Source.outputAudioMixerGroup = PitchShiftMixerGroup;
-					PitchShiftMixerGroup.audioMixer.SetFloat("pitchShift", 1f / value);
-				}
-				else
-				{
-					Source.outputAudioMixerGroup = DoublePitchShiftMixerGroup;
-					PitchShiftMixerGroup.audioMixer.SetFloat("pitchShift", 2f);
-					PitchShiftMixerGroup.audioMixer.SetFloat("pitchShift2", 0.5f / value);
-				}
-				playBackSpeed = value;
-			}
-		}
-
-		public void Load(AudioClip clip)
-		{
-			Clip = clip;
-			Clip.LoadAudioData();
-		}
-		public void Play()
-		{
-			Source.Play();
-		}
-		public void Pause()
-		{
-			Source.Pause();
-		}
-
+    public class ArcAudioManager : MonoBehaviour
+    {
+        public static ArcAudioManager Instance { get; private set; }
+        public Text PlayBackSpeedButtonText;
+        public BassClip Clip { get; private set; }
+        private BassVoice voice;
+        private double scheduledStart = -1;
+        private float playBackSpeed = 1;
+        private void Awake() { Instance = this; }
+        public float Timing
+        {
+            get => voice == null ? 0 : (float)voice.Position;
+            set { if (voice != null) voice.Position = value; }
+        }
+        public float PlayBackSpeed
+        {
+            get => playBackSpeed;
+            private set
+            {
+                if (voice != null) BassNative.Check(BassNative.BASS_ChannelSetAttribute(voice.Handle, 0x10000, (value - 1) * 100), "tempo");
+                playBackSpeed = value;
+            }
+        }
+        public void Load(BassClip clip)
+        {
+            ReleaseVoice();
+            Clip = clip;
+            voice = new BassVoice(clip, true);
+            PlayBackSpeed = playBackSpeed;
+            ApplyVolume();
+        }
+        public void ApplyVolume()
+        {
+            if (voice != null) BassNative.Check(BassNative.BASS_ChannelSetAttribute(voice.Handle, 2, BassAudio.MusicVolume), "music volume");
+        }
+        public void Play()
+        {
+            scheduledStart = -1;
+            if (voice != null) BassNative.Check(BassNative.BASS_ChannelPlay(voice.Handle, false), "play music");
+        }
+        public void PlayDelayed(float seconds) { scheduledStart = BassAudio.Clock + Mathf.Max(0, seconds); }
+        public void Pause()
+        {
+            scheduledStart = -1;
+            if (voice != null && BassNative.BASS_ChannelIsActive(voice.Handle) != 0)
+                BassNative.Check(BassNative.BASS_ChannelPause(voice.Handle), "pause music");
+        }
+        public void Stop()
+        {
+            scheduledStart = -1;
+            if (voice != null) { BassNative.BASS_ChannelStop(voice.Handle); voice.Position = 0; }
+        }
+        private void Update() { if (scheduledStart >= 0 && BassAudio.Clock >= scheduledStart) Play(); }
+        public void ReleaseVoice() { scheduledStart = -1; voice?.Dispose(); voice = null; Clip = null; }
+        private void OnDestroy() { ReleaseVoice(); if (Instance == this) Instance = null; }
 		public void NextPlaybackSpeed()
 		{
 			if (PlayBackSpeedButtonText.text == "100%")

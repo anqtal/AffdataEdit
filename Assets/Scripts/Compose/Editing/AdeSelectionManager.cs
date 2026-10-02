@@ -19,6 +19,7 @@ namespace Arcade.Compose
 	{
 		public static AdeSelectionManager Instance { get; private set; }
 
+		[System.NonSerialized]
 		public List<ArcNote> SelectedNotes = new List<ArcNote>();
 
 		public List<INoteSelectEvent> NoteEventListeners = new List<INoteSelectEvent>();
@@ -41,6 +42,8 @@ namespace Arcade.Compose
 			float start = Mathf.Min(from, to);
 			float end = Mathf.Max(from, to);
 			List<ArcNote> list = new List<ArcNote>();
+			foreach (var slide in ArcSlideManager.Instance.Slides)
+				if (slide.Timing >= start && slide.EndTiming <= end) SelectNote(slide);
 			foreach (var tap in ArcTapNoteManager.Instance.Taps)
 			{
 				if (tap.Timing >= start && tap.Timing <= end)

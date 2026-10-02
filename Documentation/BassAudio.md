@@ -1,0 +1,23 @@
+# BASS audio backend
+
+The editor uses BASS 2.4 and BASS_FX for all playback. Unity Audio is disabled in ProjectSettings/AudioManager.asset.
+
+## Sources
+
+Native libraries are copied from AffdataPlay's `Assets/Plugins/Un4seen.Bass`, with import settings restricted to their matching platform: macOS Intel/Apple Silicon, Windows x64, Linux x64. The narrow C# ABI follows AffdataPlay's ManagedBass bindings. BASS and BASS_FX retain their upstream licenses; this project's license does not relicense these libraries.
+
+## Playback
+
+- Music: a pinned encoded-data decode stream feeds a BASS_FX tempo stream. 100%, 75%, 50%, and 25% speeds use tempo changes while pitch stays unchanged. Seeking, pause/resume and delayed playback use BASS plus a monotonic clock, independent of Unity Audio.
+- Hit sounds: cached native samples with up to 32 overlapping voices per clip. Tap, Hold, Arc, ArcTap and Slide use the same existing judgement triggers.
+- Custom `*_wav` effects and shutter sounds keep their previous music-volume routing; ordinary hits use effect volume. Volume controls update active voices.
+- Skin audio: built-in sounds load by filename from `Assets/StreamingAssets/Audio` at runtime; custom `Skin/Sound/*.wav` overrides retain priority. No serialized audio references, BassClip assets, TextAssets or Unity audio decoding are used. Runtime encoded bytes and BASS samples are cached after loading.
+- Streams, sample caches and pinned memory are released on replacement, scene teardown, Play Mode exit and domain reload.
+
+Removed the old AudioSource/AudioListener components, pitch AudioMixer, Unity audio tween module, and NAudio/NLayer/NVorbis loader dependencies.
+
+Validation: native BASS/BASS_FX initialization, four tempo settings with unchanged pitch, muted sample playback, and Unity compilation. No full test suite was run. Other desktop platforms have matching binaries/import settings but were not executed on this Mac.
+
+Default shutter visuals use Arcade Alpha `Assets/Textures/Shutter/New/shutter_l.png` and `shutter_r.png`. Opening lasts 0.3 seconds with power-1.5 ease-in; closing lasts 0.75 seconds with OutCubic. Pivot motion preserves the existing layout and the same full-panel travel distance.
+
+Shutter audio matches Alpha’s new-skin scene references: `Assets/Audios/shutter_open.wav` and `shutter_close.wav`, copied without conversion to StreamingAssets.

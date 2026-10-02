@@ -25,23 +25,28 @@ public class ArcSceneControlManager : MonoBehaviour
 	public SpriteRenderer[] ExtraLaneCriticalLineRenderers;
 	public Transform SkyInput;
 	[HideInInspector]
+	[System.NonSerialized]
 	public List<ArcSceneControl> SceneControls = new List<ArcSceneControl>();
 	private const float trackAnimationDefaultDuration = 1f;
 	private const float backgroundDarkenDuration = 0.2f;
 
 	public void Load(List<ArcSceneControl> sceneControls)
 	{
+		ClearArcahvEffects();
 		SceneControls = sceneControls;
+        LoadArcahvEffects();
 		ResetScene();
 	}
 	public void Clean()
 	{
+		ClearArcahvEffects();
 		SceneControls.Clear();
 	}
 	public void ResetScene()
 	{
 		UpdateEnwidenCameraRatio(0);
 		UpdateLane(1, 0);
+        UpdateArcahvEffects();
 	}
 
 	private void Update()
@@ -172,7 +177,103 @@ public class ArcSceneControlManager : MonoBehaviour
 		UpdateEnwidenCameraRatio(enwidenCameraRatio);
 		UpdateLane(laneOpacity, enwidenLaneRatio);
 		UpdateBackgroundDarkenLayer(backgroundDarkenProgress);
+        UpdateArcahvEffects();
 	}
+
+    private GameObject arcahvRoot;
+    private CanvasGroup arcahvDistort, arcahvDebris;
+    private AnimationClip debrisShake, redlineFadeIn, redlineShake;
+    private readonly Dictionary<ArcSceneControl, GameObject> redlines = new Dictionary<ArcSceneControl, GameObject>();
+
+    private void LoadArcahvEffects()
+    {
+        if (!SceneControls.Any(sc => sc.Type == SceneControlType.ArcahvDistort
+            || sc.Type == SceneControlType.ArcahvDebris || sc.Type == SceneControlType.Redline)) return;
+        // Use the same background image space (1280 x 960) as Alpha, beneath gameplay/UI.
+        Transform background = BackgroundDarkenLayer.transform.parent.Find("Image");
+        arcahvRoot = Instantiate(Resources.Load<GameObject>("AlphaSceneControl/Arcahv"), background);
+        arcahvDistort = arcahvRoot.transform.Find("Distort").GetComponent<CanvasGroup>();
+        arcahvDebris = arcahvRoot.transform.Find("Debris").GetComponent<CanvasGroup>();
+        debrisShake = Resources.Load<AnimationClip>("AlphaSceneControl/DebrisShake");
+        redlineFadeIn = Resources.Load<AnimationClip>("AlphaSceneControl/redlineFadeIn");
+        redlineShake = Resources.Load<AnimationClip>("AlphaSceneControl/redlineShake");
+        var prefab = Resources.Load<GameObject>("AlphaSceneControl/RedlinePrefab");
+        foreach (var sc in SceneControls)
+        {
+            if (sc.Type != SceneControlType.Redline) continue;
+            var line = Instantiate(prefab, arcahvRoot.transform);
+            line.GetComponent<RectTransform>().anchoredPosition = new Vector2(0, UnityEngine.Random.Range(300f, 760f));
+            line.SetActive(false);
+            redlines.Add(sc, line);
+        }
+    }
+
+    private void ClearArcahvEffects()
+    {
+        if (arcahvRoot)
+        {
+            arcahvRoot.SetActive(false);
+            Destroy(arcahvRoot);
+        }
+        arcahvRoot = null;
+        arcahvDistort = arcahvDebris = null;
+        redlines.Clear();
+    }
+
+    private void OnDestroy()
+    {
+        ClearArcahvEffects();
+    }
+
+    private struct ArcahvFade
+    {
+        public float Start, Target, Timing, Duration;
+        public float ValueAt(float timing)
+        {
+            if (Duration <= 0) return Target;
+            float progress = Mathf.Clamp01((timing - Timing) / Duration);
+            // DOTween's default OutQuad, evaluated in chart time for seeking and pause.
+            return Mathf.Lerp(Start, Target, 1 - (1 - progress) * (1 - progress));
+        }
+        public void Apply(ArcSceneControl sc)
+        {
+            Start = ValueAt(sc.Timing);
+            Target = Mathf.Clamp01(sc.EffectValue / 255f);
+            Timing = sc.Timing;
+            Duration = (sc.Duration == 0 ? 1 : sc.Duration) * 1000;
+        }
+    }
+
+    private void UpdateArcahvEffects()
+    {
+        if (!arcahvRoot) return;
+        int timing = ArcGameplayManager.Instance.ChartTiming;
+        var distort = new ArcahvFade();
+        var debris = new ArcahvFade();
+        foreach (var sc in SceneControls.OrderBy(sc => sc.Timing))
+        {
+            if (sc.Timing > timing) break;
+            if (sc.Type == SceneControlType.ArcahvDistort) distort.Apply(sc);
+            else if (sc.Type == SceneControlType.ArcahvDebris) debris.Apply(sc);
+        }
+        arcahvDistort.alpha = distort.ValueAt(timing);
+        arcahvDebris.alpha = debris.ValueAt(timing);
+        debrisShake.SampleAnimation(arcahvDebris.gameObject,
+            Mathf.Repeat((timing - debris.Timing) / 1000f, debrisShake.length));
+        foreach (var pair in redlines)
+        {
+            var sc = pair.Key;
+            float elapsed = (timing - sc.Timing) / 1000f;
+            bool visible = elapsed >= 0 && elapsed <= sc.Duration;
+            pair.Value.SetActive(visible);
+            if (!visible) continue;
+            if (elapsed < redlineFadeIn.length)
+                redlineFadeIn.SampleAnimation(pair.Value, elapsed);
+            else
+                redlineShake.SampleAnimation(pair.Value,
+                    Mathf.Repeat(elapsed - redlineFadeIn.length, redlineShake.length));
+        }
+    }
 
 	private void UpdateEnwidenCameraRatio(float enwidenCameraRatio)
 	{

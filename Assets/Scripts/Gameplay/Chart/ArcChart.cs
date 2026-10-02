@@ -23,6 +23,7 @@ namespace Arcade.Gameplay.Chart
 		public List<ArcTap> Taps = new List<ArcTap>();
 		public List<ArcHold> Holds = new List<ArcHold>();
 		public List<ArcTiming> Timings = new List<ArcTiming>();
+		public List<ArcSlide> Slides = new List<ArcSlide>();
 		public List<ArcArc> Arcs = new List<ArcArc>();
 		public List<ArcCamera> Cameras = new List<ArcCamera>();
 		public List<ArcSceneControl> SceneControl = new List<ArcSceneControl>();
@@ -61,6 +62,10 @@ namespace Arcade.Gameplay.Chart
 			{
 				Holds.Add(new ArcHold(rawHold, timingGroup));
 			}
+			else if (item is RawAffSlide rawSlide)
+			{
+				Slides.Add(new ArcSlide(rawSlide, timingGroup));
+			}
 			else if (item is RawAffArc rawArc)
 			{
 				Arcs.Add(new ArcArc(rawArc, timingGroup));
@@ -97,6 +102,7 @@ namespace Arcade.Gameplay.Chart
 			events.AddRange(Taps);
 			events.AddRange(Holds);
 			events.AddRange(Arcs);
+			events.AddRange(Slides);
 
 			List<ArcEvent> mainEvents = new List<ArcEvent>();
 			Dictionary<ArcTimingGroup, List<ArcEvent>> timingGroupEvents = new Dictionary<ArcTimingGroup, List<ArcEvent>>();
@@ -246,6 +252,9 @@ namespace Arcade.Gameplay.Chart
 		EnwidenLanes,
 		TrackDisplay,
 		Unknown,
+        ArcahvDistort,
+        ArcahvDebris,
+        Redline,
 	}
 	public abstract class ArcEvent
 	{
@@ -310,6 +319,19 @@ namespace Arcade.Gameplay.Chart
 					Enable = param1.data > 0;
 				}
 			}
+            if ((RawType == "arcahvdistort" || RawType == "arcahvdebris" || RawType == "redline")
+                && RawParams.Count == 2 && RawParams[1] is RawAffInt effectValue
+                && (RawParams[0] is RawAffFloat || RawParams[0] is RawAffInt))
+            {
+                float duration = RawParams[0] is RawAffFloat seconds ? seconds.data : ((RawAffInt)RawParams[0]).data;
+                if (duration >= 0)
+                {
+                    Type = RawType == "arcahvdistort" ? SceneControlType.ArcahvDistort
+                        : RawType == "arcahvdebris" ? SceneControlType.ArcahvDebris : SceneControlType.Redline;
+                    Duration = duration;
+                    EffectValue = effectValue.data;
+                }
+            }
 			TimingGroup = timingGroup;
 		}
 		public IRawAffItem IntoRawItem()
@@ -360,6 +382,16 @@ namespace Arcade.Gameplay.Chart
 					new RawAffInt{data=Enable?1:0},
 				};
 			}
+            else if (Type == SceneControlType.ArcahvDistort || Type == SceneControlType.ArcahvDebris || Type == SceneControlType.Redline)
+            {
+                item.Type = Type == SceneControlType.ArcahvDistort ? "arcahvdistort"
+                    : Type == SceneControlType.ArcahvDebris ? "arcahvdebris" : "redline";
+                item.Params = new List<IRawAffValue>
+                {
+                    new RawAffFloat { data = Duration }, new RawAffInt { data = EffectValue }
+                };
+            }
+
 			else
 			{
 				item.Type = RawType;
@@ -371,6 +403,7 @@ namespace Arcade.Gameplay.Chart
 		public bool Enable;
 		public float Duration;
 		public int TrackDisplayValue;
+        public int EffectValue;
 		public ArcTimingGroup TimingGroup { get; set; }
 		public string RawType;
 		public List<IRawAffValue> RawParams;
@@ -459,7 +492,10 @@ namespace Arcade.Gameplay.Chart
 	}
 	public class ArcTap : ArcNote, IIntoRawItem, IHasTimingGroup, ISetableTimingGroup
 	{
-		public int Track;
+		private int track;
+        public int Track { get => track; set { track = value; FloatLane = null; } }
+        public float? FloatLane;
+        public float WorldX => LanePosition.WorldX(Track, FloatLane);
 		public ArcTimingGroup TimingGroup { get; set; }
 
 		private bool selected;
@@ -476,6 +512,7 @@ namespace Arcade.Gameplay.Chart
 		{
 			Timing = rawAffTap.Timing;
 			Track = rawAffTap.Track;
+            FloatLane = rawAffTap.FloatLane;
 			TimingGroup = timingGroup;
 		}
 
@@ -485,6 +522,7 @@ namespace Arcade.Gameplay.Chart
 			{
 				Timing = Timing,
 				Track = Track,
+                FloatLane = FloatLane,
 			};
 		}
 
@@ -550,6 +588,7 @@ namespace Arcade.Gameplay.Chart
 			{
 				Timing = Timing,
 				Track = Track,
+                FloatLane = FloatLane,
 				TimingGroup = TimingGroup
 			};
 		}
@@ -558,6 +597,7 @@ namespace Arcade.Gameplay.Chart
 			base.Assign(newValues);
 			ArcTap n = newValues as ArcTap;
 			Track = n.Track;
+            FloatLane = n.FloatLane;
 			TimingGroup = n.TimingGroup;
 		}
 		public override GameObject Instance
@@ -608,7 +648,23 @@ namespace Arcade.Gameplay.Chart
 	}
 	public class ArcHold : ArcLongNote, IIntoRawItem, IHasTimingGroup, ISetableTimingGroup
 	{
-		public int Track;
+        // Transient editor state: keep a moving endpoint visible across the judgement line.
+        private bool isEditing;
+        public bool IsEditing
+        {
+            get => isEditing;
+            set
+            {
+                isEditing = value;
+                Judged = false;
+                Judging = false;
+            }
+        }
+
+		private int track;
+        public int Track { get => track; set { track = value; FloatLane = null; } }
+        public float? FloatLane;
+        public float WorldX => LanePosition.WorldX(Track, FloatLane);
 		public ArcTimingGroup TimingGroup { get; set; }
 
 		private MaterialPropertyBlock propertyBlock = new MaterialPropertyBlock();
@@ -643,6 +699,7 @@ namespace Arcade.Gameplay.Chart
 		public override void Destroy()
 		{
 			base.Destroy();
+            if (ArcEffectManager.Instance) ArcEffectManager.Instance.RemoveFloatHoldNoteEffect(this);
 			boxCollider = null;
 			JudgeTimings.Clear();
 		}
@@ -653,6 +710,7 @@ namespace Arcade.Gameplay.Chart
 				Timing = Timing,
 				EndTiming = EndTiming,
 				Track = Track,
+                FloatLane = FloatLane,
 				TimingGroup = TimingGroup,
 			};
 		}
@@ -661,6 +719,7 @@ namespace Arcade.Gameplay.Chart
 			base.Assign(newValues);
 			ArcHold n = newValues as ArcHold;
 			Track = n.Track;
+            FloatLane = n.FloatLane;
 			TimingGroup = n.TimingGroup;
 			CalculateJudgeTimings();
 		}
@@ -808,6 +867,7 @@ namespace Arcade.Gameplay.Chart
 			Timing = rawAffHold.Timing;
 			EndTiming = rawAffHold.EndTiming;
 			Track = rawAffHold.Track;
+            FloatLane = rawAffHold.FloatLane;
 			TimingGroup = timingGroup;
 		}
 		public IRawAffItem IntoRawItem()
@@ -817,6 +877,7 @@ namespace Arcade.Gameplay.Chart
 				Timing = Timing,
 				EndTiming = EndTiming,
 				Track = Track,
+                FloatLane = FloatLane,
 			};
 		}
 	}
@@ -1023,7 +1084,7 @@ namespace Arcade.Gameplay.Chart
 											 ArcAlgorithm.ArcYToWorld(ArcAlgorithm.Y(Arc.YStart, Arc.YEnd, p, Arc.CurveType)) - 0.5f);
 				}
 				Vector3 pos = arcTapPos
-											 - new Vector3(ArcArcManager.Instance.Lanes[t.Track], 0);
+											 - new Vector3(t.WorldX, 0);
 				l.SetPosition(1, new Vector3(pos.x, 0, pos.y));
 				l.startColor = l.endColor = ArcArcManager.Instance.ConnectionColor;
 				l.startColor = l.endColor = new Color(l.endColor.r, l.endColor.g, l.endColor.b, t.Alpha * 0.8f);
@@ -1243,6 +1304,7 @@ namespace Arcade.Gameplay.Chart
 			Color = n.Color;
 			Effect = n.Effect;
 			LineType = n.LineType;
+            Smoothness = n.Smoothness;
 			TimingGroup = n.TimingGroup;
 		}
 
@@ -1555,6 +1617,9 @@ namespace Arcade.Gameplay.Chart
 		public string Attributes = "";
 		public bool NoInput = false;
 		public bool FadingHolds = false;
+        public Color32 TraceColor;
+        public bool UseTraceColor;
+        public bool TraceBodyGold;
 		public int AngleX = 0;
 		public int AngleY = 0;
 		public bool GroupHide = false;
@@ -1564,9 +1629,32 @@ namespace Arcade.Gameplay.Chart
 		public void ApplyAttributes(string attributes)
 		{
 			Attributes = attributes;
+            TraceColor = new Color32(0, 0, 0, 0);
+            UseTraceColor = false;
+            TraceBodyGold = false;
+            bool colorParseSuccess = false;
 			var attributeList = attributes.Split('_');
 			foreach (var attribute in attributeList)
 			{
+                // Match Alpha's ordered attributes and legacy gold-trace fallback.
+                if (attribute.StartsWith("tracecol", StringComparison.Ordinal))
+                {
+                    string rgb = attribute.Substring(8);
+                    if (rgb.Length == 6 && uint.TryParse(rgb, NumberStyles.AllowHexSpecifier,
+                        CultureInfo.InvariantCulture, out uint packed))
+                    {
+                        TraceColor = new Color32((byte)(packed >> 16), (byte)(packed >> 8), (byte)packed, 255);
+                        colorParseSuccess = true;
+                    }
+                    TraceBodyGold = !UseTraceColor;
+                    continue;
+                }
+                if (attribute == "usetracecol" || attribute == "usetracecolor")
+                {
+                    UseTraceColor = colorParseSuccess;
+                    TraceBodyGold = !UseTraceColor;
+                    continue;
+                }
 				if (attribute == "noinput")
 				{
 					NoInput = true;

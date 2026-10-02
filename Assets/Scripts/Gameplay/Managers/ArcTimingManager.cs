@@ -32,6 +32,7 @@ namespace Arcade.Gameplay
 		[HideInInspector]
 		private List<ArcTiming> timings = new List<ArcTiming>();
 		[HideInInspector]
+		[System.NonSerialized]
 		public List<ArcTimingGroup> timingGroups = new List<ArcTimingGroup>();
 		public SpriteRenderer[] TrackComponentRenderers;
 		private List<float> beatlineTimings = new List<float>();

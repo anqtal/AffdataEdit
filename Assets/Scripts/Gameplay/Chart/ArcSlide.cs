@@ -1,0 +1,116 @@
+using Arcade.Aff;
+using UnityEngine;
+
+namespace Arcade.Gameplay.Chart
+{
+    public class ArcSlide : ArcLongNote, IIntoRawItem, IHasTimingGroup, ISetableTimingGroup
+    {
+        public const float MinX = -0.5f, MaxX = 1.5f;
+        public float StartCenter = 0.5f, StartWidth = 1f / 3, EndCenter = 0.5f, EndWidth = 1f / 3;
+        public int LeftCurve, RightCurve;
+        public bool IsFloor;
+        public float WorldHeight => IsFloor ? 0f : ArcAlgorithm.ArcYToWorld(1);
+        public float WorldWidth => IsFloor ? 17f : 8.5f;
+        public float WorldX(float normalizedX) => WorldWidth * (0.5f - normalizedX);
+        public ArcTimingGroup TimingGroup { get; set; }
+        // Derived runtime identity; never copied or serialized as chart data.
+        public ArcSlide GroupRoot { get; internal set; }
+        public bool IsGroupHead = true, IsGroupTail = true;
+        public Vector4 Overlap = new Vector4(0, 1, 0, 1);
+        private bool selected;
+        public override bool Selected { get => selected; set => selected = value; }
+        public ArcSlide() { }
+        public ArcSlide(RawAffSlide raw, ArcTimingGroup group)
+        {
+            Timing = raw.Timing; EndTiming = raw.EndTiming; TimingGroup = group;
+            StartCenter = raw.StartCenter; StartWidth = raw.StartWidth;
+            EndCenter = raw.EndCenter; EndWidth = raw.EndWidth;
+            LeftCurve = raw.LeftCurve; RightCurve = raw.RightCurve; IsFloor = raw.IsFloor;
+        }
+        public Vector2 Range(float progress)
+        {
+            return new Vector2(Mathf.Lerp(StartCenter - StartWidth / 2, EndCenter - EndWidth / 2, Curve(LeftCurve, progress)),
+                Mathf.Lerp(StartCenter + StartWidth / 2, EndCenter + EndWidth / 2, Curve(RightCurve, progress)));
+        }
+        public static float Curve(int kind, float t)
+        {
+            t = Mathf.Clamp01(t);
+            return kind == 1 ? Mathf.Sin(t * Mathf.PI / 2) : kind == 2 ? 1 - Mathf.Cos(t * Mathf.PI / 2) : t;
+        }
+        public bool IsValid => EndTiming > (long)Timing + 1 && (long)EndTiming - Timing <= int.MaxValue && LeftCurve >= 0 && LeftCurve <= 2 && RightCurve >= 0 && RightCurve <= 2
+            && ValidShape(StartCenter, StartWidth, EndCenter, EndWidth, LeftCurve, RightCurve);
+        public static bool ValidRange(float center, float width) => width > 0 && center - width / 2 >= MinX && center + width / 2 <= MaxX;
+        // The two easing functions can cross even when both endpoints are valid.
+        // Test the analytic extrema of width, not just sampled mesh rows.
+        public static bool ValidShape(float sc, float sw, float ec, float ew, int left, int right)
+        {
+            if (!ValidRange(sc, sw) || !ValidRange(ec, ew) || left < 0 || left > 2 || right < 0 || right > 2) return false;
+            double dl = ec - ew / 2d - (sc - sw / 2d), dr = ec + ew / 2d - (sc + sw / 2d);
+            double a = 0, b = 0, c = 0, k = System.Math.PI / 2;
+            Accumulate(right, dr); Accumulate(left, -dl);
+            double radius = System.Math.Sqrt(a * a + b * b);
+            if (radius == 0 || System.Math.Abs(c) > radius) return true;
+            double phase = System.Math.Atan2(b, a), angle = System.Math.Asin(-c / radius);
+            for (int n = -1; n <= 1; n++)
+            {
+                if (!Check(angle - phase + n * 2 * System.Math.PI)
+                    || !Check(System.Math.PI - angle - phase + n * 2 * System.Math.PI)) return false;
+            }
+            return true;
+            void Accumulate(int curve, double delta)
+            {
+                if (curve == 0) c += delta;
+                else if (curve == 1) b += delta * k;
+                else a += delta * k;
+            }
+            bool Check(double theta)
+            {
+                if (theta <= 0 || theta >= k) return true;
+                double t = theta / k;
+                double l = left == 0 ? t : left == 1 ? System.Math.Sin(theta) : 1 - System.Math.Cos(theta);
+                double r = right == 0 ? t : right == 1 ? System.Math.Sin(theta) : 1 - System.Math.Cos(theta);
+                return sw + dr * r - dl * l > 0;
+            }
+        }
+        // SkyArea ticks use the start BPM, with a final tick for a remainder >= 2ms.
+        // Count analytically so seeking and tempo edits need no per-frame tick allocations.
+        public int CountJudgements(int timing, double bpm, double density = 1)
+        {
+            if (!IsValid || this.NoInput() || timing < Timing || double.IsNaN(bpm)
+                || double.IsInfinity(bpm) || density <= 0 || double.IsNaN(density) || double.IsInfinity(density)) return 0;
+            bpm = System.Math.Abs(bpm);
+            double duration = (long)EndTiming - Timing;
+            double elapsed = System.Math.Min((long)timing - Timing, duration);
+            if (bpm == 0) return timing >= EndTiming ? 1 : 0;
+            double interval = (bpm >= 249.99 ? 60000d : 30000d) / bpm / density;
+            double fullTicks = System.Math.Floor(duration / interval + 1e-9);
+            double count = System.Math.Min(fullTicks, System.Math.Floor(elapsed / interval + 1e-9));
+            if (timing >= EndTiming && duration - fullTicks * interval >= 2d - 1e-9) count++;
+            return (int)System.Math.Min(count, int.MaxValue);
+        }
+
+        public override ArcEvent Clone() => new ArcSlide((RawAffSlide)IntoRawItem(), TimingGroup);
+        public override void Assign(ArcEvent values)
+        {
+            base.Assign(values);
+            var n = (ArcSlide)values;
+            StartCenter = n.StartCenter; StartWidth = n.StartWidth; EndCenter = n.EndCenter; EndWidth = n.EndWidth;
+            LeftCurve = n.LeftCurve; RightCurve = n.RightCurve; IsFloor = n.IsFloor; TimingGroup = n.TimingGroup;
+            Rebuild();
+        }
+        public IRawAffItem IntoRawItem() => new RawAffSlide { Timing = Timing, EndTiming = EndTiming,
+            StartCenter = StartCenter, StartWidth = StartWidth, EndCenter = EndCenter, EndWidth = EndWidth,
+            LeftCurve = LeftCurve, RightCurve = RightCurve, IsFloor = IsFloor };
+        public override void Instantiate()
+        {
+            Instance = new GameObject("Slide", typeof(MeshFilter), typeof(MeshRenderer), typeof(MeshCollider));
+            Instance.layer = 9;
+            Instance.AddComponent<ArcSlideVisual>().Initialize(this);
+        }
+        public void Rebuild()
+        {
+            if (Instance) Instance.GetComponent<ArcSlideVisual>().Invalidate();
+            if (ArcSlideManager.Instance) ArcSlideManager.Instance.RebuildGroups();
+        }
+    }
+}

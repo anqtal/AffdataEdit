@@ -6,10 +6,22 @@ namespace Arcade.Gameplay
 	public class ArcArcSegmentComponent : MonoBehaviour
 	{
 		public Color ShadowColor;
+        public bool IsTrace;
 		public Material ArcMaterial, ShadowMaterial;
 		public MeshRenderer SegmentRenderer, ShadowRenderer;
 		public MeshFilter SegmentFilter, ShadowFilter;
-		public Texture2D DefaultTexture, HighlightTexture;
+		public Texture2D DefaultTexture, HighlightTexture, TraceBodyGoldTexture;
+        private bool useGoldTrace;
+        public bool UseGoldTrace
+        {
+            get => useGoldTrace;
+            set
+            {
+                if (useGoldTrace == value) return;
+                useGoldTrace = value;
+                ReloadSkin();
+            }
+        }
 		[HideInInspector] public int FromTiming, ToTiming;
 		[HideInInspector] public Vector3 FromPos, ToPos;
 		private MaterialPropertyBlock bodyPropertyBlock;
@@ -85,11 +97,7 @@ namespace Arcade.Gameplay
 					SegmentRenderer.GetPropertyBlock(bodyPropertyBlock);
 					bodyPropertyBlock.SetColor(highColorShaderId, value);
 					SegmentRenderer.SetPropertyBlock(bodyPropertyBlock);
-					Color c = ShadowColor;
-					c.a = value.a * 0.3f;
-					ShadowRenderer.GetPropertyBlock(shadowPropertyBlock);
-					shadowPropertyBlock.SetColor(colorShaderId, c);
-					ShadowRenderer.SetPropertyBlock(shadowPropertyBlock);
+					ApplyShadowColor(value.a);
 				}
 			}
 		}
@@ -125,12 +133,9 @@ namespace Arcade.Gameplay
 					SegmentRenderer.GetPropertyBlock(bodyPropertyBlock);
 					bodyPropertyBlock.SetColor(highColorShaderId, currentHighColor);
 					SegmentRenderer.SetPropertyBlock(bodyPropertyBlock);
-					Color c = ShadowColor;
-					c.a = value * 0.3f;
-					ShadowRenderer.GetPropertyBlock(shadowPropertyBlock);
-					shadowPropertyBlock.SetColor(colorShaderId, c);
-					ShadowRenderer.SetPropertyBlock(shadowPropertyBlock);
+
 				}
+                ApplyShadowColor(value);
 				if (currentLowColor.a != value)
 				{
 					currentLowColor.a = value;
@@ -140,6 +145,16 @@ namespace Arcade.Gameplay
 				}
 			}
 		}
+        private void ApplyShadowColor(float opacity)
+        {
+            Color c = ArcSkinManager.Instance ? ArcSkinManager.Instance.GetShadowTint(IsTrace)
+                : new Color(0, 0, 0, (IsTrace ? 30f : 50f) / 255f);
+            c.a *= opacity;
+            ShadowRenderer.GetPropertyBlock(shadowPropertyBlock);
+            shadowPropertyBlock.SetColor(colorShaderId, c);
+            ShadowRenderer.SetPropertyBlock(shadowPropertyBlock);
+        }
+
 		public bool Highlight
 		{
 			get
@@ -152,7 +167,10 @@ namespace Arcade.Gameplay
 				{
 					highlighted = value;
 					SegmentRenderer.GetPropertyBlock(bodyPropertyBlock);
-					bodyPropertyBlock.SetTexture(mainTexShaderId, highlighted ? HighlightTexture : DefaultTexture);
+					bodyPropertyBlock.SetTexture(mainTexShaderId, highlighted ? HighlightTexture : useGoldTrace ? TraceBodyGoldTexture : DefaultTexture);
+                    // Alpha samples the first half of the gold texture, from ridge to edge.
+                    bodyPropertyBlock.SetVector("_MainTex_ST", useGoldTrace && !highlighted
+                        ? new Vector4(-0.5f, 1, 0.5f, 0) : new Vector4(1, 1, 0, 0));
 					SegmentRenderer.SetPropertyBlock(bodyPropertyBlock);
 				}
 			}
@@ -163,7 +181,10 @@ namespace Arcade.Gameplay
 			if (bodyPropertyBlock != null)
 			{
 				SegmentRenderer.GetPropertyBlock(bodyPropertyBlock);
-				bodyPropertyBlock.SetTexture(mainTexShaderId, highlighted ? HighlightTexture : DefaultTexture);
+				bodyPropertyBlock.SetTexture(mainTexShaderId, highlighted ? HighlightTexture : useGoldTrace ? TraceBodyGoldTexture : DefaultTexture);
+                    // Alpha samples the first half of the gold texture, from ridge to edge.
+                    bodyPropertyBlock.SetVector("_MainTex_ST", useGoldTrace && !highlighted
+                        ? new Vector4(-0.5f, 1, 0.5f, 0) : new Vector4(1, 1, 0, 0));
 				SegmentRenderer.SetPropertyBlock(bodyPropertyBlock);
 			}
 		}

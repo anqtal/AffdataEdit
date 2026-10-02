@@ -319,6 +319,15 @@
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": true
+                },
+                {
+                    "name": "VerticalMirror",
+                    "type": "Value",
+                    "id": "d528c007-2c86-40e8-9042-d8cd6d6c15b7",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": true
                 }
             ],
             "bindings": [
@@ -2244,6 +2253,61 @@
                     "processors": "",
                     "groups": "",
                     "action": "Scroll To End",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "Key With Modifiers",
+                    "id": "d19182f0-8720-4e51-94eb-88d9c773fd9a",
+                    "path": "KeyWithModifiers",
+                    "interactions": "HotKey(needModifier1=true,needModifier3=true)",
+                    "processors": "",
+                    "groups": "",
+                    "action": "VerticalMirror",
+                    "isComposite": true,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "key",
+                    "id": "d2c7a20a-9d9b-4834-b350-d8217079f9a8",
+                    "path": "<Keyboard>/n",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "VerticalMirror",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "modifier1",
+                    "id": "32b4e5ed-5e87-4cd2-8c98-1ef212cd8c07",
+                    "path": "<Keyboard>/ctrl",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "VerticalMirror",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "modifier2",
+                    "id": "c4386c11-ea19-4b83-954b-507f1ac08ebe",
+                    "path": "<Keyboard>/alt",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "VerticalMirror",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "modifier3",
+                    "id": "75cf7316-9bc4-46cb-bcf1-a88f3e432d36",
+                    "path": "<Keyboard>/shift",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "VerticalMirror",
                     "isComposite": false,
                     "isPartOfComposite": true
                 }

@@ -401,7 +401,7 @@ namespace Arcade.Compose.Dialog
 		private void ApplyThemeSideSkin()
 		{
 			AdeSkinHost.WithSideData<AdeSkinHost.ThemeSideData> theme = AdeSkinHost.Instance.skinData.ThemeDatas[preference.SelectedTheme];
-			ArcSkinManager.Instance.SetThemeSideSkin(theme.SelectWithSide(preference.SkinSide));
+			ArcSkinManager.Instance.SetThemeSideSkin(theme.SelectWithSide(preference.SkinSide), preference.SkinSide);
 		}
 
 		public void SavePreferences()

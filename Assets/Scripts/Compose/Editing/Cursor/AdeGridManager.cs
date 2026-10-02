@@ -52,6 +52,7 @@ namespace Arcade.Compose
 		private List<int> beatTimings = new List<int>();
 		private List<int> measureTimings = new List<int>();
 		private List<float> verticalXPositions = new List<float>();
+		public IReadOnlyList<float> VerticalXPositions => verticalXPositions;
 		private List<float> verticalYPositions = new List<float>();
 
 		private class RenderingBeatlineInfo

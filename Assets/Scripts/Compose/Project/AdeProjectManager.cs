@@ -1,3 +1,4 @@
+using Arcade.Audio;
 using System;
 using System.Collections;
 using System.IO;
@@ -59,7 +60,7 @@ namespace Arcade.Compose
 		public CanvasGroup TutorialCanvasGroup;
 		public Text TutorialText;
 
-		private AudioClip AudioClip;
+		[System.NonSerialized] private BassClip chartAudio;
 		private Texture2D Cover;
 		private Sprite CoverSprite;
 
@@ -135,10 +136,10 @@ namespace Arcade.Compose
 		public void CleanProject()
 		{
 			if (CurrentProjectMetadata == null) return;
-			if (AudioClip != null)
+			if (chartAudio != null)
 			{
-				Destroy(AudioClip);
-				AudioClip = null;
+				Destroy(chartAudio);
+				chartAudio = null;
 			}
 			if (Cover != null)
 			{
@@ -301,7 +302,7 @@ namespace Arcade.Compose
 		{
 			LoadCover(difficulty);
 			LoadAudio(difficulty);
-			if (AudioClip == null)
+			if (chartAudio == null)
 			{
 				SetTutorialMessage("无法加载音频文件，请确认音频文件存在且格式正确后重新打开谱面文件夹");
 				return;
@@ -416,12 +417,12 @@ namespace Arcade.Compose
 			};
 			foreach (AudioSpec audioPath in files)
 			{
-				AudioClip clip = Loader.LoadAudioFile(audioPath.path);
+				BassClip clip = Loader.LoadAudioFile(audioPath.path);
 				if (clip != null)
 				{
-					AudioClip = clip;
+					chartAudio = clip;
 					AdeTimingSlider.Instance.Enable = true;
-					AdeTimingSlider.Instance.Length = (int)(AudioClip.length * 1000);
+					AdeTimingSlider.Instance.Length = (int)(chartAudio.length * 1000);
 					audioOverrided = audioPath.overrided;
 					return;
 				}
@@ -432,7 +433,7 @@ namespace Arcade.Compose
 		{
 			AdeOperationManager.Instance.CancelOngoingOperation();
 			AdeSelectionManager.Instance.DeselectAllNotes();
-			if (CurrentProjectMetadata == null || CurrentProjectFolder == null || AudioClip == null)
+			if (CurrentProjectMetadata == null || CurrentProjectFolder == null || chartAudio == null)
 			{
 				return;
 			}
@@ -478,7 +479,7 @@ namespace Arcade.Compose
 			BaseBpm.interactable = true;
 			BaseBpm.text = ArcTimingManager.Instance.BaseBpm.ToString(CultureInfo.InvariantCulture);
 
-			ArcGameplayManager.Instance.Load(chart, AudioClip);
+			ArcGameplayManager.Instance.Load(chart, chartAudio);
 			CurrentDifficulty = difficulty;
 
 			Diff.text = CurrentProjectMetadata.Difficulties[CurrentDifficulty] == null ? "" : CurrentProjectMetadata.Difficulties[CurrentDifficulty].Rating;
@@ -510,7 +511,7 @@ namespace Arcade.Compose
 				{
 					string effectAudioFilename = effect.Substring(0, effect.Length - 4);
 					string effectAudioPath = Path.Combine(CurrentProjectFolder, $"{effectAudioFilename}.wav");
-					AudioClip clip = Loader.LoadAudioFile(effectAudioPath);
+					BassClip clip = Loader.LoadAudioFile(effectAudioPath);
 					if (clip != null)
 					{
 						ArcEffectManager.Instance.AddSpecialEffectAudio(effect, clip);

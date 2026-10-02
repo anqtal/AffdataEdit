@@ -1,3 +1,4 @@
+using Arcade.Audio;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -139,10 +140,6 @@ namespace Arcade.Compose
 			public Sprite ButtonDualRightDisabled;
 			public Sprite ShutterLeft;
 			public Sprite ShutterRight;
-			public AudioClip ShutterOpen;
-			public AudioClip ShutterClose;
-			public AudioClip TapSound;
-			public AudioClip ArcSound;
 			public Sprite TutorialBanner;
 			public Sprite BackgroundDarken;
 			public Sprite SkyInputLabel;
@@ -233,10 +230,10 @@ namespace Arcade.Compose
 			public Labelled<Sprite> ButtonDualRightDisabled;
 			public Labelled<Sprite> ShutterLeft;
 			public Labelled<Sprite> ShutterRight;
-			public Labelled<AudioClip> ShutterOpen;
-			public Labelled<AudioClip> ShutterClose;
-			public Labelled<AudioClip> TapSound;
-			public Labelled<AudioClip> ArcSound;
+			[System.NonSerialized] public Labelled<BassClip> ShutterOpen;
+			[System.NonSerialized] public Labelled<BassClip> ShutterClose;
+			[System.NonSerialized] public Labelled<BassClip> TapSound;
+			[System.NonSerialized] public Labelled<BassClip> ArcSound;
 			public Labelled<Sprite> TutorialBanner;
 			public Labelled<Sprite> BackgroundDarken;
 			public Labelled<Sprite> SkyInputLabel;
@@ -461,7 +458,9 @@ namespace Arcade.Compose
 		private List<UnityEngine.Object> externalSkinDataObjects = new List<UnityEngine.Object>();
 		private List<UnityEngine.Object> externalBackgroundDataObjects = new List<UnityEngine.Object>();
 		public RawSkinDefaults rawDefaultData;
+		[System.NonSerialized]
 		public SkinDatas skinData;
+		[System.NonSerialized]
 		public Dictionary<string, Labelled<Sprite>> ExternalBackgrounds;
 		public string SkinFolderPath
 		{
@@ -632,23 +631,11 @@ namespace Arcade.Compose
 			{
 				return LoadNormalSprite(path, externalSkinDataObjects);
 			}, rawDefaultData.ShutterRight);
-			skinData.ShutterOpen = LoadLabelled(Path.Combine(SkinFolderPath, "Sound", "ShutterOpen.wav"), (path) =>
-			{
-				return LoadWavAudioClip(path, externalSkinDataObjects);
-			}, rawDefaultData.ShutterOpen);
-			skinData.ShutterClose = LoadLabelled(Path.Combine(SkinFolderPath, "Sound", "ShutterClose.wav"), (path) =>
-			{
-				return LoadWavAudioClip(path, externalSkinDataObjects);
-			}, rawDefaultData.ShutterClose);
+			skinData.ShutterOpen = LoadSound("ShutterOpen.wav");
+			skinData.ShutterClose = LoadSound("ShutterClose.wav");
 
-			skinData.TapSound = LoadLabelled(Path.Combine(SkinFolderPath, "Sound", "Tap.wav"), (path) =>
-			{
-				return LoadWavAudioClip(path, externalSkinDataObjects);
-			}, rawDefaultData.TapSound);
-			skinData.ArcSound = LoadLabelled(Path.Combine(SkinFolderPath, "Sound", "Arc.wav"), (path) =>
-			{
-				return LoadWavAudioClip(path, externalSkinDataObjects);
-			}, rawDefaultData.ArcSound);
+			skinData.TapSound = LoadSound("Tap.wav");
+			skinData.ArcSound = LoadSound("Arc.wav");
 
 			skinData.TutorialBanner = LoadLabelled(Path.Combine(SkinFolderPath, "Playfield", "Tutorial.png"), (path) =>
 			{
@@ -1191,9 +1178,17 @@ namespace Arcade.Compose
 			return sprite;
 		}
 
-		private AudioClip LoadWavAudioClip(string path, List<UnityEngine.Object> resourceList)
+		private Labelled<BassClip> LoadSound(string filename)
+        {
+            string customPath = Path.Combine(SkinFolderPath, "Sound", filename);
+            bool custom = File.Exists(customPath);
+            string path = custom ? customPath : Path.Combine(Application.streamingAssetsPath, "Audio", filename);
+            return new Labelled<BassClip> { value = LoadWavBassClip(path, externalSkinDataObjects), label = custom ? customPath : "<internal>" };
+        }
+
+		private BassClip LoadWavBassClip(string path, List<UnityEngine.Object> resourceList)
 		{
-			AudioClip clip = Loader.LoadWavOrMp3AudioFile(path);
+			BassClip clip = Loader.LoadAudioFile(path);
 			if (clip != null)
 			{
 				resourceList.Add(clip);
@@ -1204,6 +1199,8 @@ namespace Arcade.Compose
 
 		private Mesh LoadObjMesh(string path, List<UnityEngine.Object> resourceList)
 		{
+			// External skin models are optional; use the built-in mesh when absent.
+			if (!File.Exists(path)) return null;
 			Mesh mesh = Loader.LoadObjMesh(path);
 			if (mesh != null)
 			{

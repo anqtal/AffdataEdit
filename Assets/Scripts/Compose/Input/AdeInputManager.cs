@@ -11,6 +11,7 @@ namespace Arcade.Compose
 
 	public class AdeInputManager : MonoBehaviour
 	{
+		[System.NonSerialized]
 		public AdeInputControl Controls;
 		public AdeInputControl.ArcadeHotkeyActions Hotkeys { get => Controls.ArcadeHotkey; }
 		public AdeInputControl.ArcadeInputActions Inputs { get => Controls.ArcadeInput; }

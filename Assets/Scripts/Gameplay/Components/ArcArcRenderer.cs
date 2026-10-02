@@ -101,7 +101,7 @@ namespace Arcade.Gameplay
 					HeadRenderer.SetPropertyBlock(headPropertyBlock);
 					foreach (var s in segments)
 					{
-						s.HighColor = currentHighColor;
+						s.HighColor = SegmentColor(currentHighColor);
 					}
 				}
 			}
@@ -122,7 +122,7 @@ namespace Arcade.Gameplay
 					HeadRenderer.SetPropertyBlock(headPropertyBlock);
 					foreach (var s in segments)
 					{
-						s.LowColor = currentLowColor;
+						s.LowColor = SegmentColor(currentLowColor);
 					}
 				}
 			}
@@ -263,31 +263,17 @@ namespace Arcade.Gameplay
 			}
 			Alpha = alpha;
 		}
-		public bool EnableEffect
-		{
-			get
-			{
-				return effect;
-			}
-			set
-			{
-				if (effect != value)
-				{
-					effect = value;
-					if (value)
-					{
-						JudgeEffect.Play();
-						JudgeEffect.Simulate(1f / 60f, 60);
-					}
-					else
-					{
-						JudgeEffect.Stop();
-						JudgeEffect.Simulate(1f / 60f, 60);
-					}
-				}
-			}
-		}
-		public bool Selected
+        public bool EnableEffect
+        {
+            get => effect;
+            set
+            {
+                effect = value;
+                ArcLongNoteEffect.Get(JudgeEffect).SetEmission(value);
+            }
+        }
+
+        public bool Selected
 		{
 			get
 			{
@@ -314,7 +300,8 @@ namespace Arcade.Gameplay
 
 		private void Awake()
 		{
-			headPropertyBlock = new MaterialPropertyBlock();
+			ArcLongNoteEffect.Get(JudgeEffect);
+            headPropertyBlock = new MaterialPropertyBlock();
 			HeadRenderer.sortingLayerName = "Arc";
 			HeadRenderer.sortingOrder = 1;
 			highColorShaderId = Shader.PropertyToID("_HighColor");
@@ -345,11 +332,24 @@ namespace Arcade.Gameplay
 		private List<ArcArcSegmentComponent> segments = new List<ArcArcSegmentComponent>();
 		private int zeroLengthVoidArcDisappearTime = int.MaxValue;
 
+        private bool UsesGoldTrace => arc != null && arc.LineType == ArcLineType.TrueIsVoid
+            && arc.TimingGroup != null && arc.TimingGroup.TraceBodyGold;
+
+        private Color SegmentColor(Color color)
+        {
+            return UsesGoldTrace ? new Color(1, 1, 1, color.a) : color;
+        }
+
 		private Color GetColor(bool high)
 		{
 			if (arc.LineType == ArcLineType.TrueIsVoid)
 			{
-				return ArcVoid;
+				if (arc.TimingGroup != null)
+                {
+                    if (arc.TimingGroup.TraceBodyGold) return new Color32(0xF4, 0xB9, 0x42, 255);
+                    if (arc.TimingGroup.UseTraceColor) return arc.TimingGroup.TraceColor;
+                }
+                return ArcVoid;
 			}
 			else if (arc.LineType == ArcLineType.Designant)
 			{
@@ -447,7 +447,7 @@ namespace Arcade.Gameplay
 
 			float baseSize = duration < 1000 ? 14 : 7;
 			float v2 = 1f / (baseSize * arc.EffectiveSmoothness * duration / 1000f);
-			int segSize = (int)(duration * v2);
+			int segSize = duration > 0 ? Mathf.Max(1, (int)(duration * v2)) : 0;
 			segmentCount = 0;
 			if (segSize != 0)
 			{
@@ -607,6 +607,10 @@ namespace Arcade.Gameplay
 
 			foreach (ArcArcSegmentComponent s in segments)
 			{
+                s.IsTrace = arc.IsVoid;
+                s.UseGoldTrace = UsesGoldTrace;
+                s.HighColor = SegmentColor(currentHighColor);
+                s.LowColor = SegmentColor(currentLowColor);
 				if (arc.IsVariousSizedArctap)
 				{
 					s.Enable = false;
