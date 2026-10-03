@@ -448,7 +448,7 @@ namespace Arcade.Gameplay
         }
 		public void BuildHeightIndicator()
 		{
-			if (arc.IsVoid || arc.IsVariousSizedArctap)
+			if (arc.IsVoid || arc.IsVariousSizedArctap || arc.HiddenSegments)
 			{
 				EnableHeightIndicator = false;
 				return;
@@ -645,7 +645,7 @@ namespace Arcade.Gameplay
                 s.UseGoldTrace = UsesGoldTrace;
                 s.HighColor = SegmentColor(currentHighColor);
                 s.LowColor = SegmentColor(currentLowColor);
-				if (arc.IsVariousSizedArctap)
+				if (arc.IsVariousSizedArctap || arc.HiddenSegments)
 				{
 					s.Enable = false;
 					continue;
@@ -713,7 +713,7 @@ namespace Arcade.Gameplay
 		}
 		private void UpdateHead()
 		{
-			if (!IsHead || arc.IsVariousSizedArctap)
+			if (!IsHead || arc.IsVariousSizedArctap || arc.HiddenSegments)
 			{
 				EnableHead = false;
 				return;
@@ -798,7 +798,7 @@ namespace Arcade.Gameplay
 		}
 		private void UpdateHeightIndicator()
 		{
-			if (arc.IsVoid || (arc.YEnd == arc.YStart && !IsHead) || arc.IsVariousSizedArctap)
+			if (arc.IsVoid || (arc.YEnd == arc.YStart && !IsHead) || arc.IsVariousSizedArctap || arc.HiddenSegments)
 			{
 				EnableHeightIndicator = false;
 				return;

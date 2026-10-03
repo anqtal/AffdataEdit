@@ -1387,6 +1387,11 @@ namespace Arcade.Gameplay.Chart
 
 		public ArcArcTap ConvertedVariousSizedArctap = null;
 
+		// Arcade Alpha draws no body, head or height indicator for a <= 1 ms arc that only
+		// carries one arctap at a fixed position; just the arctap is visible.
+		public bool HiddenSegments => Math.Abs(EndTiming - Timing) <= 1 && ArcTaps.Count == 1
+			&& new Vector2(XStart, YStart) == new Vector2(XEnd, YEnd);
+
 		public bool IsVariousSizedArctap
 		{
 			get
