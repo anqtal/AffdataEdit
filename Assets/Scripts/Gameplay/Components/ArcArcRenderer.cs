@@ -159,6 +159,7 @@ namespace Arcade.Gameplay
 			}
 			set
 			{
+                if (value) EnsureColliders();
 				if (enable != value)
 				{
 					enable = value;
@@ -261,7 +262,8 @@ namespace Arcade.Gameplay
             set
             {
                 effect = value;
-                ArcLongNoteEffect.Get(JudgeEffect).SetEmission(value);
+                if (value && !longNoteEffect) longNoteEffect = ArcLongNoteEffect.Get(JudgeEffect);
+                if (longNoteEffect) longNoteEffect.SetEmission(value);
             }
         }
 
@@ -292,7 +294,16 @@ namespace Arcade.Gameplay
 
 		private void Awake()
 		{
-			ArcLongNoteEffect.Get(JudgeEffect);
+            ArcLongNoteEffect.DisableAnchor(JudgeEffect);
+            // All note geometry is sorted by ArcNoteRenderer; this group has no legacy draws.
+            var sortingGroup = Head.GetComponent<UnityEngine.Rendering.SortingGroup>();
+            if (sortingGroup) sortingGroup.enabled = false;
+            HeadFilter.sharedMesh = null;
+            HeadRenderer.sharedMaterial = arcMaterial;
+            HeadCollider.sharedMesh = null;
+            ArcCollider.sharedMesh = null;
+            HeadCollider.enabled = false;
+            ArcCollider.enabled = false;
             traceBodyGoldTexture = SegmentPrefab.GetComponent<ArcArcSegmentComponent>().TraceBodyGoldTexture;
             headPropertyBlock = new MaterialPropertyBlock();
 			HeadRenderer.forceRenderingOff = true;
@@ -323,6 +334,8 @@ namespace Arcade.Gameplay
 		private bool arcCapEnable;
 		private bool highlighted;
 		private bool effect;
+        private ArcLongNoteEffect longNoteEffect;
+        private bool collidersDirty;
 		private ArcArc arc;
 		private Color currentHighColor;
 		private Color currentLowColor;
@@ -395,9 +408,16 @@ namespace Arcade.Gameplay
 		{
 			BuildHeightIndicator();
 			BuildSegments();
-			BuildHead();
-			BuildCollider();
+            collidersDirty = true;
+            if (enable) EnsureColliders();
 		}
+        private void EnsureColliders()
+        {
+            if (!collidersDirty) return;
+            BuildHead();
+            BuildCollider();
+            collidersDirty = false;
+        }
 		public void BuildHeightIndicator()
 		{
 			if (arc.IsVoid || arc.IsVariousSizedArctap)
@@ -510,6 +530,7 @@ namespace Arcade.Gameplay
 				if (ArcCollider.sharedMesh)
 				{
 					Destroy(ArcCollider.sharedMesh);
+					ArcCollider.sharedMesh = null;
 				}
 				return;
 			}

@@ -29,12 +29,15 @@ namespace Arcade.Gameplay
             public Mesh Mesh;
             public Texture Texture;
             public NoteInstance Data;
-            public Bounds Bounds;
-            public int Submesh, Layer, LayerValue, Order, Queue, DepthTest, DepthWrite, Sequence;
-            public float Distance;
+            public int Submesh, Layer, LayerValue, Order, Queue, DepthTest, DepthWrite;
             public bool SameDraw(Item other) => Mesh == other.Mesh && Texture == other.Texture && Submesh == other.Submesh
                 && Layer == other.Layer && Order == other.Order && Queue == other.Queue
                 && DepthTest == other.DepthTest && DepthWrite == other.DepthWrite;
+        }
+        private struct SortKey
+        {
+            public int Index, LayerValue, Order, Queue;
+            public float Distance;
         }
         private sealed class Draw
         {
@@ -45,12 +48,17 @@ namespace Arcade.Gameplay
             public readonly MaterialPropertyBlock SelectionProperties = new MaterialPropertyBlock();
         }
         private readonly List<Item> items = new List<Item>();
+        private readonly List<SortKey> sortKeys = new List<SortKey>();
         private readonly List<NoteInstance> instances = new List<NoteInstance>();
         private readonly List<GraphicsBuffer.IndirectDrawIndexedArgs> commands = new List<GraphicsBuffer.IndirectDrawIndexedArgs>();
         private readonly List<Draw> draws = new List<Draw>();
         private readonly Dictionary<(int,int,int), Material> materials = new Dictionary<(int,int,int), Material>();
         private MaterialPropertyBlock sourceProperties;
         private readonly Plane[] frustum = new Plane[6];
+        private readonly Dictionary<Mesh, Bounds> meshBounds = new Dictionary<Mesh, Bounds>();
+        private readonly Dictionary<string, (int id, int value)> sortingLayers = new Dictionary<string, (int, int)>();
+        private Vector3 cameraPosition, cameraForward;
+        private bool orthographic;
         private GraphicsBuffer instanceBuffer, commandBuffer;
         private Camera cameraForFrame;
         private int frame = -1;
@@ -63,20 +71,21 @@ namespace Arcade.Gameplay
         private void LateUpdate()
         {
             frame = Time.frameCount;
-            items.Clear(); instances.Clear(); commands.Clear();
+            items.Clear(); sortKeys.Clear(); instances.Clear(); commands.Clear();
+            meshBounds.Clear(); sortingLayers.Clear();
             cameraForFrame = ArcCameraManager.Instance ? ArcCameraManager.Instance.GameplayCamera : null;
             if (!cameraForFrame || !ArcGameplayManager.Instance.IsLoaded) return;
             GeometryUtility.CalculateFrustumPlanes(cameraForFrame, frustum);
+            cameraPosition = cameraForFrame.transform.position;
+            cameraForward = cameraForFrame.transform.forward;
+            orthographic = cameraForFrame.orthographic;
             foreach (var tap in ArcTapNoteManager.Instance.Taps)
                 if (tap.Enable) SubmitSprite(tap.spriteRenderer, 0, tint: false);
             foreach (var hold in ArcHoldNoteManager.Instance.Holds)
                 if (hold.Enable) SubmitSprite(hold.spriteRenderer, 1, tint: false);
-            foreach (var arc in ArcArcManager.Instance.Arcs)
-            {
-                if (arc.Enable) arc.arcRenderer.Submit(this);
-                foreach (var tap in arc.ArcTaps) SubmitArcTap(tap);
-                if (arc.ConvertedVariousSizedArctap != null) SubmitArcTap(arc.ConvertedVariousSizedArctap);
-            }
+            foreach (var arc in ArcArcManager.Instance.RenderingArcs)
+                if (arc.Enable && arc.arcRenderer) arc.arcRenderer.Submit(this);
+            foreach (var tap in ArcArcManager.Instance.RenderingArcTaps) SubmitArcTap(tap);
             foreach (var slide in ArcSlideManager.Instance.Slides)
                 if (slide.Instance) slide.Instance.GetComponent<ArcSlideVisual>().Submit(this);
             Upload();
@@ -152,14 +161,26 @@ namespace Arcade.Gameplay
         internal void Submit(Mesh mesh, Texture texture, NoteInstance data, string layer, int order,
             int queue = 3000, int submesh = 0, int depthWrite = 0, int depthTest = 4)
         {
-            Bounds bounds = TransformBounds(mesh.bounds, data.Transform);
+            // Shared meshes and sorting layers need one native lookup per frame, not per segment.
+            if (!meshBounds.TryGetValue(mesh, out var localBounds))
+            {
+                localBounds = mesh.bounds;
+                meshBounds.Add(mesh, localBounds);
+            }
+            Bounds bounds = TransformBounds(localBounds, data.Transform);
             if (!GeometryUtility.TestPlanesAABB(frustum, bounds)) return;
-            int layerId = SortingLayer.NameToID(layer);
-            items.Add(new Item { Mesh = mesh, Texture = texture ? texture : Texture2D.whiteTexture, Data = data, Bounds = bounds,
-                Layer = layerId, LayerValue = SortingLayer.GetLayerValueFromID(layerId), Order = order, Queue = queue,
-                Submesh = submesh, DepthWrite = depthWrite, DepthTest = depthTest, Sequence = items.Count,
-                Distance = cameraForFrame.orthographic ? Vector3.Dot(bounds.center - cameraForFrame.transform.position, cameraForFrame.transform.forward)
-                    : (bounds.center - cameraForFrame.transform.position).sqrMagnitude });
+            if (!sortingLayers.TryGetValue(layer, out var sortingLayer))
+            {
+                int id = SortingLayer.NameToID(layer);
+                sortingLayer = (id, SortingLayer.GetLayerValueFromID(id));
+                sortingLayers.Add(layer, sortingLayer);
+            }
+            sortKeys.Add(new SortKey { Index = items.Count, LayerValue = sortingLayer.value, Order = order, Queue = queue,
+                Distance = orthographic ? Vector3.Dot(bounds.center - cameraPosition, cameraForward)
+                    : (bounds.center - cameraPosition).sqrMagnitude });
+            items.Add(new Item { Mesh = mesh, Texture = texture ? texture : Texture2D.whiteTexture, Data = data,
+                Layer = sortingLayer.id, LayerValue = sortingLayer.value, Order = order, Queue = queue,
+                Submesh = submesh, DepthWrite = depthWrite, DepthTest = depthTest });
         }
         private static Bounds TransformBounds(Bounds bounds, Matrix4x4 matrix)
         {
@@ -169,13 +190,13 @@ namespace Arcade.Gameplay
             return new Bounds(matrix.MultiplyPoint3x4(bounds.center), 2 * new Vector3(
                 Mathf.Abs(x.x)+Mathf.Abs(y.x)+Mathf.Abs(z.x), Mathf.Abs(x.y)+Mathf.Abs(y.y)+Mathf.Abs(z.y), Mathf.Abs(x.z)+Mathf.Abs(y.z)+Mathf.Abs(z.z)));
         }
-        private static int Compare(Item a, Item b)
+        private static int Compare(SortKey a, SortKey b)
         {
             int c = a.LayerValue.CompareTo(b.LayerValue);
             if (c == 0) c = a.Order.CompareTo(b.Order);
             if (c == 0) c = a.Queue.CompareTo(b.Queue);
             if (c == 0) c = b.Distance.CompareTo(a.Distance);
-            return c == 0 ? a.Sequence.CompareTo(b.Sequence) : c;
+            return c == 0 ? a.Index.CompareTo(b.Index) : c;
         }
         private Material GetMaterial(Item item)
         {
@@ -191,11 +212,12 @@ namespace Arcade.Gameplay
         private void Upload()
         {
             if (items.Count == 0) return;
-            items.Sort(Compare);
+            // Sort compact keys, keeping matrices and instance data out of the sort's copies.
+            sortKeys.Sort(Compare);
             // Keep transparent order: only adjacent compatible items share a draw.
             for (int start = 0; start < items.Count;)
             {
-                Item item = items[start];
+                Item item = items[sortKeys[start].Index];
                 int command = commands.Count;
                 if (command == draws.Count) draws.Add(new Draw());
                 Draw draw = draws[command];
@@ -203,10 +225,10 @@ namespace Arcade.Gameplay
                 int end = start;
                 do
                 {
-                    var next = items[end];
+                    var next = items[sortKeys[end].Index];
                     instances.Add(next.Data); draw.Selected |= next.Data.Options.w > .5f;
                     end++;
-                } while (end < items.Count && item.SameDraw(items[end]));
+                } while (end < items.Count && item.SameDraw(items[sortKeys[end].Index]));
                 commands.Add(new GraphicsBuffer.IndirectDrawIndexedArgs {
                     indexCountPerInstance = item.Mesh.GetIndexCount(item.Submesh), instanceCount = (uint)(end-start),
                     startIndex = item.Mesh.GetIndexStart(item.Submesh), baseVertexIndex = item.Mesh.GetBaseVertex(item.Submesh), startInstance = 0 });
