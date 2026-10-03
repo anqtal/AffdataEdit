@@ -967,6 +967,8 @@ namespace Arcade.Gameplay.Chart
 				base.Instance = value;
 				ModelRenderer = instance.GetComponentInChildren<MeshRenderer>();
                 ModelRenderer.forceRenderingOff = true;
+                var sortingGroup = ModelRenderer.GetComponent<UnityEngine.Rendering.SortingGroup>();
+                if (sortingGroup) sortingGroup.enabled = false;
 				Model = ModelRenderer.transform;
 				ShadowRenderer = instance.GetComponentInChildren<SpriteRenderer>();
                 ShadowRenderer.forceRenderingOff = true;

@@ -16,6 +16,8 @@ namespace Arcade.Gameplay
 		[HideInInspector]
 		[System.NonSerialized]
 		public List<ArcArc> Arcs = new List<ArcArc>();
+        internal readonly List<ArcArc> RenderingArcs = new List<ArcArc>();
+        internal readonly List<ArcArcTap> RenderingArcTaps = new List<ArcArcTap>();
 
 		public GameObject ArcNotePrefab, ArcTapPrefab, SfxArcTapPrefab, ConnectionPrefab;
 		public Transform ArcLayer;
@@ -48,6 +50,8 @@ namespace Arcade.Gameplay
 
 		public void Clean()
 		{
+            RenderingArcs.Clear();
+            RenderingArcTaps.Clear();
 			foreach (var t in Arcs)
 			{
 				t.Destroy();
@@ -179,6 +183,8 @@ namespace Arcade.Gameplay
 
 		private void RenderArcs()
 		{
+            RenderingArcs.Clear();
+            RenderingArcTaps.Clear();
 			ArcTimingManager timingManager = ArcTimingManager.Instance;
 			int currentTiming = ArcGameplayManager.Instance.ChartTiming;
 
@@ -210,7 +216,7 @@ namespace Arcade.Gameplay
 				if (!t.IsVoid)
 				{
 					t.arcRenderer.EnableEffect = currentTiming > t.Timing && currentTiming <= t.EndTiming && !t.IsVoid && t.Judging;
-					foreach (var a in t.ArcGroup)
+                    if (!t.Flag) foreach (var a in t.ArcGroup)
 					{
 						if (!a.Flag)
 						{
@@ -246,6 +252,7 @@ namespace Arcade.Gameplay
                         : 0.85f * (125 / 255f);
 				}
 				t.arcRenderer.UpdateArc();
+                RenderingArcs.Add(t);
 			}
 			foreach (var t in Arcs)
 			{
@@ -279,6 +286,7 @@ namespace Arcade.Gameplay
 			{
 				t.Enable = false;
 			}
+            if (t.Enable) RenderingArcTaps.Add(t);
 		}
 
 		private void JudgeArcs()

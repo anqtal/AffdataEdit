@@ -22,12 +22,18 @@ namespace Arcade.Gameplay
             if (!effect.anchor)
             {
                 effect.anchor = anchor;
-                anchor.Stop();
-                anchor.enabled = false;
-                var renderer = anchor.GetComponent<Renderer>();
-                if (renderer) renderer.enabled = false;
+                DisableAnchor(anchor);
+                effect.enabled = false;
             }
             return effect;
+        }
+
+        internal static void DisableAnchor(VisualEffect anchor)
+        {
+            anchor.Stop();
+            anchor.enabled = false;
+            var renderer = anchor.GetComponent<Renderer>();
+            if (renderer) renderer.enabled = false;
         }
 
         public void RefreshSkin()
@@ -51,6 +57,7 @@ namespace Arcade.Gameplay
             requested = value;
             if (value) stopAt = -1;
             else if (emitting && stopAt < 0) stopAt = Time.time + .2f;
+            enabled = requested || emitting;
         }
 
         public void ResetState()
@@ -58,6 +65,7 @@ namespace Arcade.Gameplay
             stopAt = -1;
             requested = emitting = played = false;
             Release();
+            enabled = false;
         }
 
         private void Release()
@@ -76,7 +84,11 @@ namespace Arcade.Gameplay
                 emitting = false;
                 stopAt = -1;
             }
-            if (!requested && !emitting) return;
+            if (!requested && !emitting)
+            {
+                enabled = false;
+                return;
+            }
             if (!particles)
             {
                 pool = ArcLongNoteParticlePool.Get();
@@ -135,7 +147,13 @@ namespace Arcade.Gameplay
             return curve;
         }
 
-        private void OnDisable() { ResetState(); }
+        private void OnDisable()
+        {
+            stopAt = -1;
+            requested = emitting = false;
+            if (!gameObject.activeInHierarchy) played = false;
+            Release();
+        }
         private void OnDestroy() { Release(); }
     }
 }
