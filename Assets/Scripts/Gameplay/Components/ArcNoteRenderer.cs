@@ -80,9 +80,16 @@ namespace Arcade.Gameplay
             cameraForward = cameraForFrame.transform.forward;
             orthographic = cameraForFrame.orthographic;
             foreach (var tap in ArcTapNoteManager.Instance.Taps)
-                if (tap.Enable) SubmitSprite(tap.spriteRenderer, 0, tint: false);
+            {
+                if (!tap.Enable) continue;
+                SubmitGroundNote(tap.RenderMatrix, ArcTapNoteManager.Instance.DefaultSprite,
+                    tap.Selected, tap.Alpha, 0, 1, 0, ArcTapNoteManager.Instance.ShaderdMaterial.renderQueue);
+                SubmitConnections(tap);
+            }
             foreach (var hold in ArcHoldNoteManager.Instance.Holds)
-                if (hold.Enable) SubmitSprite(hold.spriteRenderer, 1, tint: false);
+                if (hold.Enable) SubmitGroundNote(hold.RenderMatrix,
+                    hold.Highlight ? ArcHoldNoteManager.Instance.HighlightSprite : ArcHoldNoteManager.Instance.DefaultSprite,
+                    hold.Selected, hold.Alpha, hold.From, hold.To, 1, ArcHoldNoteManager.Instance.HoldNoteMatrial.renderQueue);
             foreach (var arc in ArcArcManager.Instance.RenderingArcs)
                 if (arc.Enable && arc.arcRenderer) arc.arcRenderer.Submit(this);
             foreach (var tap in ArcArcManager.Instance.RenderingArcTaps) SubmitArcTap(tap);
@@ -109,14 +116,45 @@ namespace Arcade.Gameplay
             SubmitSprite(tap.ShadowRenderer, 0);
         }
 
-        internal void SubmitSprite(SpriteRenderer renderer, int mode, bool always = false, bool tint = true)
+        private void SubmitConnections(ArcTap tap)
+        {
+            if (tap.ConnectedArcTaps.Count == 0) return;
+            // Undo the skin's X flip and width scale, as the former connection prefab did.
+            Matrix4x4 parent = tap.RenderMatrix * Matrix4x4.Scale(new Vector3(-1f / 1.53f, 1, 1));
+            Vector3 start = parent.MultiplyPoint3x4(Vector3.zero);
+            Color color = ArcArcManager.Instance.ConnectionColor;
+            color.a = tap.Alpha * 0.8f;
+            foreach (var arcTap in tap.ConnectedArcTaps)
+            {
+                Vector2 position = arcTap.GetConnectionPosition();
+                Vector3 end = parent.MultiplyPoint3x4(new Vector3(position.x - tap.WorldX, 0, position.y));
+                Vector3 direction = end - start;
+                float length = direction.magnitude;
+                if (length <= 0.000001f) continue;
+                Vector3 up = Mathf.Abs(direction.y) > length * 0.999f ? Vector3.forward : Vector3.up;
+                var data = NoteInstance.Create(Matrix4x4.TRS(start, Quaternion.LookRotation(direction, up), new Vector3(1, 1, length)), 0);
+                data.HighColor = color;
+                Submit(ArcNoteMeshes.Connection, null, data, "Arc", 3);
+            }
+        }
+
+        private void SubmitGroundNote(Matrix4x4 matrix, Sprite sprite, bool selected, float alpha,
+            float from, float to, int mode, int queue)
+        {
+            if (!sprite) return;
+            var data = NoteInstance.Create(matrix, mode, selected);
+            data.Options.y = alpha;
+            data.ClipHeight = new Vector4(from, to, 0, 0);
+            Submit(ArcNoteMeshes.Sprite(sprite), sprite.texture, data, "Note", 0, queue);
+        }
+
+        internal void SubmitSprite(SpriteRenderer renderer, int mode, bool always = false)
         {
             if (!renderer || !renderer.enabled || !renderer.gameObject.activeInHierarchy || !renderer.sprite) return;
             renderer.GetPropertyBlock(sourceProperties);
             var matrix = renderer.localToWorldMatrix * Matrix4x4.Scale(new Vector3(renderer.flipX ? -1 : 1, renderer.flipY ? -1 : 1, 1));
             var data = NoteInstance.Create(matrix, mode, (renderer.renderingLayerMask & ArcGameplayManager.Instance.SelectionLayerMask) != 0);
-            // Tap/Hold shaders ignore SpriteRenderer.color; the Hold prefab contains a brown tint.
-            data.HighColor = tint ? renderer.color : Color.white;
+            data.HighColor = renderer.color;
             data.Options.y = ReadFloat("_Alpha", 1);
             data.ClipHeight = new Vector4(ReadFloat("_From",0), ReadFloat("_To",1),0,0);
             Submit(ArcNoteMeshes.Sprite(renderer.sprite), renderer.sprite.texture, data, renderer.sortingLayerName,

@@ -26666,6 +26666,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   TapNotePrefab: {fileID: 1571790570033134, guid: 3b7d882908263b549b710a68410b37fa, type: 3}
+  DefaultSprite: {fileID: 21300000, guid: e474a07eb2efdbe44bf29a837f42335c, type: 3}
   NoteLayer: {fileID: 1350135928}
   ShaderdMaterial: {fileID: 2100000, guid: e3b9fdd35228c4c43a2db201c95cb6f5, type: 2}
 --- !u!1 &822747009
@@ -60632,7 +60633,6 @@ MonoBehaviour:
   ArcNotePrefab: {fileID: 1218715667678282, guid: f41e5f046f8dc8e4a95dd431ec3b9e5d, type: 3}
   ArcTapPrefab: {fileID: 1024612122497654, guid: 5eec15f4264ba8e40a9b892db4035cc0, type: 3}
   SfxArcTapPrefab: {fileID: 1024612122497654, guid: d1bcec05f417133458e8c696f6edbc03, type: 3}
-  ConnectionPrefab: {fileID: 1685863836277190, guid: e01fb8f446fa1414a948ac86710032b7, type: 3}
   ArcLayer: {fileID: 985107420}
   ConnectionColor: {r: 0.47058824, g: 0.78431374, b: 0.8627451, a: 1}
   ArcTapShadowSkin: {fileID: 21300000, guid: 42f18f8ce6622044ba299422f776f0f1, type: 3}

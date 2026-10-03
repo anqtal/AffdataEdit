@@ -23,7 +23,7 @@ namespace Arcade.Gameplay
         internal readonly List<ArcArc> RenderingArcs = new List<ArcArc>();
         internal readonly List<ArcArcTap> RenderingArcTaps = new List<ArcArcTap>();
 
-		public GameObject ArcNotePrefab, ArcTapPrefab, SfxArcTapPrefab, ConnectionPrefab;
+		public GameObject ArcNotePrefab, ArcTapPrefab, SfxArcTapPrefab;
 		public Transform ArcLayer;
 		public Color ConnectionColor;
 		public Sprite ArcTapShadowSkin;

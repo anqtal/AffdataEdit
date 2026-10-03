@@ -6,7 +6,7 @@ namespace Arcade.Gameplay
     // Geometry is created here, never loaded from a model asset. Shared by drawing and picking.
     internal static class ArcNoteMeshes
     {
-        private static Mesh segment, shadow, head, cube, sfx, bracket;
+        private static Mesh segment, shadow, head, cube, sfx, bracket, connection;
         private static readonly Dictionary<Sprite, Mesh> sprites = new Dictionary<Sprite, Mesh>();
         public static Mesh Segment => segment ? segment : segment = Make("Arc segment",
             new[] { new Vector3(0,.5f,0), new Vector3(0,.5f,1), new Vector3(1,-.5f,1),
@@ -22,6 +22,19 @@ namespace Arcade.Gameplay
         public static Mesh Cube => cube ? cube : cube = CreateCube();
         public static Mesh Sfx => sfx ? sfx : sfx = CreateSfx();
         public static Mesh Bracket => bracket ? bracket : bracket = CreateBracket();
+
+        public static Mesh Connection => connection ? connection : connection = CreateConnection();
+
+        private static Mesh CreateConnection()
+        {
+            // AffdataPlay's ConnectionLine.fbx is a unit-length, radius-0.05 triangular prism.
+            float side = Mathf.Sqrt(3) * 0.025f;
+            return Make("Note connection",
+                new[] { new Vector3(0, .05f, 0), new Vector3(side, -.025f, 0), new Vector3(-side, -.025f, 0),
+                    new Vector3(0, .05f, 1), new Vector3(side, -.025f, 1), new Vector3(-side, -.025f, 1) },
+                new[] { Vector2.zero, Vector2.right, Vector2.zero, Vector2.up, Vector2.one, Vector2.up },
+                new[] { 0, 1, 4, 0, 4, 3, 1, 2, 5, 1, 5, 4, 2, 0, 3, 2, 3, 5, 0, 2, 1, 3, 4, 5 });
+        }
 
         public static Mesh Sprite(Sprite sprite)
         {
@@ -169,7 +182,7 @@ namespace Arcade.Gameplay
 
         public static void Release()
         {
-            foreach (var mesh in new[] { segment, shadow, head, cube, sfx, bracket })
+            foreach (var mesh in new[] { segment, shadow, head, cube, sfx, bracket, connection })
                 if (mesh) Object.Destroy(mesh);
             foreach (var mesh in sprites.Values) if (mesh) Object.Destroy(mesh);
             sprites.Clear();

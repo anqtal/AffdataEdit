@@ -60,6 +60,8 @@ namespace Arcade.Gameplay
 		private void RenderHoldNotes()
 		{
 			ArcTimingManager timing = ArcTimingManager.Instance;
+            Matrix4x4 parentMatrix = NoteLayer.localToWorldMatrix;
+            Quaternion rotation = HoldNotePrefab.transform.localRotation;
 
 			foreach (var t in Holds)
 			{
@@ -97,9 +99,15 @@ namespace Arcade.Gameplay
 				t.Enable = true;
 				float pos = t.Position / 1000f;
 				float length = (endPosition - t.Position) / 1000f;
-				t.transform.localPosition = new Vector3(t.WorldX, pos, 0);
-				t.transform.localScale = new Vector3(1.53f, length / 3.79f, 1);
-				t.boxCollider.center = new Vector3(0, t.boxCollider.size.y / 2);
+                Vector3 position = new Vector3(t.WorldX, pos, 0);
+                Vector3 scale = new Vector3(1.53f, length / 3.79f, 1);
+                t.RenderMatrix = parentMatrix * Matrix4x4.TRS(position, rotation, new Vector3(-scale.x, scale.y, scale.z));
+                if (t.transform)
+                {
+                    t.transform.localPosition = position;
+                    t.transform.localScale = scale;
+                    t.boxCollider.center = new Vector3(0, t.boxCollider.size.y / 2);
+                }
 
 				float alpha = 1;
 				if (t.Judging)
@@ -173,10 +181,8 @@ namespace Arcade.Gameplay
 		public void SetHoldNoteSkin(Sprite normal, Sprite highlight)
 		{
 			HoldNoteMatrial.mainTexture = normal.texture;
-			HoldNotePrefab.GetComponent<SpriteRenderer>().sprite = normal;
 			DefaultSprite = normal;
 			HighlightSprite = highlight;
-			foreach (var h in Holds) h.ReloadSkin();
 		}
 	}
 }

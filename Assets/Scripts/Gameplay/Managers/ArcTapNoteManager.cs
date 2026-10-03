@@ -20,6 +20,7 @@ namespace Arcade.Gameplay
 		[HideInInspector]
 		public readonly float[] Lanes = { 10.625f, 6.375f, 2.125f, -2.125f, -6.375f, -10.625f };
 		public GameObject TapNotePrefab;
+        public Sprite DefaultSprite;
 		public Transform NoteLayer;
 		public Material ShaderdMaterial;
 
@@ -60,6 +61,8 @@ namespace Arcade.Gameplay
 		private void RenderTapNotes()
 		{
 			ArcTimingManager timing = ArcTimingManager.Instance;
+            Matrix4x4 parentMatrix = NoteLayer.localToWorldMatrix;
+            Quaternion rotation = TapNotePrefab.transform.localRotation;
 
 			foreach (var t in Taps)
 			{
@@ -76,11 +79,17 @@ namespace Arcade.Gameplay
 				}
 				t.Enable = true;
 				float pos = t.Position / 1000f;
-				t.transform.localPosition = new Vector3(t.WorldX, pos, 0);
-				if (ArcCameraManager.Instance.EditorCamera)
-					t.transform.localScale = new Vector3(1.53f, 2, 1);
-				else
-					t.transform.localScale = new Vector3(1.53f, (2f + 3.4f * Mathf.Max(0f, pos / 100f) * 1.5f) * 1.53f, 1);
+                Vector3 position = new Vector3(t.WorldX, pos, 0);
+                Vector3 scale = ArcCameraManager.Instance.EditorCamera
+                    ? new Vector3(1.53f, 2, 1)
+                    : new Vector3(1.53f, (2f + 3.4f * Mathf.Max(0f, pos / 100f) * 1.5f) * 1.53f, 1);
+                // Skin sprites face left; flip their mesh without flipping the picking/connection transform.
+                t.RenderMatrix = parentMatrix * Matrix4x4.TRS(position, rotation, new Vector3(-scale.x, scale.y, scale.z));
+                if (t.transform)
+                {
+                    t.transform.localPosition = position;
+                    t.transform.localScale = scale;
+                }
 				t.Alpha = pos < 90 ? 1 : (100 - pos) / 10f;
 			}
 		}
@@ -107,20 +116,13 @@ namespace Arcade.Gameplay
 			}
 		}
 		public void SetTapNoteSkin(Sprite sprite)
-		{
-			//Note: I have no idea why spriterenderer do not update when I set the sprite,
-			// as a workaround, we set the texture
-			// I do not know if this bug disappear in the build
-			ShaderdMaterial.mainTexture = sprite.texture;
-			TapNotePrefab.GetComponent<SpriteRenderer>().sprite = sprite;
-			foreach (var t in Taps) if (t.spriteRenderer) t.spriteRenderer.sprite = sprite;
-		}
+        {
+            DefaultSprite = sprite;
+            ShaderdMaterial.mainTexture = sprite.texture;
+        }
 		public void SetConnectionLineColor(Color color)
-		{
-			ArcArcManager.Instance.ConnectionColor = color;
-			foreach (var t in Taps)
-				foreach (var l in t.ConnectionLines.Values)
-					l.startColor = l.endColor = color;
-		}
+        {
+            ArcArcManager.Instance.ConnectionColor = color;
+        }
 	}
 }
