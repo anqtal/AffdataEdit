@@ -698,10 +698,7 @@ namespace Arcade.Compose
 				return LoadTexture2D(path, externalSkinDataObjects);
 			}, rawDefaultData.ArcBodyHighlight);
 
-			skinData.SfxArcTapModel = LoadLabelled(Path.Combine(SkinFolderPath, "Playfield", "Note", "SfxArcTap", "SfxArcTap.obj"), (path) =>
-			{
-				return LoadObjMesh(path, externalSkinDataObjects);
-			}, rawDefaultData.SfxArcTapModel);
+            skinData.SfxArcTapModel = new Labelled<Mesh> { value = Arcade.Gameplay.ArcNoteMeshes.Sfx, label = "Generated" };
 
 			string specData = "";
 			try

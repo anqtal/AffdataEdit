@@ -1,6 +1,4 @@
-using System;
 using System.Collections.Generic;
-using System.Linq;
 using Arcade.Gameplay.Chart;
 using Arcade.Util.Misc;
 using UnityEngine;
@@ -166,7 +164,7 @@ namespace Arcade.Gameplay
 					enable = value;
 					EnableHead = value;
 					EnableHeightIndicator = value;
-					foreach (ArcArcSegmentComponent s in segments) s.Enable = value;
+					foreach (ArcSegmentData s in segments) s.Enable = value;
 					EnableArcCap = value;
 					if (!value) EnableEffect = false;
 					ArcCollider.enabled = value;
@@ -245,12 +243,6 @@ namespace Arcade.Gameplay
 				headPropertyBlock.SetTexture(mainTexShaderId, highlighted ? HighlightTexture : DefaultTexture);
 				HeadRenderer.SetPropertyBlock(headPropertyBlock);
 			}
-			foreach (ArcArcSegmentComponent s in segments)
-			{
-				s.DefaultTexture = DefaultTexture;
-				s.HighlightTexture = HighlightTexture;
-				s.ReloadSkin();
-			}
 		}
 
 		public void ReloadColor()
@@ -301,7 +293,11 @@ namespace Arcade.Gameplay
 		private void Awake()
 		{
 			ArcLongNoteEffect.Get(JudgeEffect);
+            traceBodyGoldTexture = SegmentPrefab.GetComponent<ArcArcSegmentComponent>().TraceBodyGoldTexture;
             headPropertyBlock = new MaterialPropertyBlock();
+			HeadRenderer.forceRenderingOff = true;
+            HeightIndicatorRenderer.forceRenderingOff = true;
+            ArcCapRenderer.forceRenderingOff = true;
 			HeadRenderer.sortingLayerName = "Arc";
 			HeadRenderer.sortingOrder = 1;
 			highColorShaderId = Shader.PropertyToID("_HighColor");
@@ -315,6 +311,7 @@ namespace Arcade.Gameplay
 			Destroy(HeadFilter.sharedMesh);
 		}
 
+		private Texture2D traceBodyGoldTexture;
 		private int highColorShaderId;
 		private int lowColorShaderId;
 		private int mainTexShaderId;
@@ -329,7 +326,7 @@ namespace Arcade.Gameplay
 		private ArcArc arc;
 		private Color currentHighColor;
 		private Color currentLowColor;
-		private List<ArcArcSegmentComponent> segments = new List<ArcArcSegmentComponent>();
+		private List<ArcSegmentData> segments = new List<ArcSegmentData>();
 		private int zeroLengthVoidArcDisappearTime = int.MaxValue;
 
         private bool UsesGoldTrace => arc != null && arc.LineType == ArcLineType.TrueIsVoid
@@ -376,36 +373,23 @@ namespace Arcade.Gameplay
 			}
 		}
 
-		private void InstantiateSegment(int quantity)
-		{
-			int count = segments.Count;
-			if (count == quantity) return;
-			else if (count < quantity)
-			{
-				for (int i = 0; i < quantity - count; ++i)
-				{
-					GameObject g = Instantiate(SegmentPrefab, transform);
-					ArcArcSegmentComponent component = g.GetComponent<ArcArcSegmentComponent>();
-					component.Enable = Enable;
-					component.Alpha = Alpha;
-					component.Highlight = Highlight;
-					component.Selected = Selected;
-					segments.Add(component);
-				}
-			}
-			else if (count > quantity)
-			{
-				for (int i = 0; i < count - quantity; ++i)
-				{
-					Destroy(segments.Last().gameObject);
-					segments.RemoveAt(segments.Count - 1);
-				}
-			}
-			foreach (ArcArcSegmentComponent s in segments)
-			{
-				s.transform.SetAsLastSibling();
-			}
-		}
+        private void InstantiateSegment(int quantity)
+        {
+            while (segments.Count < quantity)
+                segments.Add(new ArcSegmentData { Enable = Enable, Alpha = Alpha, Highlight = Highlight, Selected = Selected });
+            if (segments.Count > quantity) segments.RemoveRange(quantity, segments.Count - quantity);
+        }
+
+        internal void Submit(ArcNoteRenderer renderer)
+        {
+            if (!enable) return;
+            var matrix = transform.localToWorldMatrix;
+            var gold = traceBodyGoldTexture;
+            foreach (var segment in segments) segment.Submit(renderer, matrix, DefaultTexture, HighlightTexture, gold);
+            renderer.SubmitHead(this);
+            renderer.SubmitSprite(HeightIndicatorRenderer, 0, true);
+            renderer.SubmitSprite(ArcCapRenderer, 0);
+        }
 
 		public void Build()
 		{
@@ -496,30 +480,18 @@ namespace Arcade.Gameplay
 
 			Vector3[] vertices = new Vector3[4];
 			Vector2[] uv = new Vector2[4];
-			Vector2[] uv2 = new Vector2[4];
 			int[] triangles = new int[] { 0, 2, 1, 0, 3, 2, 0, 1, 2, 0, 2, 3 };
 
 			vertices[0] = pos + new Vector3(0, offset / 2, 0);
 			uv[0] = new Vector2(0, 0);
-			uv2[0] = new Vector2(arc.YStart, 0);
 			vertices[1] = pos + new Vector3(offset, -offset / 2, 0);
 			uv[1] = new Vector2(1, 0);
-			uv2[1] = new Vector2(arc.YStart, 0);
 			vertices[2] = pos + new Vector3(0, -offset / 2, offset);
 			uv[2] = new Vector2(1, 1);
-			uv2[2] = new Vector2(arc.YStart, 0);
 			vertices[3] = pos + new Vector3(-offset, -offset / 2, 0);
 			uv[3] = new Vector2(1, 1);
-			uv2[3] = new Vector2(arc.YStart, 0);
 
-			Destroy(HeadFilter.sharedMesh);
-			HeadFilter.sharedMesh = new Mesh()
-			{
-				vertices = vertices,
-				uv = uv,
-				uv2 = uv2,
-				triangles = triangles.Take(6).ToArray()
-			};
+            HeadFilter.sharedMesh = null;
 
 			Destroy(HeadCollider.sharedMesh);
 			HeadCollider.sharedMesh = new Mesh()
@@ -605,7 +577,7 @@ namespace Arcade.Gameplay
 			int currentTiming = ArcGameplayManager.Instance.ChartTiming;
 			float z = arc.transform.localPosition.z;
 
-			foreach (ArcArcSegmentComponent s in segments)
+			foreach (ArcSegmentData s in segments)
 			{
                 s.IsTrace = arc.IsVoid;
                 s.UseGoldTrace = UsesGoldTrace;
@@ -648,8 +620,6 @@ namespace Arcade.Gameplay
 				if (s.FromTiming < currentTiming && s.ToTiming >= currentTiming)
 				{
 					s.Enable = true;
-					s.CurrentArcMaterial = null;
-					s.CurrentShadowMaterial = null;
 					s.Alpha = currentHighColor.a;
 					if (arc.Judging || arc.IsVoid || arc.NoInput())
 					{
@@ -664,8 +634,6 @@ namespace Arcade.Gameplay
 				if (pos > 90 && pos < 100 && !arc.IsVoid)
 				{
 					s.Enable = true;
-					s.CurrentArcMaterial = null;
-					s.CurrentShadowMaterial = null;
 					s.Alpha = currentHighColor.a * (100 - pos) / 10f;
 					s.From = 0;
 				}
@@ -678,8 +646,6 @@ namespace Arcade.Gameplay
 					s.Enable = true;
 					s.Alpha = currentHighColor.a;
 					s.From = 0;
-					s.CurrentArcMaterial = arcMaterial;
-					s.CurrentShadowMaterial = shadowMaterial;
 				}
 			}
 		}
@@ -728,7 +694,7 @@ namespace Arcade.Gameplay
 				{
 					if (segmentCount >= 1)
 					{
-						ArcArcSegmentComponent s = segments[0];
+						ArcSegmentData s = segments[0];
 						int duration = s.ToTiming - s.FromTiming;
 						if (duration == 0)
 						{

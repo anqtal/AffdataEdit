@@ -38,7 +38,7 @@ namespace Arcade.Gameplay
             ShadowMaterial = Make("SlideShadow");
             BracketMaterial = Make("SlideBracket");
             BracketMaterial.SetTexture("_MainTex", Resources.Load<Texture2D>("SlideOriginalReference/square_bracket"));
-            BracketMesh = Resources.LoadAll<Mesh>("SlideOriginalReference/bracket")[0];
+            BracketMesh = ArcNoteMeshes.Bracket;
             glowMaterial = Make("SpcSkyLineGlow");
             gridMaterial = Make("SpcJudgementGrid");
             blurMaterial = Make("SpcBlur");

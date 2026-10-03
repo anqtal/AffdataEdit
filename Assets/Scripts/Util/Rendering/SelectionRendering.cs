@@ -38,6 +38,7 @@ namespace Arcade.Util.Rendering
 			class MaskPassData
 			{
 				public RendererListHandle objectsInSelection;
+                public Camera camera;
 				public Rect viewport;
 			}
 			class BlitPassData
@@ -79,10 +80,12 @@ namespace Arcade.Util.Rendering
 				using (var builder = renderGraph.AddRasterRenderPass<MaskPassData>("Selection Mask", out var passData))
 				{
 					passData.objectsInSelection = renderGraph.CreateRendererList(rendererListParams);
+                    passData.camera = cameraData.camera;
 					// URP's intermediate descriptor already has the camera viewport dimensions.
 					passData.viewport = new Rect(0, 0, descriptor.width, descriptor.height);
 
 					builder.UseRendererList(passData.objectsInSelection);
+                    builder.AllowPassCulling(false);
 					builder.SetRenderAttachment(selectionMaskColor, 0);
 					builder.SetRenderAttachmentDepth(selectionMaskDepth, AccessFlags.ReadWrite);
 					builder.SetRenderFunc((MaskPassData data, RasterGraphContext context) => ExecuteMaskPass(data, context));
@@ -113,6 +116,7 @@ namespace Arcade.Util.Rendering
 				context.cmd.ClearRenderTarget(true, true, Color.clear);
 				context.cmd.SetViewport(data.viewport);
 				context.cmd.DrawRendererList(data.objectsInSelection);
+                Arcade.Gameplay.ArcNoteRenderer.DrawSelection(context.cmd, data.camera);
 			}
 
 			static void ExecuteBlitPass(BlitPassData data, RasterGraphContext context)
@@ -153,5 +157,4 @@ namespace Arcade.Util.Rendering
 		}
 	}
 }
-
 
