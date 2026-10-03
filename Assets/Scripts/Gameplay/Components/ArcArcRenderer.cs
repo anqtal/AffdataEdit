@@ -262,8 +262,7 @@ namespace Arcade.Gameplay
             set
             {
                 effect = value;
-                if (value && !longNoteEffect) longNoteEffect = ArcLongNoteEffect.Get(JudgeEffect);
-                if (longNoteEffect) longNoteEffect.SetEmission(value);
+                if (arc != null) ArcEffectManager.Instance.SetArcEffect(this, arc.Color, value);
             }
         }
 
@@ -334,7 +333,6 @@ namespace Arcade.Gameplay
 		private bool arcCapEnable;
 		private bool highlighted;
 		private bool effect;
-        private ArcLongNoteEffect longNoteEffect;
         private bool collidersDirty;
 		private ArcArc arc;
 		private Color currentHighColor;

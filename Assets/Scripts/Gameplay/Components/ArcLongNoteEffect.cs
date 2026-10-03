@@ -15,6 +15,9 @@ namespace Arcade.Gameplay
         private bool requested, emitting, played;
         private float stopAt = -1;
 
+        // Emitting or still inside the 200 ms stop delay.
+        public bool Active => requested || emitting;
+
         public static ArcLongNoteEffect Get(VisualEffect anchor)
         {
             var effect = anchor.GetComponent<ArcLongNoteEffect>();

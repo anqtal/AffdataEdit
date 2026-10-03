@@ -153,8 +153,7 @@ namespace Arcade.Gameplay
 						if (ArcGameplayManager.Instance.IsPlaying && t.ShouldPlayAudio) ArcEffectManager.Instance.PlayTapSound();
 						t.AudioPlayed = true;
 					}
-					if (t.FloatLane.HasValue) ArcEffectManager.Instance.SetFloatHoldNoteEffect(t);
-                    else ArcEffectManager.Instance.SetHoldNoteEffect(t.Track, true);
+					ArcEffectManager.Instance.SetHoldNoteEffect(t);
 				}
 				else if (currentTiming > t.EndTiming)
 				{
