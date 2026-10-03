@@ -109,6 +109,20 @@ namespace Arcade.Gameplay
 			}
 			return timingGroup.Timings;
 		}
+
+		// Timing lists are stably sorted. Equal timestamps use the last event,
+		// matching the previous FindLastIndex/Last queries, including before the first event.
+		internal static int FindTimingIndex(List<ArcTiming> events, int timing)
+		{
+			int low = 0, high = events.Count;
+			while (low < high)
+			{
+				int middle = low + (high - low) / 2;
+				if (events[middle].Timing <= timing) low = middle + 1;
+				else high = middle;
+			}
+			return low - 1;
+		}
 		private void HideExceededBeatlineInstance(int quantity)
 		{
 			int count = beatLineInstances.Count;
@@ -189,8 +203,8 @@ namespace Arcade.Gameplay
 			bool reversed = pivotTiming > targetTiming;
 			int startTiming = reversed ? targetTiming : pivotTiming;
 			int endTiming = reversed ? pivotTiming : targetTiming;
-			int startTimingId = Timings.FindLastIndex((timing) => timing.Timing <= startTiming);
-			int endTimingId = Timings.FindLastIndex((timing) => timing.Timing <= endTiming);
+			int startTimingId = FindTimingIndex(Timings, startTiming);
+			int endTimingId = FindTimingIndex(Timings, endTiming);
 			if (startTimingId == -1)
 			{
 				startTimingId = 0;
@@ -223,7 +237,7 @@ namespace Arcade.Gameplay
 			{
 				return currentTiming;
 			}
-			int currentTimingId = Timings.FindLastIndex((timing) => timing.Timing <= currentTiming);
+			int currentTimingId = FindTimingIndex(Timings, currentTiming);
 			int allEndTime = ArcGameplayManager.Instance.AllEndChartTiming;
 			float positionRemain = position;
 			for (int i = currentTimingId; i < Timings.Count; i++)
@@ -253,7 +267,7 @@ namespace Arcade.Gameplay
 			{
 				return ChartTiming;
 			}
-			int startTimingId = Timings.FindLastIndex((timing) => timing.Timing <= ChartTiming);
+			int startTimingId = FindTimingIndex(Timings, ChartTiming);
 			if (startTimingId == -1)
 			{
 				startTimingId = 0;
@@ -319,7 +333,7 @@ namespace Arcade.Gameplay
 				return Timings[0].Bpm;
 			}
 
-			return Timings.Last(timingEvent => timingEvent.Timing <= ChartTiming).Bpm;
+			return Timings[FindTimingIndex(Timings, ChartTiming)].Bpm;
 		}
 
 		private void UpdateChartSpeedStatus()
@@ -330,7 +344,7 @@ namespace Arcade.Gameplay
 				CurrentSpeed = 0;
 				return;
 			}
-			int currentTimingId = Timings.FindLastIndex((timing) => timing.Timing <= currentTiming);
+			int currentTimingId = FindTimingIndex(Timings, currentTiming);
 			if (currentTimingId == -1)
 			{
 				currentTimingId = 0;
@@ -351,7 +365,7 @@ namespace Arcade.Gameplay
 			else
 			{
 				int currentTiming = ArcGameplayManager.Instance.ChartTiming;
-				int currentTimingId = Timings.FindLastIndex((timing) => timing.Timing <= currentTiming);
+				int currentTimingId = FindTimingIndex(Timings, currentTiming);
 				float[] TimingPosition = new float[Timings.Count];
 				for (int i = currentTimingId; i + 1 < Timings.Count; i++)
 				{

@@ -58,73 +58,96 @@ namespace Arcade.Gameplay
 		{
 			Arcs = arcs;
 			foreach (var t in Arcs) t.Instantiate();
-			foreach (var t in Arcs) t.Rebuild();
 			CalculateArcRelationship();
 		}
 
 		public void CalculateArcRelationship()
 		{
-			ArcTimingManager timing = ArcTimingManager.Instance;
-			foreach (ArcArc arc in Arcs)
-			{
-				arc.ArcGroup = null;
-				arc.RenderHead = true;
-			}
-			foreach (ArcArc a in Arcs)
-			{
-				foreach (ArcArc b in Arcs)
-				{
-					if (a == b) continue;
-					if (a.IsVariousSizedArctap || b.IsVariousSizedArctap) continue;
-					if (Mathf.Abs(a.XEnd - b.XStart) < 0.1f && Mathf.Abs(a.EndTiming - b.Timing) < 10 && Mathf.Abs(a.YEnd - b.YStart) < 0.01f)
-					{
-						if (a.IsVoid == b.IsVoid)
-						{
-							if (b.ArcGroup != null && a.ArcGroup == null)
-							{
-								b.ArcGroup.Insert(0, a);
-								a.ArcGroup = b.ArcGroup;
-							}
-							else if (a.ArcGroup != null && b.ArcGroup == null)
-							{
-								a.ArcGroup.Add(b);
-								b.ArcGroup = a.ArcGroup;
-							}
-							else if (a.ArcGroup == null && b.ArcGroup == null)
-							{
-								a.ArcGroup = b.ArcGroup = new List<ArcArc> { a, b };
-							}
-							else if (a.ArcGroup != null && b.ArcGroup != null)
-							{
-								if (a.ArcGroup != b.ArcGroup)
-								{
-									a.ArcGroup.AddRange(b.ArcGroup);
-									foreach (ArcArc arc in b.ArcGroup)
-									{
-										arc.ArcGroup = a.ArcGroup;
-									}
-								}
-							}
-						}
-						if (a.IsVoid == b.IsVoid)
-						{
-							b.RenderHead = false;
-						}
-					}
-				}
-			}
-			foreach (ArcArc arc in Arcs)
-			{
-				if (arc.ArcGroup == null)
-				{
-					arc.ArcGroup = new List<ArcArc> { arc };
-				}
-				arc.ArcGroup.Sort((ArcArc a, ArcArc b) => a.Timing.CompareTo(b.Timing));
-			}
+			CalculateArcGroups(Arcs);
 			foreach (ArcArc arc in Arcs)
 			{
 				arc.CalculateJudgeTimings();
 			}
+		}
+
+		internal static void CalculateArcGroups(List<ArcArc> arcs)
+		{
+			int count = arcs.Count;
+			int[] byStartTiming = new int[count];
+			// A root stores the negative group size; other entries store their parent index.
+			int[] parents = new int[count];
+			for (int i = 0; i < count; i++)
+			{
+				byStartTiming[i] = i;
+				parents[i] = -1;
+				arcs[i].RenderHead = true;
+			}
+			Array.Sort(byStartTiming, (a, b) =>
+			{
+				int timingOrder = arcs[a].Timing.CompareTo(arcs[b].Timing);
+				return timingOrder != 0 ? timingOrder : a.CompareTo(b);
+			});
+
+			for (int i = 0; i < count; i++)
+			{
+				ArcArc a = arcs[i];
+				if (a.IsVariousSizedArctap) continue;
+				long firstTiming = (long)a.EndTiming - 9;
+				long lastTiming = (long)a.EndTiming + 9;
+				int low = 0, high = count;
+				while (low < high)
+				{
+					int middle = low + (high - low) / 2;
+					if (arcs[byStartTiming[middle]].Timing < firstTiming) low = middle + 1;
+					else high = middle;
+				}
+
+				for (int j = low; j < count; j++)
+				{
+					int nextIndex = byStartTiming[j];
+					ArcArc b = arcs[nextIndex];
+					if (b.Timing > lastTiming) break;
+					if (a == b || b.IsVariousSizedArctap) continue;
+					if (a.IsVoid == b.IsVoid && Mathf.Abs(a.XEnd - b.XStart) < 0.1f && Mathf.Abs(a.YEnd - b.YStart) < 0.01f)
+					{
+						b.RenderHead = false;
+						int rootA = FindArcGroupRoot(parents, i);
+						int rootB = FindArcGroupRoot(parents, nextIndex);
+						if (rootA == rootB) continue;
+						if (parents[rootA] > parents[rootB])
+						{
+							int swap = rootA;
+							rootA = rootB;
+							rootB = swap;
+						}
+						parents[rootA] += parents[rootB];
+						parents[rootB] = rootA;
+					}
+				}
+			}
+
+			// Walking the sorted indices builds every group in time order only once.
+			var groups = new List<ArcArc>[count];
+			foreach (int index in byStartTiming)
+			{
+				int root = FindArcGroupRoot(parents, index);
+				if (groups[root] == null) groups[root] = new List<ArcArc>(-parents[root]);
+				arcs[index].ArcGroup = groups[root];
+				groups[root].Add(arcs[index]);
+			}
+		}
+
+		private static int FindArcGroupRoot(int[] parents, int index)
+		{
+			int root = index;
+			while (parents[root] >= 0) root = parents[root];
+			while (index != root)
+			{
+				int next = parents[index];
+				parents[index] = root;
+				index = next;
+			}
+			return root;
 		}
 
 		public void Rebuild()
