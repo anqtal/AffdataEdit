@@ -7,6 +7,8 @@ namespace Arcade.Gameplay
 	public class ArcHoldNoteManager : MonoBehaviour
 	{
 		public static ArcHoldNoteManager Instance { get; private set; }
+        internal readonly ArcNoteVisualPool VisualPool = new ArcNoteVisualPool();
+
 		private void Awake()
 		{
 			Instance = this;
@@ -26,6 +28,7 @@ namespace Arcade.Gameplay
 		{
 			foreach (var t in Holds) t.Destroy();
 			Holds.Clear();
+            VisualPool.Clear();
 		}
 		public void Load(List<ArcHold> holds)
 		{
@@ -68,7 +71,6 @@ namespace Arcade.Gameplay
 				}
 				t.Position = timing.CalculatePositionByTiming(t.Timing, t.TimingGroup);
 				float endPosition = timing.CalculatePositionByTiming(t.EndTiming, t.TimingGroup);
-				t.Enable = true;
 				if (!t.IsEditing && (t.Judging || (t.NoInput() && t.Timing < ArcGameplayManager.Instance.ChartTiming)))
 				{
 					t.Position = 0;
@@ -92,6 +94,7 @@ namespace Arcade.Gameplay
 				{
 					t.Position = -100000;
 				}
+				t.Enable = true;
 				float pos = t.Position / 1000f;
 				float length = (endPosition - t.Position) / 1000f;
 				t.transform.localPosition = new Vector3(t.WorldX, pos, 0);

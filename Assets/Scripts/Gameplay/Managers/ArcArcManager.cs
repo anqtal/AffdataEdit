@@ -8,6 +8,10 @@ namespace Arcade.Gameplay
 	public class ArcArcManager : MonoBehaviour
 	{
 		public static ArcArcManager Instance { get; private set; }
+        internal readonly ArcNoteVisualPool TapVisualPool = new ArcNoteVisualPool();
+        internal readonly ArcNoteVisualPool SfxTapVisualPool = new ArcNoteVisualPool();
+        internal readonly ArcNoteVisualPool VisualPool = new ArcNoteVisualPool();
+
 		private void Awake()
 		{
 			Instance = this;
@@ -57,6 +61,9 @@ namespace Arcade.Gameplay
 				t.Destroy();
 			};
 			Arcs.Clear();
+            VisualPool.Clear();
+            TapVisualPool.Clear();
+            SfxTapVisualPool.Clear();
 		}
 		public void Load(List<ArcArc> arcs)
 		{
@@ -227,7 +234,7 @@ namespace Arcade.Gameplay
 							{
 								a.FlashCount = (a.FlashCount + 1) % 5;
 								if (a.FlashCount == 0) alpha = 0.85f;
-								a.arcRenderer.Highlight = true;
+								a.RenderingHighlight = true;
 							}
 							else
 							{
@@ -235,9 +242,9 @@ namespace Arcade.Gameplay
 								{
 									alpha = 0.65f;
 								}
-								a.arcRenderer.Highlight = false;
+								a.RenderingHighlight = false;
 							}
-							a.arcRenderer.Alpha = alpha * (225 / 255f);
+							a.RenderingAlpha = alpha * (225 / 255f);
 						}
 					}
 				}
@@ -251,6 +258,11 @@ namespace Arcade.Gameplay
                         ? 0.65f * ((t.TimingGroup.TraceBodyGold ? 188 : 125) / 255f)
                         : 0.85f * (125 / 255f);
 				}
+                if (!t.IsVoid)
+                {
+                    t.arcRenderer.Highlight = t.RenderingHighlight;
+                    t.arcRenderer.Alpha = t.RenderingAlpha;
+                }
 				t.arcRenderer.UpdateArc();
                 RenderingArcs.Add(t);
 			}
@@ -272,8 +284,8 @@ namespace Arcade.Gameplay
 			float pos = timingManager.CalculatePositionByTiming(t.Timing, t.TimingGroup) / 1000f;
 			if (pos > -100 && pos <= 90)
 			{
-				t.Alpha = 1;
 				t.Enable = true;
+                t.Alpha = 1;
 				t.UpdatePosition();
 			}
 			else if (pos > 90 && pos <= 100)
@@ -353,9 +365,9 @@ namespace Arcade.Gameplay
 			{
 				foreach (ArcArcTap t in arc.ArcTaps)
 				{
-					t.ShadowRenderer.sprite = sprite;
+					if (t.ShadowRenderer) t.ShadowRenderer.sprite = sprite;
 				}
-				if (arc.ConvertedVariousSizedArctap != null)
+				if (arc.ConvertedVariousSizedArctap?.ShadowRenderer)
 				{
 					arc.ConvertedVariousSizedArctap.ShadowRenderer.sprite = sprite;
 				}
@@ -367,7 +379,7 @@ namespace Arcade.Gameplay
 			ArcNotePrefab.GetComponent<ArcArcRenderer>().ArcCapRenderer.sprite = sprite;
 			foreach (ArcArc arc in Arcs)
 			{
-				arc.arcRenderer.ArcCapRenderer.sprite = sprite;
+				if (arc.arcRenderer) arc.arcRenderer.ArcCapRenderer.sprite = sprite;
 			}
 		}
 		public void SetHeightIndicatorSkin(Sprite sprite)
@@ -375,7 +387,7 @@ namespace Arcade.Gameplay
 			ArcNotePrefab.GetComponent<ArcArcRenderer>().HeightIndicatorRenderer.sprite = sprite;
 			foreach (ArcArc arc in Arcs)
 			{
-				arc.arcRenderer.HeightIndicatorRenderer.sprite = sprite;
+				if (arc.arcRenderer) arc.arcRenderer.HeightIndicatorRenderer.sprite = sprite;
 			}
 		}
 
@@ -399,7 +411,7 @@ namespace Arcade.Gameplay
 			prefabRenderer.ReloadColor();
 			foreach (ArcArc arc in Arcs)
 			{
-				arc.arcRenderer.ReloadColor();
+				if (arc.arcRenderer) arc.arcRenderer.ReloadColor();
 				foreach (ArcArcTap arctap in arc.ArcTaps)
 				{
 					arctap.UpdateColor();
@@ -420,7 +432,8 @@ namespace Arcade.Gameplay
 			prefabSegmentComponent.ReloadSkin();
 			foreach (ArcArc arc in Arcs)
 			{
-				arc.arcRenderer.HighlightTexture = highlight;
+				if (!arc.arcRenderer) continue;
+                arc.arcRenderer.HighlightTexture = highlight;
 				arc.arcRenderer.DefaultTexture = normal;
 				arc.arcRenderer.ReloadSkin();
 			}
@@ -433,7 +446,8 @@ namespace Arcade.Gameplay
 			prefabRenderer.JudgeEffect.SetVector4("EndColor", particleArcEndColor);
 			foreach (ArcArc arc in Arcs)
 			{
-				arc.arcRenderer.JudgeEffect.SetVector4("StartColor", particleArcStartColor);
+				if (!arc.arcRenderer) continue;
+                arc.arcRenderer.JudgeEffect.SetVector4("StartColor", particleArcStartColor);
 				arc.arcRenderer.JudgeEffect.SetVector4("EndColor", particleArcEndColor);
                 arc.arcRenderer.JudgeEffect.GetComponent<ArcLongNoteEffect>()?.RefreshSkin();
 			}
@@ -460,7 +474,8 @@ namespace Arcade.Gameplay
 			prefabRenderer.JudgeEffect.SetTexture("Texture", texture);
 			foreach (ArcArc arc in Arcs)
 			{
-				arc.arcRenderer.JudgeEffect.SetTexture("Texture", texture);
+				if (!arc.arcRenderer) continue;
+                arc.arcRenderer.JudgeEffect.SetTexture("Texture", texture);
                 arc.arcRenderer.JudgeEffect.GetComponent<ArcLongNoteEffect>()?.RefreshSkin();
 			}
 		}

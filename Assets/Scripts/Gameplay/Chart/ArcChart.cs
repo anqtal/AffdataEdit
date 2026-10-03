@@ -460,15 +460,35 @@ namespace Arcade.Gameplay.Chart
 		public SpriteRenderer spriteRenderer;
 		public MeshRenderer meshRenderer;
 
+        private ArcNoteVisualPool visualPool;
+
+        internal void AcquireVisual(ArcNoteVisualPool pool, GameObject prefab, Transform parent)
+        {
+            Instance = pool.Rent(prefab, parent);
+            visualPool = pool;
+        }
+
+        protected virtual void ReleaseVisual()
+        {
+            if (instance)
+            {
+                if (visualPool != null) visualPool.Return(instance);
+                else UnityEngine.Object.Destroy(instance);
+            }
+            visualPool = null;
+            instance = null;
+            transform = null;
+            spriteRenderer = null;
+            meshRenderer = null;
+            enable = false;
+        }
+
 		public abstract void Instantiate();
 		public virtual void Destroy()
-		{
-			if (instance != null) UnityEngine.Object.Destroy(instance);
-			instance = null;
-			transform = null;
-			spriteRenderer = null;
-			meshRenderer = null;
-		}
+        {
+            ReleaseVisual();
+        }
+
 	}
 	public abstract class ArcLongNote : ArcNote
 	{
@@ -503,6 +523,7 @@ namespace Arcade.Gameplay.Chart
 		private float currentAlpha;
 		private int alphaShaderId;
 		private MaterialPropertyBlock propertyBlock = new MaterialPropertyBlock();
+		internal readonly HashSet<ArcArcTap> ConnectedArcTaps = new HashSet<ArcArcTap>();
 		public Dictionary<ArcArcTap, LineRenderer> ConnectionLines = new Dictionary<ArcArcTap, LineRenderer>();
 		private BoxCollider boxCollider;
 
@@ -535,13 +556,14 @@ namespace Arcade.Gameplay.Chart
 			}
 			set
 			{
-				if (currentAlpha != value)
-				{
-					spriteRenderer.GetPropertyBlock(propertyBlock);
+                if (currentAlpha != value)
+                {
+                    currentAlpha = value;
+                    if (!spriteRenderer) return;
+                    spriteRenderer.GetPropertyBlock(propertyBlock);
 					propertyBlock.SetFloat(alphaShaderId, value);
 					spriteRenderer.SetPropertyBlock(propertyBlock);
 					foreach (var l in ConnectionLines.Values) l.startColor = l.endColor = new Color(l.endColor.r, l.endColor.g, l.endColor.b, value * 0.8f);
-					currentAlpha = value;
 				}
 			}
 		}
@@ -553,11 +575,13 @@ namespace Arcade.Gameplay.Chart
 			}
 			set
 			{
-				if (enable != value)
+				if (value && !instance) CreateVisual();
+                if (enable != value)
 				{
 					base.Enable = value;
 					boxCollider.enabled = value;
 					foreach (var l in ConnectionLines.Values) l.enabled = value;
+                    if (!value) ReleaseVisual();
 				}
 			}
 		}
@@ -571,7 +595,7 @@ namespace Arcade.Gameplay.Chart
 			{
 				if (selected != value)
 				{
-					spriteRenderer.renderingLayerMask = MaskUtil.SetMask(spriteRenderer.renderingLayerMask, ArcGameplayManager.Instance.SelectionLayerMask, value);
+					if (spriteRenderer) spriteRenderer.renderingLayerMask = MaskUtil.SetMask(spriteRenderer.renderingLayerMask, ArcGameplayManager.Instance.SelectionLayerMask, value);
 					selected = value;
 				}
 			}
@@ -579,6 +603,8 @@ namespace Arcade.Gameplay.Chart
 		public override void Destroy()
 		{
 			base.Destroy();
+            foreach (var arcTap in ConnectedArcTaps) arcTap.ForgetConnection(this);
+            ConnectedArcTaps.Clear();
 			boxCollider = null;
 			foreach (var l in ConnectionLines.Values) if (l.gameObject != null) UnityEngine.Object.Destroy(l.gameObject);
 			ConnectionLines.Clear();
@@ -613,15 +639,37 @@ namespace Arcade.Gameplay.Chart
 				base.Instance = value;
 				boxCollider = instance.GetComponent<BoxCollider>();
 				alphaShaderId = Shader.PropertyToID("_Alpha");
-				Enable = false;
+                enable = false;
+                boxCollider.enabled = false;
+                spriteRenderer.enabled = false;
+                spriteRenderer.renderingLayerMask = MaskUtil.SetMask(spriteRenderer.renderingLayerMask, ArcGameplayManager.Instance.SelectionLayerMask, selected);
 			}
 		}
 		public override void Instantiate()
 		{
-			Instance = UnityEngine.Object.Instantiate(ArcTapNoteManager.Instance.TapNotePrefab, ArcTapNoteManager.Instance.NoteLayer);
+            // Chart initialization does not allocate a scene object.
+        }
+        private void CreateVisual()
+        {
+            var manager = ArcTapNoteManager.Instance;
+            AcquireVisual(manager.VisualPool, manager.TapNotePrefab, manager.NoteLayer);
+            spriteRenderer.sprite = manager.TapNotePrefab.GetComponent<SpriteRenderer>().sprite;
+            propertyBlock.Clear();
+            propertyBlock.SetFloat(alphaShaderId, currentAlpha);
+            spriteRenderer.SetPropertyBlock(propertyBlock);
+            foreach (var arcTap in ConnectedArcTaps) arcTap.CreateConnection(this);
+        }
+        protected override void ReleaseVisual()
+        {
+            foreach (var line in ConnectionLines.Values) if (line) { line.enabled = false; UnityEngine.Object.Destroy(line.gameObject); }
+            ConnectionLines.Clear();
+            boxCollider = null;
+            base.ReleaseVisual();
 		}
 		public void SetupArcTapConnection()
 		{
+            foreach (var arcTap in ConnectedArcTaps) arcTap.ForgetConnection(this);
+            ConnectedArcTaps.Clear();
 			foreach (var l in ConnectionLines.Values) UnityEngine.Object.Destroy(l.gameObject);
 			ConnectionLines.Clear();
 			if (this.NoInput()) return;
@@ -674,7 +722,7 @@ namespace Arcade.Gameplay.Chart
 		{
 			defaultSprite = ArcHoldNoteManager.Instance.DefaultSprite;
 			highlightSprite = ArcHoldNoteManager.Instance.HighlightSprite;
-			spriteRenderer.sprite = highlighted ? highlightSprite : defaultSprite;
+			if (spriteRenderer) spriteRenderer.sprite = highlighted ? highlightSprite : defaultSprite;
 		}
 		public override GameObject Instance
 		{
@@ -692,8 +740,10 @@ namespace Arcade.Gameplay.Chart
 				defaultSprite = ArcHoldNoteManager.Instance.DefaultSprite;
 				highlightSprite = ArcHoldNoteManager.Instance.HighlightSprite;
 				boxCollider = instance.GetComponent<BoxCollider>();
-				CalculateJudgeTimings();
-				Enable = false;
+                enable = false;
+                boxCollider.enabled = false;
+                spriteRenderer.enabled = false;
+                spriteRenderer.renderingLayerMask = MaskUtil.SetMask(spriteRenderer.renderingLayerMask, ArcGameplayManager.Instance.SelectionLayerMask, selected);
 				ReloadSkin();
 			}
 		}
@@ -726,7 +776,22 @@ namespace Arcade.Gameplay.Chart
 		}
 		public override void Instantiate()
 		{
-			Instance = UnityEngine.Object.Instantiate(ArcHoldNoteManager.Instance.HoldNotePrefab, ArcHoldNoteManager.Instance.NoteLayer);
+            CalculateJudgeTimings();
+        }
+        private void CreateVisual()
+        {
+            var manager = ArcHoldNoteManager.Instance;
+            AcquireVisual(manager.VisualPool, manager.HoldNotePrefab, manager.NoteLayer);
+            propertyBlock.Clear();
+            propertyBlock.SetFloat(fromShaderId, currentFrom);
+            propertyBlock.SetFloat(toShaderId, currentTo);
+            propertyBlock.SetFloat(alphaShaderId, currentAlpha);
+            spriteRenderer.SetPropertyBlock(propertyBlock);
+        }
+        protected override void ReleaseVisual()
+        {
+            boxCollider = null;
+            base.ReleaseVisual();
 		}
 
 		public void CalculateJudgeTimings()
@@ -762,10 +827,12 @@ namespace Arcade.Gameplay.Chart
 			}
 			set
 			{
-				if (enable != value)
+				if (value && !instance) CreateVisual();
+                if (enable != value)
 				{
 					base.Enable = value;
 					boxCollider.enabled = value;
+                    if (!value) ReleaseVisual();
 				}
 			}
 		}
@@ -780,6 +847,7 @@ namespace Arcade.Gameplay.Chart
 				if (currentFrom != value)
 				{
 					currentFrom = value;
+                    if (!spriteRenderer) return;
 					spriteRenderer.GetPropertyBlock(propertyBlock);
 					propertyBlock.SetFloat(fromShaderId, value);
 					spriteRenderer.SetPropertyBlock(propertyBlock);
@@ -797,6 +865,7 @@ namespace Arcade.Gameplay.Chart
 				if (currentTo != value)
 				{
 					currentTo = value;
+                    if (!spriteRenderer) return;
 					spriteRenderer.GetPropertyBlock(propertyBlock);
 					propertyBlock.SetFloat(toShaderId, value);
 					spriteRenderer.SetPropertyBlock(propertyBlock);
@@ -811,12 +880,13 @@ namespace Arcade.Gameplay.Chart
 			}
 			set
 			{
-				if (currentAlpha != value)
-				{
-					spriteRenderer.GetPropertyBlock(propertyBlock);
+                if (currentAlpha != value)
+                {
+                    currentAlpha = value;
+                    if (!spriteRenderer) return;
+                    spriteRenderer.GetPropertyBlock(propertyBlock);
 					propertyBlock.SetFloat(alphaShaderId, value);
 					spriteRenderer.SetPropertyBlock(propertyBlock);
-					currentAlpha = value;
 				}
 			}
 		}
@@ -830,7 +900,7 @@ namespace Arcade.Gameplay.Chart
 			{
 				if (selected != value)
 				{
-					spriteRenderer.renderingLayerMask = MaskUtil.SetMask(spriteRenderer.renderingLayerMask, ArcGameplayManager.Instance.SelectionLayerMask, value);
+					if (spriteRenderer) spriteRenderer.renderingLayerMask = MaskUtil.SetMask(spriteRenderer.renderingLayerMask, ArcGameplayManager.Instance.SelectionLayerMask, value);
 					selected = value;
 				}
 			}
@@ -846,7 +916,7 @@ namespace Arcade.Gameplay.Chart
 				if (highlighted != value)
 				{
 					highlighted = value;
-					spriteRenderer.sprite = value ? highlightSprite : defaultSprite;
+					if (spriteRenderer) spriteRenderer.sprite = value ? highlightSprite : defaultSprite;
 				}
 			}
 		}
@@ -946,12 +1016,14 @@ namespace Arcade.Gameplay.Chart
 			}
 			set
 			{
+                if (value && !instance) CreateVisual();
 				if (enable != value)
 				{
 					base.Enable = value;
 					ModelRenderer.enabled = value;
 					ShadowRenderer.enabled = value;
 					ArcTapCollider.enabled = value;
+                    if (!value) ReleaseVisual();
 				}
 			}
 		}
@@ -981,7 +1053,11 @@ namespace Arcade.Gameplay.Chart
                 Mesh generatedMesh = Arc.IsSfx ? ArcNoteMeshes.Sfx : ArcNoteMeshes.Cube;
                 ModelRenderer.GetComponent<MeshFilter>().sharedMesh = generatedMesh;
                 ArcTapCollider.sharedMesh = generatedMesh;
-				Enable = false;
+                enable = false;
+                ModelRenderer.enabled = false;
+                ShadowRenderer.enabled = false;
+                ArcTapCollider.enabled = false;
+                if (ModelRenderer) ModelRenderer.renderingLayerMask = MaskUtil.SetMask(ModelRenderer.renderingLayerMask, ArcGameplayManager.Instance.SelectionLayerMask, selected);
 			}
 		}
 		public override void Destroy()
@@ -1008,17 +1084,36 @@ namespace Arcade.Gameplay.Chart
 		public void Instantiate(ArcArc arc)
 		{
 			Arc = arc;
-			Instance = UnityEngine.Object.Instantiate(
-				arc.IsSfx ? ArcArcManager.Instance.SfxArcTapPrefab : ArcArcManager.Instance.ArcTapPrefab, arc.transform
-			);
+            UpdatePosition();
+            UpdateScale();
+            UpdateColor();
+            SetupArcTapConnection();
+        }
 
-			ShadowRenderer.sprite = ArcArcManager.Instance.ArcTapShadowSkin;
+        private void CreateVisual()
+        {
+            var manager = ArcArcManager.Instance;
+            AcquireVisual(Arc.IsSfx ? manager.SfxTapVisualPool : manager.TapVisualPool,
+                Arc.IsSfx ? manager.SfxArcTapPrefab : manager.ArcTapPrefab, manager.ArcLayer);
+            ShadowRenderer.sprite = manager.ArcTapShadowSkin;
+            UpdatePosition();
+            UpdateScale();
+            propertyBlock.Clear();
+            propertyBlock.SetFloat(alphaShaderId, currentAlpha);
+            propertyBlock.SetColor(colorShaderId, currentTintColor);
+            ModelRenderer.SetPropertyBlock(propertyBlock);
+            ShadowRenderer.color = new Color(0.49f, 0.49f, 0.49f, 0.7843f * currentAlpha);
+        }
 
-			UpdatePosition();
-			UpdateScale();
-			UpdateColor();
-			SetupArcTapConnection();
-		}
+        protected override void ReleaseVisual()
+        {
+            ArcTapCollider = null;
+            ModelRenderer = null;
+            ShadowRenderer = null;
+            Model = null;
+            Shadow = null;
+            base.ReleaseVisual();
+        }
 
 		public void UpdatePosition()
 		{
@@ -1037,7 +1132,8 @@ namespace Arcade.Gameplay.Chart
 			}
 			Vector3 offsetLocalPosition = -timingManager.CalculatePositionByTiming(Timing, Arc.TimingGroup) / 1000f * this.FallDirection();
 			Vector3 additionalLocalPosition = new Vector3(0, 0, -0.6f);
-			LocalPosition = baseLocalPosition + offsetLocalPosition - parentLocalPosition + additionalLocalPosition;
+			if (transform) transform.localPosition = parentLocalPosition;
+            LocalPosition = baseLocalPosition + offsetLocalPosition - parentLocalPosition + additionalLocalPosition;
 		}
 
 		public void UpdateScale()
@@ -1072,55 +1168,69 @@ namespace Arcade.Gameplay.Chart
 			throw new NotImplementedException();
 		}
 
-		public void SetupArcTapConnection()
-		{
-			if (Arc == null || Arc.NoInput() || Arc.Designant || ((Arc.EndTiming - Arc.Timing) == 0 && !IsConvertedVariousSizedArctap)) return;
-			List<ArcTap> taps = ArcTapNoteManager.Instance.Taps;
-			ArcTap[] sameTimeTapNotes = taps.Where((s) => (Mathf.Abs(s.Timing - Timing) <= 1) && !s.NoInput()).ToArray();
-			foreach (ArcTap t in sameTimeTapNotes)
-			{
-				LineRenderer l = UnityEngine.Object.Instantiate(ArcArcManager.Instance.ConnectionPrefab, t.transform).GetComponent<LineRenderer>();
-				float p = 1f * (Timing - Arc.Timing) / (Arc.EndTiming - Arc.Timing);
-				Vector3 arcTapPos = new Vector3();
-				if (IsConvertedVariousSizedArctap)
-				{
-					arcTapPos = new Vector3(ArcAlgorithm.ArcXToWorld((Arc.XStart + Arc.XEnd) / 2f), ArcAlgorithm.ArcYToWorld(Arc.YStart) - 0.5f, 0);
-				}
-				else
-				{
-					arcTapPos = new Vector3(ArcAlgorithm.ArcXToWorld(ArcAlgorithm.X(Arc.XStart, Arc.XEnd, p, Arc.CurveType)),
-											 ArcAlgorithm.ArcYToWorld(ArcAlgorithm.Y(Arc.YStart, Arc.YEnd, p, Arc.CurveType)) - 0.5f);
-				}
-				Vector3 pos = arcTapPos
-											 - new Vector3(t.WorldX, 0);
-				l.SetPosition(1, new Vector3(pos.x, 0, pos.y));
-				l.startColor = l.endColor = ArcArcManager.Instance.ConnectionColor;
-				l.startColor = l.endColor = new Color(l.endColor.r, l.endColor.g, l.endColor.b, t.Alpha * 0.8f);
-				l.enabled = t.Enable;
-				l.transform.localPosition = new Vector3();
+        public void SetupArcTapConnection()
+        {
+            RemoveArcTapConnection();
+            if (Arc == null || Arc.NoInput() || Arc.Designant || ((Arc.EndTiming - Arc.Timing) == 0 && !IsConvertedVariousSizedArctap)) return;
+            foreach (var tap in ArcTapNoteManager.Instance.Taps)
+            {
+                if (Mathf.Abs(tap.Timing - Timing) > 1 || tap.NoInput()) continue;
+                connectedTaps.Add(tap);
+                tap.ConnectedArcTaps.Add(this);
+                CreateConnection(tap);
+            }
+        }
 
-				if (t.ConnectionLines.ContainsKey(this))
-				{
-					UnityEngine.Object.Destroy(t.ConnectionLines[this].gameObject);
-					t.ConnectionLines.Remove(this);
-				}
+        internal void CreateConnection(ArcTap t)
+        {
+            if (!t.transform) return;
+            LineRenderer l = UnityEngine.Object.Instantiate(ArcArcManager.Instance.ConnectionPrefab, t.transform).GetComponent<LineRenderer>();
+            float p = 1f * (Timing - Arc.Timing) / (Arc.EndTiming - Arc.Timing);
+            Vector3 arcTapPos = new Vector3();
+            if (IsConvertedVariousSizedArctap)
+            {
+                arcTapPos = new Vector3(ArcAlgorithm.ArcXToWorld((Arc.XStart + Arc.XEnd) / 2f), ArcAlgorithm.ArcYToWorld(Arc.YStart) - 0.5f, 0);
+            }
+            else
+            {
+                arcTapPos = new Vector3(ArcAlgorithm.ArcXToWorld(ArcAlgorithm.X(Arc.XStart, Arc.XEnd, p, Arc.CurveType)),
+                    ArcAlgorithm.ArcYToWorld(ArcAlgorithm.Y(Arc.YStart, Arc.YEnd, p, Arc.CurveType)) - 0.5f);
+            }
+            Vector3 pos = arcTapPos - new Vector3(t.WorldX, 0);
+            l.SetPosition(1, new Vector3(pos.x, 0, pos.y));
+            l.startColor = l.endColor = ArcArcManager.Instance.ConnectionColor;
+            l.startColor = l.endColor = new Color(l.endColor.r, l.endColor.g, l.endColor.b, t.Alpha * 0.8f);
+            l.enabled = t.Enable;
+            l.transform.localPosition = new Vector3();
 
-				t.ConnectionLines.Add(this, l);
-			}
-		}
-		public void RemoveArcTapConnection()
-		{
-			List<ArcTap> taps = ArcTapNoteManager.Instance.Taps;
-			ArcTap[] sameTimeTapNotes = taps.Where((s) => (Mathf.Abs(s.Timing - Timing) <= 1) && !s.NoInput()).ToArray();
-			foreach (ArcTap t in sameTimeTapNotes)
-			{
-				if (t.ConnectionLines.ContainsKey(this))
-				{
-					UnityEngine.Object.Destroy(t.ConnectionLines[this].gameObject);
-					t.ConnectionLines.Remove(this);
-				}
-			}
-		}
+            if (t.ConnectionLines.ContainsKey(this))
+            {
+                UnityEngine.Object.Destroy(t.ConnectionLines[this].gameObject);
+                t.ConnectionLines.Remove(this);
+            }
+
+            t.ConnectionLines.Add(this, l);
+        }
+
+        internal void ForgetConnection(ArcTap tap)
+        {
+            connectedTaps.Remove(tap);
+        }
+
+        public void RemoveArcTapConnection()
+        {
+            foreach (var tap in connectedTaps)
+            {
+                tap.ConnectedArcTaps.Remove(this);
+                if (tap.ConnectionLines.TryGetValue(this, out var line))
+                {
+                    if (line) { line.enabled = false; UnityEngine.Object.Destroy(line.gameObject); }
+                    tap.ConnectionLines.Remove(this);
+                }
+            }
+            connectedTaps.Clear();
+        }
+
 		public void Relocate()
 		{
 			ArcTimingManager timingManager = ArcTimingManager.Instance;
@@ -1133,7 +1243,7 @@ namespace Arcade.Gameplay.Chart
 
 		public bool IsMyself(GameObject gameObject)
 		{
-			return Model.gameObject.Equals(gameObject);
+			return Model && Model.gameObject.Equals(gameObject);
 		}
 		public Color TintColor
 		{
@@ -1146,6 +1256,7 @@ namespace Arcade.Gameplay.Chart
 				if (currentTintColor != value)
 				{
 					currentTintColor = value;
+                    if (!ModelRenderer) return;
 					ModelRenderer.GetPropertyBlock(propertyBlock);
 					propertyBlock.SetColor(colorShaderId, value);
 					ModelRenderer.SetPropertyBlock(propertyBlock);
@@ -1164,6 +1275,7 @@ namespace Arcade.Gameplay.Chart
 				if (currentAlpha != value)
 				{
 					currentAlpha = value;
+                    if (!ModelRenderer) return;
 					ModelRenderer.GetPropertyBlock(propertyBlock);
 					propertyBlock.SetFloat(alphaShaderId, value);
 					ModelRenderer.SetPropertyBlock(propertyBlock);
@@ -1175,11 +1287,13 @@ namespace Arcade.Gameplay.Chart
 		{
 			get
 			{
-				return Model.localPosition;
+				return localPosition;
 			}
 			set
 			{
-				Model.localPosition = value;
+				localPosition = value;
+                if (!Model) return;
+                Model.localPosition = value;
 				Vector3 p = value;
 				p.y = 0;
 				Shadow.localPosition = p;
@@ -1195,11 +1309,13 @@ namespace Arcade.Gameplay.Chart
 		{
 			get
 			{
-				return Model.localScale.x / BaseModelScale.x;
+				return localScale;
 			}
 			set
 			{
-				Model.localScale = new Vector3(value * BaseModelScale.x, BaseModelScale.y, BaseModelScale.z);
+				localScale = value;
+                if (!Model) return;
+                Model.localScale = new Vector3(value * BaseModelScale.x, BaseModelScale.y, BaseModelScale.z);
 				Shadow.localScale = new Vector3(value, 1f, 1f);
 			}
 		}
@@ -1214,12 +1330,15 @@ namespace Arcade.Gameplay.Chart
 			{
 				if (selected != value)
 				{
-					ModelRenderer.renderingLayerMask = MaskUtil.SetMask(ModelRenderer.renderingLayerMask, ArcGameplayManager.Instance.SelectionLayerMask, value);
+					if (ModelRenderer) ModelRenderer.renderingLayerMask = MaskUtil.SetMask(ModelRenderer.renderingLayerMask, ArcGameplayManager.Instance.SelectionLayerMask, value);
 					selected = value;
 				}
 			}
 		}
 
+        private Vector3 localPosition;
+        private float localScale = 1;
+        private readonly HashSet<ArcTap> connectedTaps = new HashSet<ArcTap>();
 		private bool selected;
 		private Color currentTintColor = Color.white;
 		private float currentAlpha = 1f;
@@ -1324,23 +1443,29 @@ namespace Arcade.Gameplay.Chart
 			}
 			set
 			{
-				if (enable != value)
-				{
-					base.Enable = value;
-					arcRenderer.Enable = value;
-					if (!value) foreach (ArcArcTap t in ArcTaps) if (t.Instance != null) t.Enable = value;
-				}
+                if (value && !instance)
+                {
+                    var manager = ArcArcManager.Instance;
+                    AcquireVisual(manager.VisualPool, manager.ArcNotePrefab, manager.ArcLayer);
+                }
+                if (enable != value)
+                {
+                    enable = value;
+                    arcRenderer.Enable = value;
+                    if (!value) ReleaseVisual();
+                }
 			}
 		}
 		public override bool Selected
 		{
 			get
 			{
-				return arcRenderer.Selected;
+				return selected;
 			}
 			set
 			{
-				arcRenderer.Selected = value;
+				selected = value;
+                if (arcRenderer) arcRenderer.Selected = value;
 				if (ConvertedVariousSizedArctap != null)
 				{
 					ConvertedVariousSizedArctap.Selected = value;
@@ -1357,8 +1482,9 @@ namespace Arcade.Gameplay.Chart
 			{
 				base.Instance = value;
 				arcRenderer = instance.GetComponent<ArcArcRenderer>();
-				arcRenderer.Arc = this;
-				Enable = false;
+				arcRenderer.Bind(this);
+                arcRenderer.Selected = selected;
+                enable = false;
 			}
 		}
 
@@ -1373,12 +1499,11 @@ namespace Arcade.Gameplay.Chart
 		{
 			base.Destroy();
 			arcRenderer = null;
-			ArcGroup.Clear();
+			ArcGroup = null;
 			DestroyArcTaps();
 		}
 		public override void Instantiate()
 		{
-			Instance = UnityEngine.Object.Instantiate(ArcArcManager.Instance.ArcNotePrefab, ArcArcManager.Instance.ArcLayer);
 			InstantiateArcTaps();
 		}
 
@@ -1417,7 +1542,7 @@ namespace Arcade.Gameplay.Chart
 		}
 		public void Rebuild()
 		{
-			arcRenderer.Build();
+			if (arcRenderer) arcRenderer.Build();
 			DestroyArcTaps();
 			InstantiateArcTaps();
 		}
@@ -1470,8 +1595,19 @@ namespace Arcade.Gameplay.Chart
 
 		public bool IsHitMyself(RaycastHit h)
 		{
-			return arcRenderer.IsHitMyself(h);
+			return arcRenderer && arcRenderer.IsHitMyself(h);
 		}
+
+        private bool selected;
+        internal float RenderingAlpha = 225 / 255f;
+        internal bool RenderingHighlight;
+
+        protected override void ReleaseVisual()
+        {
+            if (arcRenderer) arcRenderer.Unbind();
+            arcRenderer = null;
+            base.ReleaseVisual();
+        }
 
 		public int FlashCount;
 		public float EndPosition;

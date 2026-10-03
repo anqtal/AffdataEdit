@@ -159,7 +159,7 @@ namespace Arcade.Gameplay
 			}
 			set
 			{
-                if (value) EnsureColliders();
+                if (value && !ArcGameplayManager.Instance.IsPlaying) EnsureColliders();
 				if (enable != value)
 				{
 					enable = value;
@@ -168,7 +168,7 @@ namespace Arcade.Gameplay
 					foreach (ArcSegmentData s in segments) s.Enable = value;
 					EnableArcCap = value;
 					if (!value) EnableEffect = false;
-					ArcCollider.enabled = value;
+					ArcCollider.enabled = value && !ArcGameplayManager.Instance.IsPlaying;
 				}
 			}
 		}
@@ -184,7 +184,7 @@ namespace Arcade.Gameplay
 				{
 					headEnable = value;
 					HeadRenderer.enabled = value;
-					HeadCollider.enabled = value;
+					HeadCollider.enabled = value && !ArcGameplayManager.Instance.IsPlaying;
 				}
 			}
 		}
@@ -261,8 +261,15 @@ namespace Arcade.Gameplay
             get => effect;
             set
             {
-                effect = value;
-                if (arc != null) ArcEffectManager.Instance.SetArcEffect(this, arc.Color, value);
+                // Unregister the old color before this renderer is rebound or edited.
+                if (effect && (!value || arc == null || effectColor != arc.Color))
+                    ArcEffectManager.Instance.SetArcEffect(this, effectColor, false);
+                effect = value && arc != null;
+                if (effect)
+                {
+                    effectColor = arc.Color;
+                    ArcEffectManager.Instance.SetArcEffect(this, effectColor, true);
+                }
             }
         }
 
@@ -333,6 +340,7 @@ namespace Arcade.Gameplay
 		private bool arcCapEnable;
 		private bool highlighted;
 		private bool effect;
+        private int effectColor;
         private bool collidersDirty;
 		private ArcArc arc;
 		private Color currentHighColor;
@@ -402,12 +410,34 @@ namespace Arcade.Gameplay
             renderer.SubmitSprite(ArcCapRenderer, 0);
         }
 
+        internal void Bind(ArcArc note)
+        {
+            var source = ArcArcManager.Instance.ArcNotePrefab.GetComponent<ArcArcRenderer>();
+            DefaultTexture = source.DefaultTexture;
+            HighlightTexture = source.HighlightTexture;
+            ArcCapRenderer.sprite = source.ArcCapRenderer.sprite;
+            HeightIndicatorRenderer.sprite = source.HeightIndicatorRenderer.sprite;
+            JudgeEffect.SetVector4("StartColor", source.JudgeEffect.GetVector4("StartColor"));
+            JudgeEffect.SetVector4("EndColor", source.JudgeEffect.GetVector4("EndColor"));
+            JudgeEffect.SetTexture("Texture", source.JudgeEffect.GetTexture("Texture"));
+            arc = note;
+            Build();
+            ReloadSkin();
+        }
+
+        internal void Unbind()
+        {
+            Enable = false;
+            EnableEffect = false;
+            arc = null;
+        }
+
 		public void Build()
 		{
 			BuildHeightIndicator();
 			BuildSegments();
             collidersDirty = true;
-            if (enable) EnsureColliders();
+            if (enable && !ArcGameplayManager.Instance.IsPlaying) EnsureColliders();
 		}
         private void EnsureColliders()
         {
@@ -594,8 +624,12 @@ namespace Arcade.Gameplay
 
 		public void UpdateArc()
 		{
-			if (!enable) return;
-			UpdateHead();
+            if (!enable) return;
+            bool picking = !ArcGameplayManager.Instance.IsPlaying;
+            if (picking) EnsureColliders();
+            ArcCollider.enabled = picking;
+            UpdateHead();
+            HeadCollider.enabled = picking && headEnable;
 			UpdateSegments();
 			UpdateHeightIndicator();
 			UpdateArcCap();

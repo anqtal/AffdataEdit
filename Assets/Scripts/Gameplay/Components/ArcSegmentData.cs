@@ -17,6 +17,7 @@ namespace Arcade.Gameplay
         }
         public void BuildSegment(Vector3 from, Vector3 to, float width, int start, int end, float startHeight, float endHeight)
         {
+            From = 0; To = 1;
             FromPos = from; ToPos = to; Width = width; FromTiming = start; ToTiming = end;
             FromHeight = startHeight; ToHeight = endHeight;
         }

@@ -82,7 +82,7 @@ namespace Arcade.Compose
 		}
 		public void SelectNote(ArcNote note)
 		{
-			if (note.Instance != null) note.Selected = true;
+			note.Selected = true;
 			if (!SelectedNotes.Contains(note))
 			{
 				SelectedNotes.Add(note);
@@ -91,7 +91,7 @@ namespace Arcade.Compose
 		}
 		public void DeselectNote(ArcNote note)
 		{
-			if (note.Instance != null) note.Selected = false;
+			note.Selected = false;
 			if (SelectedNotes.Contains(note))
 			{
 				SelectedNotes.Remove(note);
@@ -100,7 +100,7 @@ namespace Arcade.Compose
 		}
 		public void DeselectAllNotes()
 		{
-			foreach (var note in SelectedNotes) if (note.Instance != null) note.Selected = false;
+			foreach (var note in SelectedNotes) note.Selected = false;
 			SelectedNotes.Clear();
 			foreach (var l in NoteEventListeners) l.OnNoteDeselectAll();
 		}

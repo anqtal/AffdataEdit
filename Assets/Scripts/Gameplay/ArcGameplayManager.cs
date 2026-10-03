@@ -245,8 +245,8 @@ namespace Arcade.Gameplay
 			foreach (var slide in Chart.Slides)
 				if (slide.Instance == h.transform.gameObject)
 					return ArcSlideVisual.IsWithinRenderDistance(h.point.z) ? slide : null;
-			foreach (var tap in Chart.Taps) if (tap.Instance.Equals(h.transform.gameObject)) return tap;
-			foreach (var hold in Chart.Holds) if (hold.Instance.Equals(h.transform.gameObject)) return hold;
+			foreach (var tap in Chart.Taps) if (tap.Instance == h.transform.gameObject) return tap;
+			foreach (var hold in Chart.Holds) if (hold.Instance == h.transform.gameObject) return hold;
 			foreach (var arc in Chart.Arcs)
 			{
 				if (arc.IsHitMyself(h)) return arc;

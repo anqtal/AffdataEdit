@@ -7,6 +7,8 @@ namespace Arcade.Gameplay
 	public class ArcTapNoteManager : MonoBehaviour
 	{
 		public static ArcTapNoteManager Instance { get; private set; }
+        internal readonly ArcNoteVisualPool VisualPool = new ArcNoteVisualPool();
+
 		private void Awake()
 		{
 			Instance = this;
@@ -25,6 +27,7 @@ namespace Arcade.Gameplay
 		{
 			foreach (var t in Taps) t.Destroy();
 			Taps.Clear();
+            VisualPool.Clear();
 		}
 		public void Load(List<ArcTap> taps)
 		{
@@ -110,7 +113,7 @@ namespace Arcade.Gameplay
 			// I do not know if this bug disappear in the build
 			ShaderdMaterial.mainTexture = sprite.texture;
 			TapNotePrefab.GetComponent<SpriteRenderer>().sprite = sprite;
-			foreach (var t in Taps) t.spriteRenderer.sprite = sprite;
+			foreach (var t in Taps) if (t.spriteRenderer) t.spriteRenderer.sprite = sprite;
 		}
 		public void SetConnectionLineColor(Color color)
 		{
