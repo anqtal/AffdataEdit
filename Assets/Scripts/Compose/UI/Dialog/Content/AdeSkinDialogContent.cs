@@ -404,6 +404,35 @@ namespace Arcade.Compose.Dialog
 			ArcSkinManager.Instance.SetThemeSideSkin(theme.SelectWithSide(preference.SkinSide), preference.SkinSide);
 		}
 
+		public void ReapplySkin()
+		{
+			ApplyBackground();
+			ApplyNoteSideSkin();
+			ApplyThemeSideSkin();
+		}
+
+		// Applies a cloud chart's side, background and track without changing the saved preference.
+		public void ApplyCloudSkin(Side side, Sprite background, Sprite track)
+		{
+			if (background != null)
+			{
+				ArcSkinManager.Instance.SetBackground(background);
+			}
+			else
+			{
+				ApplyBackground();
+			}
+			ArcSkinManager.Instance.SetNoteSideSkin(AdeSkinHost.Instance.skinData.NoteDatas[preference.SelectedNote].SelectWithSide(side));
+			ArcSkinManager.Instance.SetThemeSideSkin(AdeSkinHost.Instance.skinData.ThemeDatas[preference.SelectedTheme].SelectWithSide(side), side);
+			if (track != null)
+			{
+				foreach (SpriteRenderer trackComponent in ArcSkinManager.Instance.TrackComponents)
+				{
+					trackComponent.sprite = track;
+				}
+			}
+		}
+
 		public void SavePreferences()
 		{
 			PlayerPrefs.SetString("AdeSkinDialog", JsonConvert.SerializeObject(preference));

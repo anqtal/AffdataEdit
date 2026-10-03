@@ -169,7 +169,22 @@ namespace Arcade.Compose
 			ArcEffectManager.Instance.CleanSpecialEffectAudios();
 			ArcGameplayManager.Instance.Clean();
 		}
+		public bool IsLoading => loadingCoroutine != null;
+
 		public void OpenProject()
+		{
+			if (loadingCoroutine != null)
+			{
+				return;
+			}
+			if (AdeCloudManager.Instance != null)
+			{
+				AdeCloudManager.Instance.ShowOpenChooser();
+				return;
+			}
+			OpenLocalProject();
+		}
+		public void OpenLocalProject()
 		{
 			if (loadingCoroutine != null)
 			{
@@ -188,6 +203,15 @@ namespace Arcade.Compose
 				CurrentProjectMetadata = null;
 				CurrentProjectFolder = null;
 			}
+		}
+		public bool OpenProjectFolder(string folder)
+		{
+			if (loadingCoroutine != null)
+			{
+				return false;
+			}
+			loadingCoroutine = StartCoroutine(LoadProjectCoroutine(folder));
+			return true;
 		}
 		public void SaveProject()
 		{
@@ -411,9 +435,11 @@ namespace Arcade.Compose
 				new AudioSpec{path=Path.Combine(CurrentProjectFolder, $"{difficulty}.ogg"),overrided=true},
 				new AudioSpec{path=Path.Combine(CurrentProjectFolder, $"{difficulty}.mp3"),overrided=true},
 				new AudioSpec{path=Path.Combine(CurrentProjectFolder, $"{difficulty}.wav"),overrided=true},
+				new AudioSpec{path=Path.Combine(CurrentProjectFolder, $"{difficulty}.opus"),overrided=true},
 				new AudioSpec{path=Path.Combine(CurrentProjectFolder, "base.ogg"),overrided=false},
 				new AudioSpec{path=Path.Combine(CurrentProjectFolder, "base.mp3"),overrided=false},
 				new AudioSpec{path=Path.Combine(CurrentProjectFolder, "base.wav"),overrided=false},
+				new AudioSpec{path=Path.Combine(CurrentProjectFolder, "base.opus"),overrided=false},
 			};
 			foreach (AudioSpec audioPath in files)
 			{
@@ -511,7 +537,7 @@ namespace Arcade.Compose
 				{
 					string effectAudioFilename = effect.Substring(0, effect.Length - 4);
 					string effectAudioPath = Path.Combine(CurrentProjectFolder, $"{effectAudioFilename}.wav");
-					BassClip clip = Loader.LoadAudioFile(effectAudioPath);
+					BassClip clip = Loader.LoadAudioFile(effectAudioPath) ?? Loader.LoadAudioFile(Path.Combine(CurrentProjectFolder, $"{effect}.opus"));
 					if (clip != null)
 					{
 						ArcEffectManager.Instance.AddSpecialEffectAudio(effect, clip);
