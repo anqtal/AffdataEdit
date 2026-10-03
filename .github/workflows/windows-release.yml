@@ -73,6 +73,7 @@ jobs:
           from pathlib import Path
           url = os.environ['R2_PUBLIC_URL'].rstrip('/') + '/windows/latest.json'
           Path('Build/Windows/updater-config.json').write_text(json.dumps({'manifestUrl': url}), encoding='utf-8')
+          Path('Build/Windows/build-version.txt').write_text(os.environ['GITHUB_SHA'], encoding='utf-8')
           PY
       - uses: actions/setup-python@v6
         with:
