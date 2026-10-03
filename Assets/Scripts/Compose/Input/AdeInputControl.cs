@@ -800,7 +800,7 @@ namespace Arcade.Compose
                 {
                     ""name"": ""key"",
                     ""id"": ""c3af1e8b-37e8-4db1-8b2f-f31566587af2"",
-                    ""path"": ""<Keyboard>/space"",
+                    ""path"": ""<Keyboard>/q"",
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": """",
@@ -1405,7 +1405,7 @@ namespace Arcade.Compose
                 {
                     ""name"": ""key"",
                     ""id"": ""4ce6fe7b-7a0d-4d26-af12-e4050d04eb10"",
-                    ""path"": ""<Keyboard>/q"",
+                    ""path"": ""<Keyboard>/v"",
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": """",
@@ -1615,7 +1615,7 @@ namespace Arcade.Compose
                     ""name"": ""Key With Modifiers"",
                     ""id"": ""fc7bf4cf-ac7a-4c7f-aa3f-77ebad3f417f"",
                     ""path"": ""KeyWithModifiers"",
-                    ""interactions"": ""HotKey(needModifier3=true)"",
+                    ""interactions"": ""HotKey"",
                     ""processors"": """",
                     ""groups"": """",
                     ""action"": ""Preview When Holding"",

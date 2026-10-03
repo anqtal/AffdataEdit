@@ -136,7 +136,7 @@ namespace Arcade.Compose
 
 		private bool switchingMode = false;
 		private int playShotTiming = 0;
-		private bool shouldGoBackToPlayShotTiming = false;
+		private bool previewing = false;
 
 		private void Awake()
 		{
@@ -314,32 +314,29 @@ namespace Arcade.Compose
 			CheckScroll();
 			if (IsEditorMode)
 			{
-				bool playHolding = AdeInputManager.Instance.CheckHotkeyActionPressing(AdeInputManager.Instance.Hotkeys.PlayWhenHolding);
-				bool previewHolding = AdeInputManager.Instance.CheckHotkeyActionPressing(AdeInputManager.Instance.Hotkeys.PreviewWhenHolding);
-				bool holding = playHolding || previewHolding;
-				if (previewHolding)
+				// Alpha: hold Space to preview and return on release; Q plays or pauses in place.
+				var hotkeys = AdeInputManager.Instance.Hotkeys;
+				if (AdeInputManager.Instance.CheckHotkeyActionPressed(hotkeys.PlayWhenHolding))
 				{
-					shouldGoBackToPlayShotTiming = true;
+					previewing = false;
+					if (GameplayManager.IsPlaying) GameplayManager.Pause();
+					else GameplayManager.Play();
 				}
-				else if (playHolding)
+				else if (AdeInputManager.Instance.CheckHotkeyActionPressed(hotkeys.PreviewWhenHolding))
 				{
-					shouldGoBackToPlayShotTiming = false;
-				}
-				if (holding && !GameplayManager.IsPlaying)
-				{
-					GameplayManager.Play();
+					if (!GameplayManager.IsPlaying) GameplayManager.Play();
 					playShotTiming = GameplayManager.AudioTiming;
-					//AdeToast.Instance.Show("松开空格暂停并倒回，按下Q仅暂停", "Release 'Space' pause and rollback);
+					previewing = true;
 				}
-				if (!holding && GameplayManager.IsPlaying)
+				else if (previewing && !AdeInputManager.Instance.CheckHotkeyActionPressing(hotkeys.PreviewWhenHolding))
 				{
+					previewing = false;
 					GameplayManager.Pause();
-					if (shouldGoBackToPlayShotTiming)
-					{
-						GameplayManager.AudioTiming = playShotTiming;
-					}
+					GameplayManager.AudioTiming = playShotTiming;
+					GameplayManager.ResetJudge();
 				}
 			}
+			else previewing = false;
 			if (AdeInputManager.Instance.CheckHotkeyActionPressed(AdeInputManager.Instance.Hotkeys.PlayOrPause))
 			{
 				if (IsEditorMode) Play();
