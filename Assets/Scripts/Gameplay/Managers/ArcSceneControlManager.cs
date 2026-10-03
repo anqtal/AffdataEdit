@@ -28,7 +28,13 @@ public class ArcSceneControlManager : MonoBehaviour
 	[System.NonSerialized]
 	public List<ArcSceneControl> SceneControls = new List<ArcSceneControl>();
 	private const float trackAnimationDefaultDuration = 1f;
-	private const float backgroundDarkenDuration = 0.2f;
+	// Background darken mirrors AffdataPlay's TrackDisplay darken: alpha, timings and the
+	// scale animation of the 1024px radial sprite (shown width = 96% of the background).
+	private const float darkenAlpha = 0.9411765f;
+	private const int darkenInDuration = 250, darkenOutDuration = 200, darkenScaleDuration = 250;
+	private const float darkenShownScale = 1.2f, darkenTallScreenShownScaleY = 1.5f;
+	private const float darkenHiddenScaleY = 0.2f, darkenInitialScale = 0.5f;
+	private const float darkenShownWidthOfBackground = 1228.8f / 1280f;
 
 	public void Load(List<ArcSceneControl> sceneControls)
 	{
@@ -53,8 +59,12 @@ public class ArcSceneControlManager : MonoBehaviour
 	{
 		float startLaneOpacity = 1;
 		float laneOpacity = 1;
-		bool startBackgroundDarken = false;
-		float backgroundDarkenProgress = 0;
+		float darkenStart = 0, darkenTarget = 0;
+		int darkenStartTiming = 0, darkenDuration = 0;
+		bool darkenEaseOut = false;
+		Vector2 darkenInitial = Vector2.one * (darkenInitialScale / darkenShownScale);
+		Vector2 scaleStart = darkenInitial, scaleTarget = darkenInitial;
+		int scaleStartTiming = 0, scaleDuration = 0;
 		float enwidenCameraRatio = 0;
 		float enwidenLaneRatio = 0;
 		foreach (ArcTimingGroup tg in ArcTimingManager.Instance.timingGroups)
@@ -100,33 +110,24 @@ public class ArcSceneControlManager : MonoBehaviour
 							startLaneOpacity = targetLaneOpacity;
 						}
 
-						bool backgroundDarken = true;
+						float nextDarken = darkenAlpha;
 						if (sc.Type == SceneControlType.TrackShow)
 						{
-							backgroundDarken = false;
-						}
-						else if (sc.Type == SceneControlType.TrackHide)
-						{
-							backgroundDarken = true;
+							nextDarken = 0;
 						}
 						else if (sc.Type == SceneControlType.TrackDisplay)
 						{
-							backgroundDarken = sc.TrackDisplayValue < 255;
+							nextDarken = sc.TrackDisplayValue < 255 ? darkenAlpha : 0;
 						}
-						if (startBackgroundDarken == backgroundDarken)
-						{
-							backgroundDarkenProgress = backgroundDarken ? 1 : 0;
-						}
-						else
-						{
-							float darkenProgress = Mathf.Clamp01((ArcGameplayManager.Instance.ChartTiming - sc.Timing) / (backgroundDarkenDuration * 1000));
-							float curvedDarkenProgress = (1 - darkenProgress) * (1 - darkenProgress) * (1 - darkenProgress);
-							backgroundDarkenProgress = backgroundDarken ? 1 - curvedDarkenProgress : curvedDarkenProgress;
-						}
-						if (ArcGameplayManager.Instance.ChartTiming - sc.Timing > backgroundDarkenDuration * 1000)
-						{
-							startBackgroundDarken = backgroundDarken;
-						}
+						darkenStart = EvaluateDarken(darkenStart, darkenTarget, darkenStartTiming, darkenDuration, sc.Timing, darkenEaseOut);
+						darkenTarget = nextDarken;
+						darkenStartTiming = sc.Timing;
+						darkenDuration = nextDarken > 0.5f ? darkenInDuration : darkenOutDuration;
+						darkenEaseOut = nextDarken > 0.5f;
+						scaleStart = EvaluateDarkenScale(scaleStart, scaleTarget, scaleStartTiming, scaleDuration, sc.Timing);
+						scaleTarget = new Vector2(1, (nextDarken > 0 ? DarkenShownScaleY() : darkenHiddenScaleY) / darkenShownScale);
+						scaleStartTiming = sc.Timing;
+						scaleDuration = darkenScaleDuration;
 					}
 					break;
 				case SceneControlType.HideGroup:
@@ -176,7 +177,10 @@ public class ArcSceneControlManager : MonoBehaviour
 		}
 		UpdateEnwidenCameraRatio(enwidenCameraRatio);
 		UpdateLane(laneOpacity, enwidenLaneRatio);
-		UpdateBackgroundDarkenLayer(backgroundDarkenProgress);
+		int timing = ArcGameplayManager.Instance.ChartTiming;
+		UpdateBackgroundDarkenLayer(
+			EvaluateDarken(darkenStart, darkenTarget, darkenStartTiming, darkenDuration, timing, darkenEaseOut),
+			EvaluateDarkenScale(scaleStart, scaleTarget, scaleStartTiming, scaleDuration, timing));
         UpdateArcahvEffects();
 	}
 
@@ -322,9 +326,38 @@ public class ArcSceneControlManager : MonoBehaviour
 		ArcTimingManager.Instance.BeatlineEnwidenRatio = enwidenLaneRatio;
 	}
 
-	private void UpdateBackgroundDarkenLayer(float backgroundDarkenProgress)
+	private static float EvaluateDarken(float start, float target, int startTiming, int duration, int timing, bool easeOut)
 	{
-		BackgroundDarkenLayer.color = new Color(0, 0, 0, backgroundDarkenProgress);
+		if (duration <= 0) return target;
+		float progress = Mathf.Clamp01((float)(timing - startTiming) / duration);
+		if (easeOut) progress = 1 - Mathf.Pow(1 - progress, 3);
+		return Mathf.Lerp(start, target, progress);
+	}
+
+	private static Vector2 EvaluateDarkenScale(Vector2 start, Vector2 target, int startTiming, int duration, int timing)
+	{
+		if (duration <= 0) return target;
+		float progress = Mathf.Clamp01((float)(timing - startTiming) / duration);
+		return Vector2.Lerp(start, target, 1 - Mathf.Pow(1 - progress, 3));
+	}
+
+	// Taller viewports stretch the darken vertically (1280-wide design height 720 -> 960).
+	private static float DarkenShownScaleY()
+	{
+		Camera camera = ArcCameraManager.Instance ? ArcCameraManager.Instance.GameplayCamera : null;
+		float width = camera && camera.pixelWidth > 0 ? camera.pixelWidth : Screen.width;
+		float height = camera && camera.pixelHeight > 0 ? camera.pixelHeight : Screen.height;
+		float designHeight = Mathf.Max(720f, 1280f * height / width);
+		return Mathf.Lerp(darkenShownScale, darkenTallScreenShownScaleY, Mathf.InverseLerp(720f, 960f, designHeight));
+	}
+
+	private RectTransform darkenBackground;
+	private void UpdateBackgroundDarkenLayer(float alpha, Vector2 scale)
+	{
+		BackgroundDarkenLayer.color = new Color(0, 0, 0, alpha);
+		if (!darkenBackground) darkenBackground = (RectTransform)BackgroundDarkenLayer.transform.parent.Find("Image");
+		float size = darkenBackground.rect.width * darkenShownWidthOfBackground;
+		BackgroundDarkenLayer.rectTransform.sizeDelta = new Vector2(size * scale.x, size * scale.y);
 	}
 }
 
