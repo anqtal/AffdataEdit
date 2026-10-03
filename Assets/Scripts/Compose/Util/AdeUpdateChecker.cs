@@ -2,29 +2,90 @@ using System;
 using System.Collections;
 using System.IO;
 using System.Text.RegularExpressions;
+using Arcade.Compose.Feature;
 using UnityEngine.SceneManagement;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using UnityEngine;
 using UnityEngine.Networking;
+using UnityEngine.UI;
 
 namespace Arcade.Compose
 {
+    // Built players check R2's latest.json when the editor scene opens. Until the build is
+    // confirmed current, a cloned editor dialog and a blocker cover the editor and hotkeys stop.
     public sealed class AdeUpdateChecker : MonoBehaviour
     {
+        private const string EditorSceneName = "ArcEditor";
         private static readonly Regex CommitPattern = new Regex("^[0-9a-fA-F]{40}$");
 
-        public Font DisplayFont;
-        private string message = "正在检查最新版本…";
-        private bool checking;
         private bool updateRequired;
+        private AdeDualDialog dialog;
+        private Text messageText;
+        private GameObject blocker;
 
-        private void Start() { StartCoroutine(CheckAtStartup()); }
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+        private static void Bootstrap()
+        {
+            if (Application.isEditor) return;
+            SceneManager.sceneLoaded += (scene, mode) =>
+            {
+                if (scene.name == EditorSceneName)
+                    new GameObject(nameof(AdeUpdateChecker)).AddComponent<AdeUpdateChecker>();
+            };
+        }
+
+        private void Start()
+        {
+            AdeDualDialog source = AdeObsManager.Instance != null ? AdeObsManager.Instance.OBSDialog : null;
+            Transform inputRow = source != null ? AdeUiKit.FindRow(source, "Address") : null;
+            if (inputRow == null)
+            {
+                Debug.LogWarning("Update dialog templates not found");
+                return;
+            }
+            dialog = AdeUiKit.CloneDialog(source, "UpdateDialog");
+            dialog.Title.text = "检查更新";
+            messageText = AdeUiKit.CreateLabelRow(AdeUiKit.Content(dialog), inputRow.GetComponentInChildren<Text>(true).transform, "");
+            dialog.LeftButtonText.text = "重试";
+            dialog.RightButtonText.text = "退出";
+            AdeUiKit.SetOnClick(dialog.LeftButton, () => StartCoroutine(CheckAtStartup()));
+            AdeUiKit.SetOnClick(dialog.RightButton, Application.Quit);
+
+            // Full-screen blocker beneath the dialog so the editor behind cannot be used.
+            Transform layer = AdeDialogManager.Instance.Opening;
+            blocker = new GameObject("UpdateBlocker", typeof(RectTransform), typeof(Image));
+            blocker.transform.SetParent(layer.parent, false);
+            blocker.transform.SetSiblingIndex(layer.GetSiblingIndex());
+            var rect = (RectTransform)blocker.transform;
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.offsetMin = rect.offsetMax = Vector2.zero;
+            blocker.GetComponent<Image>().color = new Color(0, 0, 0, 0.6f);
+
+            AdeInputManager.Instance.Controls.Disable();
+            dialog.Open();
+            StartCoroutine(CheckAtStartup());
+        }
+
+        private void SetState(bool isChecking, string text)
+        {
+            messageText.text = text;
+            dialog.LeftButton.gameObject.SetActive(!isChecking && !updateRequired);
+            dialog.RightButton.interactable = !isChecking;
+        }
+
+        private void Pass()
+        {
+            AdeInputManager.Instance.Controls.Enable();
+            dialog.Close();
+            Destroy(blocker);
+            Destroy(gameObject);
+        }
 
         private IEnumerator CheckAtStartup()
         {
-            checking = true;
-            message = "正在检查最新版本…";
+            SetState(true, "正在检查最新版本…");
             string folder = Path.GetDirectoryName(Application.dataPath);
             string versionPath = Path.Combine(folder, "build-version.txt");
             string configPath = Path.Combine(folder, "updater-config.json");
@@ -89,39 +150,16 @@ namespace Arcade.Compose
             }
             if (string.Equals(currentVersion, latestVersion, StringComparison.OrdinalIgnoreCase))
             {
-                yield return SceneManager.LoadSceneAsync("ArcEditor", LoadSceneMode.Single);
+                Pass();
                 yield break;
             }
-            checking = false;
             updateRequired = true;
-            message = "当前版本不是最新版，请先更新。\n\n关闭 AffdataEdit 后，运行程序目录中的\nAffdataEdit-Updater.exe 完成更新，再重新启动。";
+            SetState(false, "当前版本不是最新版，请先更新。\n\n关闭 AffdataEdit 后，运行程序目录中的\nAffdataEdit-Updater.exe 完成更新，再重新启动。");
         }
 
         private void FailCheck()
         {
-            checking = false;
-            message = "无法确认是否为最新版本，暂时不能进入编辑器。\n请检查网络后重试；如安装文件不完整，请运行 updater 修复。";
-        }
-
-        private void OnGUI()
-        {
-            float scale = Mathf.Max(0.5f, Mathf.Min(Screen.width / 800f, Screen.height / 500f));
-            GUI.matrix = Matrix4x4.TRS(Vector3.zero, Quaternion.identity, Vector3.one * scale);
-            var style = new GUIStyle(GUI.skin.label)
-            {
-                font = DisplayFont, fontSize = 20, alignment = TextAnchor.MiddleCenter, wordWrap = true
-            };
-            float left = (Screen.width / scale - 640) / 2;
-            float top = (Screen.height / scale - 240) / 2;
-            GUI.Box(new Rect(left, top, 640, 240), GUIContent.none);
-            GUI.Label(new Rect(left + 20, top + 20, 600, 140), message, style);
-            if (!checking)
-            {
-                if (!updateRequired && GUI.Button(new Rect(left + 160, top + 180, 140, 36), "重试", new GUIStyle(GUI.skin.button) { font = DisplayFont, fontSize = 18 }))
-                    StartCoroutine(CheckAtStartup());
-                if (GUI.Button(new Rect(left + 340, top + 180, 140, 36), "退出", new GUIStyle(GUI.skin.button) { font = DisplayFont, fontSize = 18 }))
-                    Application.Quit();
-            }
+            SetState(false, "无法确认是否为最新版本，暂时不能进入编辑器。\n请检查网络后重试；如安装文件不完整，请运行 updater 修复。");
         }
     }
 }

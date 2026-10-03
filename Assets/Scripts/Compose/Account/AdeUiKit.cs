@@ -56,6 +56,32 @@ namespace Arcade.Compose
 			return row;
 		}
 
+		// A centered, wrapping text row built from an existing dialog label.
+		public static Text CreateLabelRow(Transform parent, Transform labelTemplate, string text)
+		{
+			var row = new GameObject("Label", typeof(RectTransform), typeof(HorizontalLayoutGroup));
+			row.transform.SetParent(parent, false);
+			var layout = row.GetComponent<HorizontalLayoutGroup>();
+			layout.childAlignment = TextAnchor.MiddleCenter;
+			layout.childControlWidth = layout.childControlHeight = true;
+			layout.childForceExpandWidth = layout.childForceExpandHeight = false;
+			Text label = CreateLabel(row.transform, labelTemplate, text, 640);
+			label.alignment = TextAnchor.MiddleCenter;
+			return label;
+		}
+
+		public static Text CreateLabel(Transform parent, Transform labelTemplate, string text, float width)
+		{
+			GameObject item = Object.Instantiate(labelTemplate.gameObject, parent, false);
+			item.name = "Text";
+			Text label = item.GetComponent<Text>();
+			label.text = text;
+			label.horizontalOverflow = HorizontalWrapMode.Wrap;
+			LayoutElement layout = item.GetComponent<LayoutElement>() ?? item.AddComponent<LayoutElement>();
+			layout.preferredWidth = width;
+			return label;
+		}
+
 		public static void SetOnClick(Button button, UnityAction action)
 		{
 			button.onClick = new Button.ButtonClickedEvent();

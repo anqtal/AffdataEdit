@@ -187,7 +187,7 @@ namespace Arcade.Compose
 
 			chooserDialog = AdeUiKit.CloneDialog(obs, "OpenChartDialog");
 			chooserDialog.Title.text = "打开谱面";
-			CreateLabelRow(AdeUiKit.Content(chooserDialog), "从本地文件夹或 AffdataNet 云端打开谱面");
+			AdeUiKit.CreateLabelRow(AdeUiKit.Content(chooserDialog), labelTemplate, "从本地文件夹或 AffdataNet 云端打开谱面");
 			chooserDialog.LeftButtonText.text = "本地谱面";
 			chooserDialog.RightButtonText.text = "云端谱面";
 			AdeUiKit.SetOnClick(chooserDialog.LeftButton, () =>
@@ -212,37 +212,12 @@ namespace Arcade.Compose
 			listDialog = AdeUiKit.CloneDialog(basic, "CloudChartsDialog");
 			AdeUiKit.SetMaxHeight(listDialog, 480);
 			listContent = AdeUiKit.Content(listDialog);
-			listStatus = CreateLabelRow(listContent, "");
+			listStatus = AdeUiKit.CreateLabelRow(listContent, labelTemplate, "");
 			listDialog.ButtonText.text = "关闭";
 			AdeUiKit.SetOnClick(listDialog.CompleteButton, () =>
 			{
 				if (!busy) listDialog.Close();
 			});
-		}
-
-		private Text CreateLabelRow(Transform parent, string text)
-		{
-			var row = new GameObject("Label", typeof(RectTransform), typeof(HorizontalLayoutGroup));
-			row.transform.SetParent(parent, false);
-			var layout = row.GetComponent<HorizontalLayoutGroup>();
-			layout.childAlignment = TextAnchor.MiddleCenter;
-			layout.childControlWidth = layout.childControlHeight = true;
-			layout.childForceExpandWidth = layout.childForceExpandHeight = false;
-			Text label = CreateLabel(row.transform, text, 640);
-			label.alignment = TextAnchor.MiddleCenter;
-			return label;
-		}
-
-		private Text CreateLabel(Transform parent, string text, float width)
-		{
-			GameObject item = Instantiate(labelTemplate.gameObject, parent, false);
-			item.name = "Text";
-			Text label = item.GetComponent<Text>();
-			label.text = text;
-			label.horizontalOverflow = HorizontalWrapMode.Wrap;
-			LayoutElement layout = item.GetComponent<LayoutElement>() ?? item.AddComponent<LayoutElement>();
-			layout.preferredWidth = width;
-			return label;
 		}
 
 		private void SetMessage(string text)
@@ -278,7 +253,7 @@ namespace Arcade.Compose
 					string name = string.IsNullOrWhiteSpace(diff?.DifficultyLabel) ? DifficultyNames[d] : diff.DifficultyLabel;
 					return $"{name} {diff?.ChartDifficulty}{(chart.RankedDiffs.Contains(d) ? " (Ranked)" : "")}";
 				}));
-				Text label = CreateLabel(row.transform, $"#{chart.ArchiveId} {chart.Title} - {chart.Artist}{(chart.IsPrivate ? "（私密）" : "")}\n<size=18>{diffs}</size>", 520);
+				Text label = AdeUiKit.CreateLabel(row.transform, labelTemplate, $"#{chart.ArchiveId} {chart.Title} - {chart.Artist}{(chart.IsPrivate ? "（私密）" : "")}\n<size=18>{diffs}</size>", 520);
 				label.alignment = TextAnchor.MiddleLeft;
 				label.supportRichText = true;
 				label.transform.SetAsFirstSibling();
