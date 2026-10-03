@@ -2,10 +2,12 @@
 import hashlib
 import json
 import os
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from urllib.parse import urlparse
 
 import boto3
+from botocore.config import Config
 from botocore.exceptions import ClientError
 
 
@@ -18,6 +20,7 @@ def main():
     client = boto3.client(
         "s3", endpoint_url=f'https://{os.environ["R2_ACCOUNT_ID"]}.r2.cloudflarestorage.com',
         region_name="auto",
+        config=Config(max_pool_connections=16),
     )
     entries = []
     seen = set()
@@ -30,19 +33,27 @@ def main():
         seen.add(relative.lower())
         with path.open("rb") as stream:
             digest = hashlib.file_digest(stream, "sha256").hexdigest()
-        key = f"windows/objects/{digest}"
+        entries.append({"path": relative, "sha256": digest, "size": path.stat().st_size})
+
+    def ensure_object(entry):
+        key = f"windows/objects/{entry['sha256']}"
         try:
             existing = client.head_object(Bucket=bucket, Key=key)
-            if existing["ContentLength"] != path.stat().st_size:
+            if existing["ContentLength"] != entry["size"]:
                 raise ValueError(f"Unexpected object size: {key}")
         except ClientError as error:
             if error.response["Error"]["Code"] not in ("404", "NoSuchKey", "NotFound"):
                 raise
-            client.upload_file(str(path), bucket, key, ExtraArgs={
+            client.upload_file(str(root / entry["path"]), bucket, key, ExtraArgs={
                 "CacheControl": "public, max-age=31536000, immutable",
                 "ContentType": "application/octet-stream",
             })
-        entries.append({"path": relative, "sha256": digest, "size": path.stat().st_size})
+
+    # Most objects already exist, so the time is network round trips: check and upload
+    # concurrently. Any failure propagates before the manifest is written.
+    with ThreadPoolExecutor(max_workers=16) as executor:
+        for _ in executor.map(ensure_object, entries):
+            pass
     if "affdataedit.exe" not in seen or "affdataedit-updater.exe" not in seen:
         raise ValueError("Player or updater missing from build")
     manifest = json.dumps({
