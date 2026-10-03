@@ -225,6 +225,18 @@ namespace Arcade.Gameplay
 			return newresult;
 		}
 
+		// Distance per millisecond of the timing in effect at `timing`.
+		public float CalculateVelocityAtTiming(int timing, ArcTimingGroup timingGroup)
+		{
+			var Timings = GetTiming(timingGroup);
+			if (Timings.Count == 0)
+			{
+				return 0;
+			}
+			int index = Mathf.Max(0, FindTimingIndex(Timings, timing));
+			return Timings[index].Bpm / BaseBpm * Velocity;
+		}
+
 		public int CalculateChartTimingByPosition(float position, ArcTimingGroup timingGroup)
 		{
 			var Timings = GetTiming(timingGroup);

@@ -430,6 +430,10 @@ namespace Arcade.Gameplay
 				arc.Color == 0 ? ArcBlueHigh : arc.Color == 1 ? ArcRedHigh : arc.Color == 2 ? ArcGreenHigh : ArcUnknownHigh,
 				arc.YStart);
 		}
+		// Off by default like Arcade Alpha: an arc body is laid out rigidly with the speed of the
+		// timing at its start. On, every segment point follows later timing changes.
+		public static bool AllowCrossTiming;
+
 		public void BuildSegments()
 		{
 			if (arc == null) return;
@@ -461,6 +465,11 @@ namespace Arcade.Gameplay
 			}
 			InstantiateSegment(segmentCount);
 
+			float startVelocity = timingManager.CalculateVelocityAtTiming(arc.Timing, arc.TimingGroup);
+			float SegmentZ(int timing) => -(AllowCrossTiming
+				? timingManager.CalculatePositionByTimingAndStart(arc.Timing, timing, arc.TimingGroup)
+				: (timing - arc.Timing) * startVelocity) / 1000f;
+
 			float startHeight = 0;
 			float endHeight = arc.YStart;
 			Vector3 start = new Vector3();
@@ -473,7 +482,7 @@ namespace Arcade.Gameplay
 				endHeight = ArcAlgorithm.Y(arc.YStart, arc.YEnd, (i + 1f) * segSize / duration, arc.CurveType);
 				end = new Vector3(ArcAlgorithm.ArcXToWorld(ArcAlgorithm.X(arc.XStart, arc.XEnd, (i + 1f) * segSize / duration, arc.CurveType)),
 								  ArcAlgorithm.ArcYToWorld(ArcAlgorithm.Y(arc.YStart, arc.YEnd, (i + 1f) * segSize / duration, arc.CurveType)),
-								  -timingManager.CalculatePositionByTimingAndStart(arc.Timing, arc.Timing + segSize * (i + 1), arc.TimingGroup) / 1000f);
+								  SegmentZ(arc.Timing + segSize * (i + 1)));
 				segments[i].BuildSegment(start, end, arc.IsVoid ? OffsetVoid : OffsetNormal, arc.Timing + segSize * i, arc.Timing + segSize * (i + 1), startHeight, endHeight);
 			}
 
@@ -484,7 +493,7 @@ namespace Arcade.Gameplay
 				endHeight = arc.YEnd;
 				end = new Vector3(ArcAlgorithm.ArcXToWorld(arc.XEnd),
 								  ArcAlgorithm.ArcYToWorld(arc.YEnd),
-								  -timingManager.CalculatePositionByTimingAndStart(arc.Timing, arc.EndTiming, arc.TimingGroup) / 1000f);
+								  SegmentZ(arc.EndTiming));
 				segments[segmentCount - 1].BuildSegment(start, end, arc.IsVoid ? OffsetVoid : OffsetNormal, arc.Timing + segSize * (segmentCount - 1), arc.EndTiming, startHeight, endHeight);
 			}
 			HighColor = GetColor(true);
