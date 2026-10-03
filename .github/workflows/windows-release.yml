@@ -16,7 +16,7 @@ jobs:
   file-browser:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Compile native Windows file dialog
         shell: pwsh
         run: |
@@ -28,23 +28,23 @@ jobs:
           $command = "`"$vcvars`" && cl /nologo /W4 /WX /EHsc /std:c++17 /MT /LD Native\Windows\FileBrowser.cpp /Fonative-build\FileBrowser.obj /Fenative-build\AffdataFileBrowser.dll /link ole32.lib shell32.lib uuid.lib user32.lib"
           cmd /c $command
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: windows-file-browser
           path: native-build/AffdataFileBrowser.dll
           retention-days: 1
   build:
     needs: file-browser
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       R2_ACCOUNT_ID: ${{ vars.R2_ACCOUNT_ID }}
       R2_BUCKET: ${{ vars.R2_BUCKET }}
       R2_PUBLIC_URL: ${{ vars.R2_PUBLIC_URL }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           lfs: true
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         with:
           name: windows-file-browser
           path: Assets/SFB/Plugins/Windows
@@ -65,13 +65,13 @@ jobs:
           if [ -z "$UNITY_LICENSE" ] && [ -z "$UNITY_SERIAL" ]; then
             echo "::error::Set UNITY_LICENSE or UNITY_SERIAL in GitHub Secrets"; exit 1
           fi
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: Library
           key: windows-library-${{ hashFiles('ProjectSettings/ProjectVersion.txt', 'Packages/**') }}-${{ github.sha }}
           restore-keys: |
             windows-library-${{ hashFiles('ProjectSettings/ProjectVersion.txt', 'Packages/**') }}-
-      - uses: game-ci/unity-builder@v4
+      - uses: game-ci/unity-builder@v5
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
@@ -99,7 +99,7 @@ jobs:
           url = os.environ['R2_PUBLIC_URL'].rstrip('/') + '/windows/latest.json'
           Path('Build/Windows/updater-config.json').write_text(json.dumps({'manifestUrl': url}), encoding='utf-8')
           PY
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
       - name: Publish file objects and update manifest
