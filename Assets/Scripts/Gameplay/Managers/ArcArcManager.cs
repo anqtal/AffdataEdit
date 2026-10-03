@@ -437,23 +437,6 @@ namespace Arcade.Gameplay
 			ArcTapMaterial.mainTexture = texture;
 		}
 
-		public void SetSfxArcTapModel(Mesh value)
-		{
-			SfxArcTapPrefab.GetComponentInChildren<MeshFilter>().mesh = value;
-			foreach (ArcArc arc in Arcs)
-			{
-				if (arc.IsSfx)
-				{
-					foreach (ArcArcTap arcTap in arc.ArcTaps)
-					{
-						if (arcTap.Instance != null)
-						{
-							arcTap.ModelRenderer.GetComponent<MeshFilter>().mesh = value;
-						}
-					}
-				}
-			}
-		}
 
 		public void SetSfxArcTapSkin(Texture2D noteTexture, Texture2D coreTexture)
 		{

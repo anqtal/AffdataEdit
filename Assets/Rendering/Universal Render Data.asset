@@ -53,7 +53,8 @@ MonoBehaviour:
       type: 3}
   m_RendererFeatures:
   - {fileID: -5308026083431776003}
-  m_RendererFeatureMap: fd808a76661a56b6
+  - {fileID: 3756402764590245801}
+  m_RendererFeatureMap: fd808a76661a56b6a967b280696c2134
   m_UseNativeRenderPass: 0
   postProcessData: {fileID: 11400000, guid: 41439944d30ece34e96484bdb6645b55, type: 2}
   xrSystemData: {fileID: 11400000, guid: 60e1133243b97e347b653163a8c01b64, type: 2}
@@ -84,7 +85,7 @@ MonoBehaviour:
     m_Bits: 4294967295
   m_TransparentLayerMask:
     serializedVersion: 2
-    m_Bits: 4294967295
+    m_Bits: 0
   m_DefaultStencilState:
     overrideStencilState: 0
     stencilReference: 0
@@ -98,3 +99,16 @@ MonoBehaviour:
   m_CopyDepthMode: 1
   m_AccurateGbufferNormals: 0
   m_IntermediateTextureMode: 1
+--- !u!114 &3756402764590245801
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 12b57106857f4867bec9e07c98a164a8, type: 3}
+  m_Name: NoteLayerRendering
+  m_EditorClassIdentifier:
+  m_Active: 1

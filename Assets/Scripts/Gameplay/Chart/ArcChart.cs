@@ -432,6 +432,7 @@ namespace Arcade.Gameplay.Chart
 				instance = value;
 				transform = instance.transform;
 				spriteRenderer = instance.GetComponent<SpriteRenderer>();
+                if (spriteRenderer) spriteRenderer.forceRenderingOff = true;
 				meshRenderer = instance.GetComponent<MeshRenderer>();
 			}
 		}
@@ -965,14 +966,19 @@ namespace Arcade.Gameplay.Chart
 				if (instance != null) Destroy();
 				base.Instance = value;
 				ModelRenderer = instance.GetComponentInChildren<MeshRenderer>();
+                ModelRenderer.forceRenderingOff = true;
 				Model = ModelRenderer.transform;
 				ShadowRenderer = instance.GetComponentInChildren<SpriteRenderer>();
+                ShadowRenderer.forceRenderingOff = true;
 				Shadow = ShadowRenderer.transform;
 				ModelRenderer.sortingLayerName = "Arc";
 				ModelRenderer.sortingOrder = 4;
 				alphaShaderId = Shader.PropertyToID("_Alpha");
 				colorShaderId = Shader.PropertyToID("_Color");
 				ArcTapCollider = instance.GetComponentInChildren<MeshCollider>();
+                Mesh generatedMesh = Arc.IsSfx ? ArcNoteMeshes.Sfx : ArcNoteMeshes.Cube;
+                ModelRenderer.GetComponent<MeshFilter>().sharedMesh = generatedMesh;
+                ArcTapCollider.sharedMesh = generatedMesh;
 				Enable = false;
 			}
 		}

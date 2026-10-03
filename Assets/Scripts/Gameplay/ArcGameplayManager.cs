@@ -25,6 +25,7 @@ namespace Arcade.Gameplay
 		{
 			Instance = this;
 			gameObject.AddComponent<ArcSlideManager>();
+            gameObject.AddComponent<ArcNoteRenderer>();
 		}
 		private void Start()
 		{

@@ -28,6 +28,7 @@ namespace Arcade.Gameplay
             mesh = new Mesh { name = "Slide ribbon", indexFormat = IndexFormat.UInt32 };
             GetComponent<MeshFilter>().sharedMesh = mesh;
             body = GetComponent<MeshRenderer>(); body.sortingLayerName = "Arc"; body.sharedMaterial = ArcSlideManager.Instance.BodyMaterial;
+            body.forceRenderingOff = true;
             hitbox = GetComponent<MeshCollider>();
             properties = new MaterialPropertyBlock();
             shadowProperties = new MaterialPropertyBlock();
@@ -36,7 +37,7 @@ namespace Arcade.Gameplay
             shadowObject.transform.SetParent(transform, false);
             shadowObject.transform.localPosition = new Vector3(0, -ArcAlgorithm.ArcYToWorld(1) + 0.02f, 0);
             shadowObject.GetComponent<MeshFilter>().sharedMesh = mesh;
-            shadow = shadowObject.GetComponent<MeshRenderer>(); shadow.sortingLayerName = "Shadow"; shadow.sharedMaterial = ArcSlideManager.Instance.ShadowMaterial;
+            shadow = shadowObject.GetComponent<MeshRenderer>(); shadow.forceRenderingOff = true; shadow.sortingLayerName = "Shadow"; shadow.sharedMaterial = ArcSlideManager.Instance.ShadowMaterial;
             transform.position = new Vector3(0, note.WorldHeight, 0);
             for (int i = 0; i < 2; i++)
             {
@@ -48,6 +49,7 @@ namespace Arcade.Gameplay
                 go.GetComponent<MeshFilter>().sharedMesh = ArcSlideManager.Instance.BracketMesh;
                 go.GetComponent<MeshRenderer>().sharedMaterial = ArcSlideManager.Instance.BracketMaterial;
                 go.GetComponent<MeshRenderer>().sortingLayerName = "Arc";
+                go.GetComponent<MeshRenderer>().forceRenderingOff = true;
             }
         }
         public void Invalidate() => lastStart = int.MinValue;
@@ -143,6 +145,13 @@ namespace Arcade.Gameplay
                     uv2.Add(new Vector2(range.y - range.x, length));
                 }
             }
+        }
+        internal void Submit(ArcNoteRenderer renderer)
+        {
+            renderer.SubmitSlide(mesh, body, 6);
+            renderer.SubmitSlide(mesh, shadow, 8);
+            foreach (var bracket in brackets)
+                renderer.SubmitSlide(ArcNoteMeshes.Bracket, bracket.GetComponent<MeshRenderer>(), 7);
         }
         private void OnDestroy() { if (mesh) Destroy(mesh); }
     }
