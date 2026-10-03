@@ -490,7 +490,13 @@ namespace Arcade.Compose
 				}
 				else
 				{
-					if (raw.warning.Count > 0)
+					if (raw.recoverableError.Count > 0)
+					{
+						var issues = raw.recoverableError.Select(s => $"错误：{s}")
+							.Concat(raw.warning.Select(s => $"警告：{s}")).ToList();
+						AdeBasicSingleDialogContent.Instance.Show($"谱面包含可恢复错误，相关事件已保留，谱面将继续加载。请修正以下问题：\n{(issues.Count > 256 ? "* 问题太多，仅显示前 256 条\n" : "")}{string.Join("\n", issues.Take(256).Select(s => $"- {s}"))}", "谱面存在错误（已保留事件）");
+					}
+					else if (raw.warning.Count > 0)
 					{
 						AdeBasicSingleDialogContent.Instance.Show($"Arcade-Plus 检测到谱面存在问题，并对谱面进行了自动修复\n谱面在存在的问题：\n{(raw.warning.Count > 256 ? "* 谱面错误太多，仅显示前 256 条" : "")}{string.Join("\n", raw.warning.Take(256).Select(s => $"- {s}"))}", "谱面解析出现问题");
 					}

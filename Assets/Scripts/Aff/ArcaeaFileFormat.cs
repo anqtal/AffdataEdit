@@ -103,6 +103,8 @@ namespace Arcade.Aff
 		public List<IRawAffItem> items = new List<IRawAffItem>();
 		public List<string> warning = new List<string>();
 		public List<string> error = new List<string>();
+		// Invalid events that retain their original data and do not prevent loading.
+		public List<string> recoverableError = new List<string>();
 	}
 	public interface IIntoRawItem
 	{
@@ -220,7 +222,7 @@ namespace Arcade.Aff
 			{
 				Debug.LogWarning(warning);
 			}
-			foreach (string error in chart.error)
+			foreach (string error in chart.error.Concat(chart.recoverableError))
 			{
 				Debug.LogError(error);
 			}
@@ -645,12 +647,9 @@ namespace Arcade.Aff
 						{
 							if (arctap.Timing < timing.data || arctap.Timing > endTiming.data)
 							{
-								chart.warning.Add($"第 {(@event.values().value()[0].Start.Line + lineOffset).ToString(CultureInfo.InvariantCulture)} 行第 {(@event.values().value()[0].Start.Column + 1).ToString(CultureInfo.InvariantCulture)} 列，arctap 事件的时间超出所属 arc 的时间范围，此 arctap 事件将被忽略");
+								chart.recoverableError.Add($"第 {(@event.values().value()[0].Start.Line + lineOffset).ToString(CultureInfo.InvariantCulture)} 行第 {(@event.values().value()[0].Start.Column + 1).ToString(CultureInfo.InvariantCulture)} 列，arctap 时间 {arctap.Timing} 超出所属 arc 的时间范围 [{timing.data}, {endTiming.data}]，已保留原始事件，请修正时间");
 							}
-							else
-							{
-								arctaps.Add(arctap);
-							}
+							arctaps.Add(arctap);
 						}
 						else
 						{
