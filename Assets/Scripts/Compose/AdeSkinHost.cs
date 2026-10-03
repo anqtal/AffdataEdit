@@ -644,7 +644,7 @@ namespace Arcade.Compose
 			skinData.BackgroundDarken = LoadLabelled(Path.Combine(SkinFolderPath, "Playfield", "BackgroundDarken.png"), (path) =>
 			{
 				return LoadNormalSprite(path, externalSkinDataObjects);
-			}, rawDefaultData.TutorialBanner);
+			}, rawDefaultData.BackgroundDarken);
 
 			skinData.SkyInputLabel = LoadLabelled(Path.Combine(SkinFolderPath, "Playfield", "SkyInput", "SkyInputLabel.png"), (path) =>
 			{
