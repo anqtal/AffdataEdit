@@ -370,8 +370,7 @@ namespace Arcade.Compose
 
 		private void LayoutClose(AdeDialog dialog)
 		{
-			// The update check blocks the editor until it is resolved.
-			if (dialog.name == "UpdateDialog" || darkSprites == null) return;
+			if (darkSprites == null) return;
 			Transform view = dialog.View.transform;
 			Transform existing = view.Find(CloseName);
 			if (existing)

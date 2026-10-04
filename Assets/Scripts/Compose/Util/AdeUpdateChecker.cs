@@ -12,14 +12,15 @@ using UnityEngine.UI;
 
 namespace Arcade.Compose
 {
-    // Built players check R2's latest.json when the editor scene opens. Until the build is
-    // confirmed current, a cloned editor dialog and a blocker cover the editor and hotkeys stop.
+    // Built players installed by the updater check R2's latest.json when the editor scene
+    // opens. Only a confirmed newer version blocks the editor; if the check cannot complete
+    // (offline, timeout, bad manifest) the user may retry or continue with this version.
     public sealed class AdeUpdateChecker : MonoBehaviour
     {
         private const string EditorSceneName = "ArcEditor";
         private static readonly Regex CommitPattern = new Regex("^[0-9a-fA-F]{40}$");
 
-        private bool updateRequired;
+        private bool updateRequired, entered;
         private AdeDualDialog dialog;
         private Text messageText;
         private GameObject blocker;
@@ -37,6 +38,13 @@ namespace Arcade.Compose
 
         private void Start()
         {
+            // Builds without the updater's files (development or macOS builds) are not checked.
+            string folder = Path.GetDirectoryName(Application.dataPath);
+            if (!File.Exists(Path.Combine(folder, "build-version.txt")) || !File.Exists(Path.Combine(folder, "updater-config.json")))
+            {
+                Destroy(gameObject);
+                return;
+            }
             AdeDualDialog source = AdeObsManager.Instance != null ? AdeObsManager.Instance.OBSDialog : null;
             Transform inputRow = source != null ? AdeUiKit.FindRow(source, "Address") : null;
             if (inputRow == null)
@@ -48,9 +56,20 @@ namespace Arcade.Compose
             dialog.Title.text = "检查更新";
             messageText = AdeUiKit.CreateLabelRow(AdeUiKit.Content(dialog), inputRow.GetComponentInChildren<Text>(true).transform, "");
             dialog.LeftButtonText.text = "重试";
-            dialog.RightButtonText.text = "退出";
             AdeUiKit.SetOnClick(dialog.LeftButton, () => StartCoroutine(CheckAtStartup()));
-            AdeUiKit.SetOnClick(dialog.RightButton, Application.Quit);
+            AdeUiKit.SetOnClick(dialog.RightButton, () =>
+            {
+                if (updateRequired) Application.Quit();
+                else dialog.Close();
+            });
+            // Closing the dialog (continue or the close button) enters the editor unless an
+            // update is required.
+            Transform close = dialog.View.transform.Find("ThemeClose");
+            if (close) AdeUiKit.SetOnClick(close.GetComponent<Button>(), dialog.Close);
+            dialog.OnClose += () =>
+            {
+                if (!updateRequired) Enter();
+            };
 
             // Full-screen blocker beneath the dialog so the editor behind cannot be used.
             Transform layer = AdeDialogManager.Instance.Opening;
@@ -71,14 +90,26 @@ namespace Arcade.Compose
         private void SetState(bool isChecking, string text)
         {
             messageText.text = text;
-            dialog.LeftButton.gameObject.SetActive(!isChecking && !updateRequired);
+            bool failed = !isChecking && !updateRequired;
+            dialog.LeftButton.gameObject.SetActive(failed);
             dialog.RightButton.interactable = !isChecking;
+            dialog.RightButtonText.text = updateRequired ? "退出" : "继续使用";
+            // The dark theme's close button is only offered once the check has failed.
+            Transform close = dialog.View.transform.Find("ThemeClose");
+            if (close) close.gameObject.SetActive(failed);
         }
 
         private void Pass()
         {
-            AdeInputManager.Instance.Controls.Enable();
             dialog.Close();
+            Enter();
+        }
+
+        private void Enter()
+        {
+            if (entered) return;
+            entered = true;
+            AdeInputManager.Instance.Controls.Enable();
             Destroy(blocker);
             Destroy(gameObject);
         }
@@ -159,7 +190,7 @@ namespace Arcade.Compose
 
         private void FailCheck()
         {
-            SetState(false, "无法确认是否为最新版本，暂时不能进入编辑器。\n请检查网络后重试；如安装文件不完整，请运行 updater 修复。");
+            SetState(false, "无法检查更新，可能是网络不可用或服务器暂时无响应。\n可以重试，或先继续使用当前版本。");
         }
     }
 }
