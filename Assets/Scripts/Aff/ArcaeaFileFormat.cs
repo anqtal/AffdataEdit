@@ -59,6 +59,7 @@ namespace Arcade.Aff
 		public int Color;
 		public string Effect;
 		public ArcLineType LineType;
+		public Color32? TraceColor;
 		public float? Smoothness;
 		public List<RawAffArctap> ArcTaps;
 	}
@@ -275,7 +276,7 @@ namespace Arcade.Aff
 					arc.LineType = ArcLineType.TrueIsVoid;
 				}
 				writer.WriteLine($"{intent}arc({arc.Timing.ToString(CultureInfo.InvariantCulture)},{arc.EndTiming.ToString(CultureInfo.InvariantCulture)},{arc.XStart.ToString("f2", CultureInfo.InvariantCulture)},{arc.XEnd.ToString("f2", CultureInfo.InvariantCulture)}" +
-					$",{ArcCurveTypeStrings[arc.CurveType]},{arc.YStart.ToString("f2", CultureInfo.InvariantCulture)},{arc.YEnd.ToString("f2", CultureInfo.InvariantCulture)},{arc.Color},{arc.Effect},{ArcLineTypeStrings[arc.LineType]}"
+					$",{ArcCurveTypeStrings[arc.CurveType]},{arc.YStart.ToString("f2", CultureInfo.InvariantCulture)},{arc.YEnd.ToString("f2", CultureInfo.InvariantCulture)},{arc.Color},{arc.Effect},{(arc.TraceColor.HasValue && arc.LineType == ArcLineType.TrueIsVoid ? FormatHexColor(arc.TraceColor.Value) : ArcLineTypeStrings[arc.LineType])}"
 					 + (arc.Smoothness == null ? "" : $",{arc.Smoothness.Value.ToString("0.0######", CultureInfo.InvariantCulture)}") + ")" +
 					(arc.ArcTaps.Count > 0 ? $"[{string.Join(",", arc.ArcTaps.Select(e => $"arctap({e.Timing.ToString(CultureInfo.InvariantCulture)})"))}]" : "") +
 					";");
@@ -317,6 +318,25 @@ namespace Arcade.Aff
 				writer.WriteLine($"{intent}}};");
 			}
 		}
+		public static string FormatHexColor(Color32 color)
+		{
+			string rgb = $"#{color.r:X2}{color.g:X2}{color.b:X2}";
+			return color.a == 255 ? rgb : rgb + color.a.ToString("X2", CultureInfo.InvariantCulture);
+		}
+
+		// #RGB, #RGBA, #RRGGBB or #RRGGBBAA.
+		public static bool TryParseHexColor(string raw, out Color32 color)
+		{
+			color = default;
+			if (raw == null || raw.Length < 4 || raw[0] != '#') return false;
+			string hex = raw.Substring(1);
+			if (hex.Length == 3 || hex.Length == 4) hex = string.Concat(hex.Select(c => new string(c, 2)));
+			if (hex.Length == 6) hex += "FF";
+			if (hex.Length != 8 || !uint.TryParse(hex, NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture, out uint rgba)) return false;
+			color = new Color32((byte)(rgba >> 24), (byte)(rgba >> 16), (byte)(rgba >> 8), (byte)rgba);
+			return true;
+		}
+
 		public static Dictionary<ArcCurveType, string> ArcCurveTypeStrings = new Dictionary<ArcCurveType, string>
 		{
 			[ArcCurveType.B] = "b",
@@ -617,7 +637,17 @@ namespace Arcade.Aff
 			var color = CheckValueType<RawAffInt>(context.values().value()[7], "arc", "颜色");
 			var effect = CheckValueType<RawAffWord>(context.values().value()[8], "arc", "效果类型");
 			var rawLineType = CheckValueType<RawAffWord>(context.values().value()[9], "arc", "是否黑线");
-			var lineType = ParseWord(lineTypes, rawLineType.data, context.values().value()[9], "arc", "是否黑线");
+			Color32? traceColor = null;
+			ArcLineType? lineType;
+			if (rawLineType != null && ArcaeaFileFormat.TryParseHexColor(rawLineType.data, out Color32 parsedColor))
+			{
+				lineType = ArcLineType.TrueIsVoid;
+				traceColor = parsedColor;
+			}
+			else
+			{
+				lineType = ParseWord(lineTypes, rawLineType.data, context.values().value()[9], "arc", "是否黑线");
+			}
 			RawAffFloat smoothness = null;
 			if (context.values().value().Length >= 11)
 			{
@@ -672,6 +702,7 @@ namespace Arcade.Aff
 					Color = color.data,
 					Effect = effect.data,
 					LineType = lineType.Value,
+					TraceColor = traceColor,
 					Smoothness = smoothness?.data,
 					ArcTaps = arctaps,
 				};
@@ -909,6 +940,25 @@ namespace Arcade.Aff
 			["qo"] = CameraEaseType.Qo,
 			["reset"] = CameraEaseType.Reset,
 		};
+	}
+
+	// The generated grammar has no '#' token, so a hex color such as #RRGGBB is lexed here
+	// as a Word; ExitValue then reads it like any other word.
+	public partial class ArcaeaFileFormatLexer
+	{
+		public override IToken NextToken()
+		{
+			ICharStream input = (ICharStream)InputStream;
+			while (input.LA(1) > 0 && char.IsWhiteSpace((char)input.LA(1))) Interpreter.Consume(input);
+			if (input.LA(1) != '#') return base.NextToken();
+			int start = input.Index, line = Line, column = Column;
+			Interpreter.Consume(input);
+			while (Uri.IsHexDigit((char)input.LA(1))) Interpreter.Consume(input);
+			return new CommonToken(Word, input.GetText(Antlr4.Runtime.Misc.Interval.Of(start, input.Index - 1)))
+			{
+				Line = line, Column = column, StartIndex = start, StopIndex = input.Index - 1,
+			};
+		}
 	}
 
 	// Here we use patial class to insert custom fields into generated classes

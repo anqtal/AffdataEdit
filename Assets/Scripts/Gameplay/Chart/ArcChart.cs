@@ -1166,6 +1166,8 @@ namespace Arcade.Gameplay.Chart
 		public int Color;
 		public string Effect = "none";
 		public ArcLineType LineType;
+		// Written in place of the line type as a hex color; renders a trace in that color.
+		public Color32? TraceColor;
 		public float? Smoothness;
 		public bool IsVoid
 		{
@@ -1219,6 +1221,7 @@ namespace Arcade.Gameplay.Chart
 				Color = Color,
 				Effect = Effect,
 				LineType = LineType,
+				TraceColor = TraceColor,
 				TimingGroup = TimingGroup,
 				Smoothness = Smoothness
 			};
@@ -1237,6 +1240,7 @@ namespace Arcade.Gameplay.Chart
 			Color = n.Color;
 			Effect = n.Effect;
 			LineType = n.LineType;
+			TraceColor = n.TraceColor;
             Smoothness = n.Smoothness;
 			TimingGroup = n.TimingGroup;
 		}
@@ -1437,12 +1441,14 @@ namespace Arcade.Gameplay.Chart
 			Color = rawAffArc.Color;
 			Effect = rawAffArc.Effect;
 			LineType = rawAffArc.LineType;
+			TraceColor = rawAffArc.TraceColor;
 			Smoothness = rawAffArc.Smoothness;
 			if (rawAffArc.ArcTaps.Count > 0)
 			{
-				if (rawAffArc.LineType == ArcLineType.FalseNotVoid)
+				// Like Alpha, an arc carrying arctaps is a trace.
+				if (LineType == ArcLineType.FalseNotVoid)
 				{
-					rawAffArc.LineType = ArcLineType.TrueIsVoid;
+					LineType = ArcLineType.TrueIsVoid;
 				}
 				foreach (var arctap in rawAffArc.ArcTaps)
 				{
@@ -1465,6 +1471,7 @@ namespace Arcade.Gameplay.Chart
 				Color = Color,
 				Effect = Effect,
 				LineType = LineType,
+				TraceColor = TraceColor,
 				Smoothness = Smoothness,
 				ArcTaps = ArcTaps.Select((arctap) => new RawAffArctap() { Timing = arctap.Timing, }).ToList(),
 			};

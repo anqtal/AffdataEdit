@@ -360,6 +360,7 @@ namespace Arcade.Gameplay
 		{
 			if (arc.LineType == ArcLineType.TrueIsVoid)
 			{
+				if (arc.TraceColor.HasValue) return arc.TraceColor.Value;
 				if (arc.TimingGroup != null)
                 {
                     if (arc.TimingGroup.TraceBodyGold) return new Color32(0xF4, 0xB9, 0x42, 255);
