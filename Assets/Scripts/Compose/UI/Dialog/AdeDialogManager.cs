@@ -68,6 +68,7 @@ namespace Arcade.Compose
 			group.blocksRaycasts = true;
 			Transform view = dialog.View.transform;
 			Pose(group, view, 0);
+			AdeUiTheme.OnDialogOpened();
 			motions[dialog] = LMotion.Create(0f, 1f, OpenDuration).WithEase(Ease.OutCubic)
 				.WithScheduler(MotionScheduler.UpdateIgnoreTimeScale)
 				.Bind(t => Pose(group, view, t));

@@ -107,6 +107,14 @@ namespace Arcade.Compose
 			Instance.Sweep();
 		}
 
+		// Aligns a dialog's controls as soon as it opens instead of on the next sweep.
+		public static void OnDialogOpened()
+		{
+			if (!Instance || !Dark) return;
+			Canvas.ForceUpdateCanvases();
+			Instance.AlignDialogControls();
+		}
+
 		// Called after the skin's UI sprites are (re)applied.
 		public static void OnSkinApplied()
 		{
@@ -150,6 +158,53 @@ namespace Arcade.Compose
 				ReplaceFonts(root);
 			}
 			if (inGame) ReplaceFonts(inGame);
+			if (Dark) AlignDialogControls();
+		}
+
+		// Places the buttons and the close button EdgeGap inside the visible edge of the
+		// dialog sprites, measured from the laid-out rects, so their corners are concentric.
+		private void AlignDialogControls()
+		{
+			var skin = ArcSkinManager.Instance;
+			if (!skin) return;
+			foreach (AdeSingleDialog dialog in skin.SingleDialogs)
+			{
+				if (!dialog || !dialog.View.activeInHierarchy) continue;
+				AlignButton(dialog.CompleteButton, dialog.DialogBackground, 0);
+				AlignClose(dialog, dialog.DialogTop);
+			}
+			foreach (AdeDualDialog dialog in skin.DualDialogs)
+			{
+				if (!dialog || !dialog.View.activeInHierarchy) continue;
+				AlignButton(dialog.RightButton, dialog.DialogBackground, 0);
+				AlignButton(dialog.LeftButton, dialog.DialogBackground, 1);
+				AlignClose(dialog, dialog.DialogTop);
+			}
+		}
+
+		private static readonly Vector3[] corners = new Vector3[4];
+
+		private static void AlignButton(Button button, UnityEngine.UI.Image background, int slot)
+		{
+			if (!button || !background) return;
+			var rect = (RectTransform)button.transform;
+			var parent = (RectTransform)rect.parent;
+			background.rectTransform.GetWorldCorners(corners);
+			Vector2 edge = parent.InverseTransformPoint(corners[3]);
+			Vector2 anchor = new Vector2(parent.rect.xMax, parent.rect.yMin);
+			rect.anchoredPosition = edge - anchor + new Vector2(-BackgroundMargin.x - EdgeGap - slot * (ButtonWidth + ButtonGap), BackgroundMargin.y + EdgeGap);
+		}
+
+		private static void AlignClose(AdeDialog dialog, UnityEngine.UI.Image header)
+		{
+			Transform close = dialog.View.transform.Find(CloseName);
+			if (!close || !header) return;
+			var rect = (RectTransform)close;
+			var parent = (RectTransform)rect.parent;
+			header.rectTransform.GetWorldCorners(corners);
+			Vector2 edge = parent.InverseTransformPoint(corners[2]);
+			Vector2 anchor = new Vector2(parent.rect.xMax, parent.rect.yMax);
+			rect.anchoredPosition = edge - anchor - new Vector2(HeaderMargin.x + EdgeGap, HeaderMargin.y + EdgeGap);
 		}
 
 		// The bundled Noto Sans and the built-in font have no CJK glyphs, so Chinese fell back
@@ -264,9 +319,10 @@ namespace Arcade.Compose
 		}
 
 		private const float ButtonWidth = 170, ButtonHeight = 46, ButtonGap = 12, TitlePadding = 28, TitleHeight = 74;
-		// Offsets that put a control 16px inside the visible dialog edge (the view's layout
-		// padding and the sprite margins differ per side).
-		private static readonly Vector2 ButtonInset = new Vector2(-8, 12), CloseInset = new Vector2(-17, -16);
+		// Controls sit this far inside the visible dialog edge; 22 - 16 gives their 6px radius.
+		private const float EdgeGap = 16;
+		// Transparent margins of the dark dialog sprites (right, bottom).
+		private static readonly Vector2 BackgroundMargin = new Vector2(1, 2), HeaderMargin = new Vector2(1, 0);
 		private const string TitleSpacerName = "ThemeTitleSpacer", CloseName = "ThemeClose";
 
 		// The view's VerticalLayoutGroup owns the title rect, so in dark mode the title leaves
@@ -305,7 +361,8 @@ namespace Arcade.Compose
 			var rect = (RectTransform)button.transform;
 			Vector2 anchor = Dark ? new Vector2(1, 0) : lightAnchor;
 			rect.anchorMin = rect.anchorMax = rect.pivot = anchor;
-			rect.anchoredPosition = Dark ? ButtonInset - new Vector2(slot * (ButtonWidth + ButtonGap), 0) : lightPosition;
+			// The dark position is set by AlignDialogControls once the layout is known.
+			if (!Dark) rect.anchoredPosition = lightPosition;
 			rect.sizeDelta = Dark ? new Vector2(ButtonWidth, ButtonHeight) : lightSize;
 			button.image.type = Dark ? UnityEngine.UI.Image.Type.Sliced : UnityEngine.UI.Image.Type.Simple;
 			if (label) label.fontSize = Dark ? 26 : 35;
@@ -319,7 +376,9 @@ namespace Arcade.Compose
 			Transform existing = view.Find(CloseName);
 			if (existing)
 			{
+				// Cloned dialogs copy the button with its listeners stripped.
 				existing.SetAsLastSibling();
+				AdeUiKit.SetOnClick(existing.GetComponent<Button>(), dialog.Close);
 				return;
 			}
 			var go = new GameObject(CloseName, typeof(RectTransform), typeof(Image), typeof(Button), typeof(LayoutElement));
@@ -327,7 +386,6 @@ namespace Arcade.Compose
 			var rect = (RectTransform)go.transform;
 			rect.SetParent(view, false);
 			rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(1, 1);
-			rect.anchoredPosition = CloseInset;
 			rect.sizeDelta = new Vector2(42, 42);
 			// The secondary button sprite (6px radius) only shows while hovered or pressed.
 			var background = go.GetComponent<Image>();
@@ -340,7 +398,7 @@ namespace Arcade.Compose
 			colors.highlightedColor = Color.white;
 			colors.pressedColor = new Color(1.2f, 1.2f, 1.2f, 1);
 			button.colors = colors;
-			button.onClick.AddListener(dialog.Close);
+			AdeUiKit.SetOnClick(button, dialog.Close);
 			var icon = new GameObject("Icon", typeof(RectTransform), typeof(Image));
 			var iconRect = (RectTransform)icon.transform;
 			iconRect.SetParent(rect, false);
