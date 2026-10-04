@@ -108,9 +108,7 @@ namespace Arcade.Compose
 					OnPrimary();
 			});
 
-			GameObject statusRow = AdeUiKit.CloneRow(inputRow, content, "Status");
-			DestroyImmediate(statusRow.GetComponentInChildren<InputField>(true).gameObject);
-			statusText = statusRow.GetComponentInChildren<Text>(true);
+			statusText = AdeUiKit.CreateLabelRow(content, inputRow.GetComponentInChildren<Text>(true).transform, "");
 
 			AdeUiKit.SetOnClick(dialog.LeftButton, OnPrimary);
 			AdeUiKit.SetOnClick(dialog.RightButton, dialog.Close);

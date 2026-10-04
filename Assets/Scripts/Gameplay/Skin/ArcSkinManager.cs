@@ -130,6 +130,7 @@ namespace Arcade.Gameplay
 			ArcArcManager.Instance.SetArcBodySkin(skinData.ArcBody.value, skinData.ArcBodyHighlight.value);
 
 			AdeCursorManager.Instance.SfxArcTapCursorRenderer.GetComponent<MeshFilter>().mesh = ArcNoteMeshes.Sfx;
+			AdeUiTheme.OnSkinApplied();
 		}
 		public void SetNoteSideSkin(AdeSkinHost.NoteSideData noteSideData)
 		{

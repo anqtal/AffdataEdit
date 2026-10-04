@@ -56,17 +56,19 @@ namespace Arcade.Compose
 			return row;
 		}
 
-		// A centered, wrapping text row built from an existing dialog label.
+		// A left-aligned, wrapping text row built from an existing dialog label.
 		public static Text CreateLabelRow(Transform parent, Transform labelTemplate, string text)
 		{
 			var row = new GameObject("Label", typeof(RectTransform), typeof(HorizontalLayoutGroup));
 			row.transform.SetParent(parent, false);
 			var layout = row.GetComponent<HorizontalLayoutGroup>();
-			layout.childAlignment = TextAnchor.MiddleCenter;
+			layout.childAlignment = TextAnchor.MiddleLeft;
+			layout.padding = new RectOffset(24, 24, 0, 0);
 			layout.childControlWidth = layout.childControlHeight = true;
-			layout.childForceExpandWidth = layout.childForceExpandHeight = false;
-			Text label = CreateLabel(row.transform, labelTemplate, text, 640);
-			label.alignment = TextAnchor.MiddleCenter;
+			layout.childForceExpandWidth = true;
+			layout.childForceExpandHeight = false;
+			Text label = CreateLabel(row.transform, labelTemplate, text, 700);
+			label.alignment = TextAnchor.MiddleLeft;
 			return label;
 		}
 
