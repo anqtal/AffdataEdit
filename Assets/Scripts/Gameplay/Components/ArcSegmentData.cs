@@ -31,7 +31,8 @@ namespace Arcade.Gameplay
             local.SetColumn(3, new Vector4(FromPos.x,FromPos.y,FromPos.z,1));
             var data = ArcNoteRenderer.NoteInstance.Create(parent * local, 2, Selected);
             data.HighColor = HighColor; data.LowColor = LowColor;
-            data.ClipHeight = new Vector4(From,To,FromHeight,ToHeight);
+            // Alpha colors a whole segment by its end height.
+            data.ClipHeight = new Vector4(From,To,ToHeight,ToHeight);
             if (UseGoldTrace && !Highlight) data.UvTransform = new Vector4(-.5f,1,.5f,0);
             renderer.Submit(ArcNoteMeshes.Segment, Highlight ? highlight : UseGoldTrace ? gold : normal, data, "Arc", 0);
             local.m13 = 0; local.m12 = 0;

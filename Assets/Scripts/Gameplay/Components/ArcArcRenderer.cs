@@ -385,9 +385,14 @@ namespace Arcade.Gameplay
 				{
 					return high ? ArcGreenHigh : ArcGreenLow;
 				}
-				else
+				else if (arc.Color == 3)
 				{
 					return high ? ArcUnknownHigh : ArcUnknownLow;
+				}
+				else
+				{
+					// Arcade Alpha has no palette entry beyond color 3.
+					return Color.black;
 				}
 			}
 		}
