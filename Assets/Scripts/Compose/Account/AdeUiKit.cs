@@ -84,6 +84,23 @@ namespace Arcade.Compose
 			return label;
 		}
 
+		private const string IconButtonTemplatePath = "ArcaeaEditor/EditorCanvas/Bars/Left/View/Top/Folder";
+
+		// A toolbar icon button cloned from the folder button, using an icon from
+		// Resources/AffdataEdit/Icons. Returns the icon image.
+		public static Image CreateIconButton(Transform parent, string name, string icon, UnityAction onClick)
+		{
+			GameObject template = GameObject.Find(IconButtonTemplatePath);
+			if (template == null || parent == null) return null;
+			GameObject entry = Object.Instantiate(template, parent);
+			entry.name = name;
+			entry.transform.SetAsLastSibling();
+			SetOnClick(entry.GetComponent<Button>(), onClick);
+			Image image = entry.transform.Find("Image")?.GetComponent<Image>();
+			if (image != null) image.sprite = Resources.Load<Sprite>("AffdataEdit/Icons/" + icon);
+			return image;
+		}
+
 		public static void SetOnClick(Button button, UnityAction action)
 		{
 			button.onClick = new Button.ButtonClickedEvent();

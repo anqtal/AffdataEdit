@@ -45,7 +45,8 @@ Most parts of this project is licensed under the MIT license. See [License](LICE
 - Files under `Assets/SFB` come from [Unity Standalone File Browser](https://github.com/gkngkc/UnityStandaloneFileBrowser). These files are licensed by gkngkc and other authors.
 - Files under `Assets/OBJImport` come from [Runtime OBJ Importer](https://assetstore.unity.com/packages/tools/modeling/runtime-obj-importer-49547). These files are licensed by Dummiesman.
 - Files under `Assets/DefaultSkin/Sound` folder are samples bundles with and modified using [LMMS](https://lmms.io). These files are in public domains.
-- Files under `Assets/Textures/Icon/MDI` are generated from [Material Design Icons](https://pictogrammers.com/library/mdi/), go to their site for license issue.
+- Files under `Assets/Textures/Icon/MDI` and `Assets/Resources/AffdataEdit/Icons` are rendered from [Lucide](https://lucide.dev) icons, licensed under the ISC license by Lucide Icons and Contributors; icons derived from [Feather](https://feathericons.com) are licensed under the MIT license by Cole Bemis.
+- `Assets/Resources/AffdataEdit/Fonts/NotoSansSC-Regular.otf` is [Noto Sans SC](https://github.com/notofonts/noto-cjk), licensed under the SIL Open Font License 1.1. See [NotoSansSC-OFL.txt](Assets/Resources/AffdataEdit/Fonts/NotoSansSC-OFL.txt).
 - The `Assets/Textures/Icon/OBS.png` are generated from the icon of [Open Broadcaster Software](https://obsproject.com/), go to their site for license issue.
 - Files under `Assets/Fonts` are free font files. These files are licensed by their authors.
 - All other Texture files in this repo are also licensed under CC-BY-4.0, see [LICENSE.texture](LICENSE.texture).

@@ -80,8 +80,7 @@ namespace Arcade.Compose
 		private Text listStatus;
 		private Transform labelTemplate, buttonRowTemplate;
 		private readonly List<Button> openButtons = new List<Button>();
-		private Text realtimeLabel;
-		private Color realtimeOffColor;
+		private Image realtimeIcon;
 		private bool realtime;
 
 		private string skinProjectFolder;
@@ -125,24 +124,10 @@ namespace Arcade.Compose
 				Debug.LogWarning("Cloud button template not found");
 				return;
 			}
-			CreateButton(template, "CloudSave", "云存", () => StartCoroutine(Upload(true)));
-			realtimeLabel = CreateButton(template, "CloudRealtime", "实时", ToggleRealtime);
-			if (realtimeLabel != null) realtimeOffColor = realtimeLabel.color;
+			AdeUiKit.CreateIconButton(template.transform.parent, "CloudSave", "CloudUpload", () => StartCoroutine(Upload(true)));
+			realtimeIcon = AdeUiKit.CreateIconButton(template.transform.parent, "CloudRealtime", "Realtime", ToggleRealtime);
 			UpdateRealtimeLabel();
 			BuildDialogs();
-		}
-
-		private static Text CreateButton(GameObject template, string name, string text, UnityEngine.Events.UnityAction onClick)
-		{
-			GameObject entry = Instantiate(template, template.transform.parent);
-			entry.name = name;
-			entry.transform.SetAsLastSibling();
-			Button button = entry.GetComponent<Button>();
-			button.onClick = new Button.ButtonClickedEvent();
-			button.onClick.AddListener(onClick);
-			Text label = entry.GetComponentInChildren<Text>(true);
-			if (label != null) label.text = text;
-			return label;
 		}
 
 		private void ToggleRealtime()
@@ -157,8 +142,8 @@ namespace Arcade.Compose
 
 		private void UpdateRealtimeLabel()
 		{
-			if (realtimeLabel != null)
-				realtimeLabel.color = realtime && AdeProjectManager.Instance != null ? AdeProjectManager.Instance.EnableColor : realtimeOffColor;
+			if (realtimeIcon != null)
+				realtimeIcon.color = realtime && AdeProjectManager.Instance != null ? AdeProjectManager.Instance.EnableColor : AdeUiTheme.IconColor;
 		}
 
 		public void ShowOpenChooser()

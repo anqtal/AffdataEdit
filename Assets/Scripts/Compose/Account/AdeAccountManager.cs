@@ -17,7 +17,6 @@ namespace Arcade.Compose
 		private const string LoginUrl = "https://api.affdata.net/v2/game/login";
 		private const string PrefsKey = "AffdataNetAccount";
 		private const string EditorSceneName = "ArcEditor";
-		private const string TextButtonPath = "ArcaeaEditor/EditorCanvas/Bars/Left/View/Top/SaveMode";
 		private const string RightBarPath = "ArcaeaEditor/EditorCanvas/Bars/Right/View";
 
 		private sealed class Session
@@ -35,7 +34,6 @@ namespace Arcade.Compose
 
 		private Session session;
 		private bool loggingIn;
-		private Text buttonLabel;
 		private AdeDualDialog dialog;
 		private GameObject usernameRow, pinRow;
 		private InputField usernameInput, pinInput;
@@ -64,16 +62,8 @@ namespace Arcade.Compose
 
 		private void Start()
 		{
-			GameObject template = GameObject.Find(TextButtonPath);
 			GameObject rightBar = GameObject.Find(RightBarPath);
-			if (template != null && rightBar != null)
-			{
-				GameObject entry = Instantiate(template, rightBar.transform);
-				entry.name = "Account";
-				entry.transform.SetAsLastSibling();
-				AdeUiKit.SetOnClick(entry.GetComponent<Button>(), ShowLoginWindow);
-				buttonLabel = entry.GetComponentInChildren<Text>(true);
-			}
+			if (rightBar != null) AdeUiKit.CreateIconButton(rightBar.transform, "Account", "Account", ShowLoginWindow);
 			BuildDialog();
 			UpdateView();
 		}
@@ -154,7 +144,6 @@ namespace Arcade.Compose
 
 		private void UpdateView()
 		{
-			if (buttonLabel != null) buttonLabel.text = IsLoggedIn ? "账号" : "登录";
 			if (dialog == null) return;
 			usernameRow.SetActive(!IsLoggedIn);
 			pinRow.SetActive(!IsLoggedIn);
