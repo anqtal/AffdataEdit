@@ -75,7 +75,9 @@ namespace Arcade.Gameplay
 			GameplayCamera.fieldOfView = Is16By9 ? 50 : 65;
 			GameplayCamera.nearClipPlane = 1f / 100f;
 			GameplayCamera.farClipPlane = 10000f;
-			SkyInputLabel.localPosition = new Vector3(Is16By9 ? -7.1f : -6.5f, 0.1f, 0);
+			// Arcade Alpha's label position and scale.
+			SkyInputLabel.localPosition = new Vector3(Is16By9 ? -7.1f : -6.5f, 0.13f, 0);
+			SkyInputLabel.localScale = new Vector3(0.6667f, 0.6667f, 1);
 			GameplayCamera.transform.position = new Vector3(0, 9, Is16By9 ? 9 : 8);
 			GameplayCamera.transform.LookAt(new Vector3(0, -5.5f, -20), new Vector3(0, 1, 0));
 			IsReset = true;
