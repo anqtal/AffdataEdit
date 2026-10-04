@@ -296,7 +296,7 @@ namespace Arcade.Compose
 
 		// Dark dialogs follow VS Code: a left-aligned title, a close button and compact
 		// buttons on the right. Corners are concentric with the 22px dialog corner: each
-		// control sits 16px from the edge and has a 6px radius. Light restores the
+		// control sits 12px from the edge and has a 10px radius. Light restores the
 		// CommonSingle/CommonDual prefab layout.
 		private void ApplyDialogLayouts()
 		{
@@ -319,8 +319,8 @@ namespace Arcade.Compose
 		}
 
 		private const float ButtonWidth = 170, ButtonHeight = 46, ButtonGap = 12, TitlePadding = 28, TitleHeight = 74;
-		// Controls sit this far inside the visible dialog edge; 22 - 16 gives their 6px radius.
-		private const float EdgeGap = 16;
+		// Controls sit this far inside the visible dialog edge; 22 - 12 gives their 10px radius.
+		private const float EdgeGap = 12;
 		// Transparent margins of the dark dialog sprites (right, bottom).
 		private static readonly Vector2 BackgroundMargin = new Vector2(1, 2), HeaderMargin = new Vector2(1, 0);
 		private const string TitleSpacerName = "ThemeTitleSpacer", CloseName = "ThemeClose";
@@ -387,7 +387,7 @@ namespace Arcade.Compose
 			rect.SetParent(view, false);
 			rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(1, 1);
 			rect.sizeDelta = new Vector2(42, 42);
-			// The secondary button sprite (6px radius) only shows while hovered or pressed.
+			// The secondary button sprite (10px radius) only shows while hovered or pressed.
 			var background = go.GetComponent<Image>();
 			background.sprite = darkSprites[5];
 			background.type = UnityEngine.UI.Image.Type.Sliced;
