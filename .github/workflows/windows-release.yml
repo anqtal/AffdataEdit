@@ -107,3 +107,55 @@ jobs:
           while IFS= read -r old; do
             if [ "$old" != "$tag" ]; then gh release delete "$old" --yes --cleanup-tag; fi
           done < "$RUNNER_TEMP/release-tags"
+
+  # macOS is built for testing only: the app is uploaded as a workflow artifact and is not
+  # published to R2 or a GitHub release.
+  build-macos:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          lfs: true
+      - name: Check required configuration
+        id: configuration
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        run: |
+          echo "owner=$(id -u):$(id -g)" >> "$GITHUB_OUTPUT"
+          for name in UNITY_EMAIL UNITY_PASSWORD; do
+            if [ -z "${!name}" ]; then echo "::error::Missing GitHub secret: $name"; exit 1; fi
+          done
+          if [ -z "$UNITY_LICENSE" ] && [ -z "$UNITY_SERIAL" ]; then
+            echo "::error::Set UNITY_LICENSE or UNITY_SERIAL in GitHub Secrets"; exit 1
+          fi
+      - name: Give Docker containers enough shared memory for Unity 6000.6
+        run: |
+          if [ -s /etc/docker/daemon.json ]; then config=$(sudo cat /etc/docker/daemon.json); else config='{}'; fi
+          echo "$config" | jq '. + {"default-shm-size": "2G"}' | sudo tee /etc/docker/daemon.json > /dev/null
+          sudo systemctl restart docker
+      - uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+        with:
+          unityVersion: auto
+          targetPlatform: StandaloneOSX
+          buildMethod: MacCiBuild.Build
+          buildsPath: Build
+          buildName: macOS
+          chownFilesTo: ${{ steps.configuration.outputs.owner }}
+          versioning: None
+          allowDirtyBuild: true
+      # A tarball keeps the executable bits and symlinks inside the .app bundle.
+      - name: Package macOS app
+        run: tar -czf "$RUNNER_TEMP/AffdataEdit-macOS.tar.gz" -C Build/macOS AffdataEdit.app
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AffdataEdit-macOS
+          path: ${{ runner.temp }}/AffdataEdit-macOS.tar.gz
+          retention-days: 14
