@@ -9,12 +9,18 @@ namespace Arcade.Audio
     {
         private static BassAudio instance;
         private static readonly Dictionary<BassClip, int> samples = new Dictionary<BassClip, int>();
-        private static readonly Dictionary<int, bool> voices = new Dictionary<int, bool>();
+        // Voice channel -> bus, so bus volume changes reach playing voices.
+        private static readonly Dictionary<int, Bus> voices = new Dictionary<int, Bus>();
         private readonly List<int> finished = new List<int>();
-        private static float musicVolume = .7f, effectVolume;
+        private static float musicVolume = .7f, effectVolume, guideVolume = 1;
+        public enum Bus { Effect, Music, Guide }
         public static double Clock => Stopwatch.GetTimestamp() / (double)Stopwatch.Frequency;
-        public static float MusicVolume { get => musicVolume; set { musicVolume = Mathf.Clamp01(value); Gameplay.ArcAudioManager.Instance?.ApplyVolume(); } }
-        public static float EffectVolume { get => effectVolume; set => effectVolume = Mathf.Clamp01(value); }
+        // Volumes range 0.0-2.0 like AffdataPlay; BASS amplifies above 1.
+        public const float MaxVolume = 2;
+        public static float MusicVolume { get => musicVolume; set { musicVolume = Mathf.Clamp(value, 0, MaxVolume); Gameplay.ArcAudioManager.Instance?.ApplyVolume(); } }
+        public static float EffectVolume { get => effectVolume; set => effectVolume = Mathf.Clamp(value, 0, MaxVolume); }
+        public static float GuideVolume { get => guideVolume; set => guideVolume = Mathf.Clamp(value, 0, MaxVolume); }
+        private static float Volume(Bus bus) => bus == Bus.Music ? musicVolume : bus == Bus.Guide ? guideVolume : effectVolume;
 
         internal static void EnsureInitialized()
         {
@@ -31,7 +37,9 @@ namespace Arcade.Audio
             DontDestroyOnLoad(go);
         }
 
-        public static void PlayOneShot(BassClip clip, bool musicBus = false)
+        public static void PlayOneShot(BassClip clip, bool musicBus = false) => PlayOneShot(clip, musicBus ? Bus.Music : Bus.Effect);
+
+        public static void PlayOneShot(BassClip clip, Bus bus)
         {
             if (!clip) return;
             EnsureInitialized();
@@ -46,9 +54,9 @@ namespace Arcade.Audio
             }
             int channel = BassNative.BASS_SampleGetChannel(sample, false);
             BassNative.Check(channel != 0, "sample voice");
-            BassNative.Check(BassNative.BASS_ChannelSetAttribute(channel, 2, musicBus ? musicVolume : effectVolume), "sample volume");
+            BassNative.Check(BassNative.BASS_ChannelSetAttribute(channel, 2, Volume(bus)), "sample volume");
             BassNative.Check(BassNative.BASS_ChannelPlay(channel, true), "play sample");
-            voices[channel] = musicBus;
+            voices[channel] = bus;
         }
 
         internal static void ReleaseSample(BassClip clip)
@@ -63,7 +71,7 @@ namespace Arcade.Audio
             foreach (var voice in voices)
             {
                 if (BassNative.BASS_ChannelIsActive(voice.Key) == 0) finished.Add(voice.Key);
-                else BassNative.BASS_ChannelSetAttribute(voice.Key, 2, voice.Value ? musicVolume : effectVolume);
+                else BassNative.BASS_ChannelSetAttribute(voice.Key, 2, Volume(voice.Value));
             }
             foreach (int channel in finished) voices.Remove(channel);
         }
