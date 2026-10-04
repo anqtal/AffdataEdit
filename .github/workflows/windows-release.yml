@@ -40,12 +40,14 @@ jobs:
           if [ -z "$UNITY_LICENSE" ] && [ -z "$UNITY_SERIAL" ]; then
             echo "::error::Set UNITY_LICENSE or UNITY_SERIAL in GitHub Secrets"; exit 1
           fi
-      - uses: actions/cache@v5
-        with:
-          path: Library
-          key: windows-library-${{ hashFiles('ProjectSettings/ProjectVersion.txt', 'Packages/**') }}-${{ github.sha }}
-          restore-keys: |
-            windows-library-${{ hashFiles('ProjectSettings/ProjectVersion.txt', 'Packages/**') }}-
+      # Unity 6000.6 aborts (exit 134) with Docker's 64 MiB /dev/shm and is killed
+      # (exit 137) about two seconds into startup when a cached Library is restored,
+      # so builds start from a clean Library with 2 GB of shared memory.
+      - name: Give Docker containers enough shared memory for Unity 6000.6
+        run: |
+          if [ -s /etc/docker/daemon.json ]; then config=$(sudo cat /etc/docker/daemon.json); else config='{}'; fi
+          echo "$config" | jq '. + {"default-shm-size": "2G"}' | sudo tee /etc/docker/daemon.json > /dev/null
+          sudo systemctl restart docker
       - name: Record memory usage during the Unity build
         run: |
           nohup bash -c 'while true; do date -u +%T; free -m | sed -n 2,3p; ps -eo pid,rss,comm --sort=-rss | sed -n 2,6p; sleep 1; done' > "$RUNNER_TEMP/memory.log" 2>&1 &
