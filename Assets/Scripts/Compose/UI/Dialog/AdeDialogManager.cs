@@ -60,34 +60,47 @@ namespace Arcade.Compose
 
 		public void Open(AdeDialog dialog)
 		{
-			StopMotion(dialog);
+			bool wasClosing = closing.Contains(dialog);
 			dialog.OnOpen?.Invoke();
 			dialog.transform.SetParent(Opening);
-			dialog.View.SetActive(true);
+			// Opening an open dialog keeps it as it is instead of replaying the fade.
+			if (dialog.View.activeSelf && !wasClosing) return;
+			StopMotion(dialog);
 			CanvasGroup group = Group(dialog);
-			group.blocksRaycasts = true;
 			Transform view = dialog.View.transform;
-			Pose(group, view, 0);
+			// A dialog reopened while closing continues from its current pose.
+			float from = wasClosing ? group.alpha : 0;
+			if (!wasClosing)
+			{
+				dialog.View.SetActive(true);
+				Pose(group, view, 0);
+			}
+			group.blocksRaycasts = true;
 			AdeUiTheme.OnDialogOpened();
-			motions[dialog] = LMotion.Create(0f, 1f, OpenDuration).WithEase(Ease.OutCubic)
+			motions[dialog] = LMotion.Create(from, 1f, Mathf.Max(0.01f, OpenDuration * (1 - from))).WithEase(Ease.OutCubic)
 				.WithScheduler(MotionScheduler.UpdateIgnoreTimeScale)
+				.WithOnComplete(() => motions.Remove(dialog))
 				.Bind(t => Pose(group, view, t));
 		}
 
 		public void Close(AdeDialog dialog)
 		{
-			StopMotion(dialog);
+			if (closing.Contains(dialog)) return;
 			if (!dialog.View.activeSelf)
 			{
+				StopMotion(dialog);
 				Hide(dialog);
 				return;
 			}
+			CanvasGroup group = Group(dialog);
+			Transform view = dialog.View.transform;
+			// A dialog closed while opening fades out from its current pose.
+			float from = group.alpha;
+			StopMotion(dialog);
 			// The dialog stops taking input at once; it is deactivated when the fade ends.
 			closing.Add(dialog);
-			CanvasGroup group = Group(dialog);
 			group.blocksRaycasts = false;
-			Transform view = dialog.View.transform;
-			motions[dialog] = LMotion.Create(1f, 0f, CloseDuration).WithEase(Ease.InCubic)
+			motions[dialog] = LMotion.Create(from, 0f, Mathf.Max(0.01f, CloseDuration * from)).WithEase(Ease.InCubic)
 				.WithScheduler(MotionScheduler.UpdateIgnoreTimeScale)
 				.WithOnComplete(() =>
 				{
