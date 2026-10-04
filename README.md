@@ -2,7 +2,7 @@
 
 Arcade is a utility used to edit and preview aff files. The original Arcade repository was taken down due to [GitHub's DMCA takedown policy](https://docs.github.com/en/site-policy/content-removal-policies/dmca-takedown-policy) (see [the DMCA takedown request](https://github.com/github/dmca/blob/master/2019/02/2019-02-27-Arcaea.md)). The author of the original Arcade, [cnSchwarzer](https://github.com/cnSchwarzer) aka Sch, refused to remove copyrighted content owned by Lowiro, the developer of Arcaea. Sch used a Chinese code hosting platform after that instead.
 
-AffdataEdit is based on Arcade-plus, which brought it back to GitHub. It does not contain any copyrighted content, but uses a skinning feature instead. We also have better commit messages and less bugs. What's more, we will add some new features, get some redesigns and do some performance optimizations.
+AffdataEdit is a fork of [Arcade-plus](https://github.com/yojohanshinwataikei/Arcade-plus), which is itself a fork of Arcade that brought it back to GitHub. Like Arcade-plus, it does not contain any copyrighted content, but uses a skinning feature instead. AffdataEdit also includes parts of the code of AffdataPlay, the Affdata game client, such as its audio playback, and adds AffdataNet integration, new features, redesigns and performance optimizations.
 
 The original commit history of Sch are not being included in this repository, since they contain copyrighted content.
 
