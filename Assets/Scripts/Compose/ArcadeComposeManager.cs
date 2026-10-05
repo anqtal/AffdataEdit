@@ -442,7 +442,13 @@ namespace Arcade.Compose
 		{
 			ArcGameplayManager.Instance.Auto = !ArcGameplayManager.Instance.Auto;
 			ArcGameplayManager.Instance.ResetJudge();
-			AutoButton.image.color = ArcGameplayManager.Instance.Auto ? new Color(0.59f, 0.55f, 0.65f, 1f) : new Color(0.9f, 0.9f, 0.9f, 1);
+			UpdateAutoButton();
+		}
+		// On: a translucent accent tile like a VS Code selection; off: the plain tool tile.
+		private void UpdateAutoButton()
+		{
+			AutoButton.image.color = ArcGameplayManager.Instance.Auto ? new Color(0f, 0.47f, 0.83f, 0.4f) : new Color(0.9f, 0.9f, 0.9f, 1);
+			AdeUiTheme.Refresh();
 		}
 		public void OnShutdownClicked()
 		{
@@ -501,7 +507,7 @@ namespace Arcade.Compose
 				ArcTimingManager.Instance.SettingVelocity = ArcadePreference.Velocity;
 				ArcGameplayManager.Instance.Auto = ArcadePreference.Auto;
 				AdeProjectManager.Instance.SaveMode.text = ArcadePreference.ChartSortMode == Gameplay.Chart.ChartSortMode.Timing ? "按时间" : "按类别";
-				AutoButton.image.color = ArcGameplayManager.Instance.Auto ? new Color(0.59f, 0.55f, 0.65f, 1f) : new Color(0.9f, 0.9f, 0.9f, 1);
+				UpdateAutoButton();
 				if (ArcadePreference.ReadWhatsNewVersion < BuildTimestamp)
 				{
 					AdeBasicSingleDialogContent.Instance.Show(ChangeLog.text);

@@ -24,6 +24,8 @@ namespace Arcade.Compose
 			public string Sprite;
 			public bool Text;
 			public Color32 Light, Dark, Highlighted, Pressed;
+			// The tile is transparent until hovered or pressed (toolbar icon buttons).
+			public bool HiddenAtRest;
 			public bool HasStates => Highlighted.a != 0;
 		}
 
@@ -35,12 +37,18 @@ namespace Arcade.Compose
 		};
 
 		// Specific sprites first; a null sprite matches any image.
+		private static Entry HiddenAtRest(Entry entry)
+		{
+			entry.HiddenAtRest = true;
+			return entry;
+		}
+
 		// VS Code Dark Modern colours. Specific sprites first; a null sprite matches any image.
 		private static readonly Entry[] Palette =
 		{
 			Image("Top", 0xFFFFFF, 0x181818), Image("Left", 0xFFFFFF, 0x181818),
 			Image("Right", 0xFFFFFF, 0x181818), Image("Bottom", 0xFFFFFF, 0x181818),
-			Image("ToolBackground", 0xE6E6E6, 0x181818, 0x2A2D2E, 0x37373D),
+			HiddenAtRest(Image("ToolBackground", 0xE6E6E6, 0x181818, 0x2A2D2E, 0x37373D)),
 			Image("ToolBackground", 0xFFFFFF, 0x37373D, 0x45454B, 0x505056),
 			Image("UISprite", 0xFFFFFF, 0x313131, 0x3C3C3C, 0x454545),
 			Image("InputFieldBackground", 0xFFFFFF, 0x313131, 0x353535, 0x3C3C3C),
@@ -58,9 +66,13 @@ namespace Arcade.Compose
 		private readonly List<Selectable> selectables = new List<Selectable>();
 		private readonly Dictionary<Graphic, Selectable> targets = new Dictionary<Graphic, Selectable>();
 		private readonly List<Transform> roots = new List<Transform>();
-		private readonly List<Text> texts = new List<Text>();
-		private Transform inGame;
-		private Font chineseFont;
+		// UI moved or built outside the editor canvas and dialog layers (the settings drawer).
+		private static readonly List<Transform> extraRoots = new List<Transform>();
+
+		public static void AddRoot(Transform root)
+		{
+			if (!extraRoots.Contains(root)) extraRoots.Add(root);
+		}
 		private float nextSweep;
 		private Sprite[] darkSprites;
 		private Sprite closeIcon;
@@ -115,6 +127,12 @@ namespace Arcade.Compose
 			Instance.AlignDialogControls();
 		}
 
+		// Re-themes now instead of on the next sweep, after code changes a themed color.
+		public static void Refresh()
+		{
+			if (Instance) Instance.Sweep();
+		}
+
 		// Called after the skin's UI sprites are (re)applied.
 		public static void OnSkinApplied()
 		{
@@ -128,11 +146,10 @@ namespace Arcade.Compose
 			if (editor)
 			{
 				foreach (Transform child in editor.transform)
-				{
 					if (child.name != "InGame") roots.Add(child);
-					else inGame = child;
-				}
 			}
+			extraRoots.RemoveAll(root => !root);
+			roots.AddRange(extraRoots);
 			if (AdeDialogManager.Instance)
 			{
 				roots.Add(AdeDialogManager.Instance.Opening);
@@ -155,9 +172,7 @@ namespace Arcade.Compose
 				}
 				root.GetComponentsInChildren(true, graphics);
 				foreach (Graphic graphic in graphics) Apply(graphic);
-				ReplaceFonts(root);
 			}
-			if (inGame) ReplaceFonts(inGame);
 			if (Dark) AlignDialogControls();
 		}
 
@@ -207,25 +222,6 @@ namespace Arcade.Compose
 			rect.anchoredPosition = edge - anchor - new Vector2(HeaderMargin.x + EdgeGap, HeaderMargin.y + EdgeGap);
 		}
 
-		// The bundled Noto Sans and the built-in font have no CJK glyphs, so Chinese fell back
-		// to an OS font (Hiragino, a Japanese design, on macOS). Use Noto Sans SC instead.
-		private void ReplaceFonts(Transform root)
-		{
-			if (!chineseFont) chineseFont = Resources.Load<Font>("AffdataEdit/Fonts/NotoSansSC-Regular");
-			if (!chineseFont) return;
-			root.GetComponentsInChildren(true, texts);
-			foreach (Text text in texts)
-			{
-				Font font = text.font;
-				if (!font || font.name == "LegacyRuntime" || font.name == "Arial" || font.name == "NotoSans-Regular")
-				{
-					text.font = chineseFont;
-					// Noto Sans SC has taller lines; truncation would hide text in short fields.
-					text.verticalOverflow = VerticalWrapMode.Overflow;
-				}
-			}
-		}
-
 		private void Apply(Graphic graphic)
 		{
 			bool text = graphic is Text;
@@ -240,7 +236,12 @@ namespace Arcade.Compose
 				bool isDark = tinted ? Same(normal, entry.Dark) && Same(current, Color.white) : Same(current, entry.Dark);
 				bool isLight = Same(current, entry.Light) && (!tinted || !Same(normal, entry.Dark));
 				if (!isDark && !isLight) continue;
-				if (isDark == Dark) return;
+				if (isDark == Dark)
+				{
+					// Light keeps the prefab colors but still hides resting toolbar tiles.
+					if (tinted && entry.HiddenAtRest && selectable.colors.normalColor.a != 0) SetStates(selectable, entry);
+					return;
+				}
 				byte alpha = current.a;
 				if (tinted) SetStates(selectable, entry);
 				Color32 color = Dark && tinted ? new Color32(255, 255, 255, 255) : Dark ? entry.Dark : entry.Light;
@@ -248,6 +249,9 @@ namespace Arcade.Compose
 				graphic.color = color;
 				return;
 			}
+			// A tile given a state color by code (e.g. AUTO on) must stay visible at rest.
+			if (selectable && sprite == "ToolBackground" && selectable.colors.normalColor.a == 0)
+				selectable.colors = ColorBlock.defaultColorBlock;
 		}
 
 		private static void SetStates(Selectable selectable, Entry entry)
@@ -263,7 +267,22 @@ namespace Arcade.Compose
 				disabled.a = 0.5f;
 				colors.disabledColor = disabled;
 			}
+			if (entry.HiddenAtRest)
+			{
+				// A square translucent gray tile on hover and press, nothing at rest.
+				colors.normalColor = Transparent(colors.normalColor);
+				colors.selectedColor = Transparent(colors.selectedColor);
+				colors.disabledColor = Transparent(colors.disabledColor);
+				colors.highlightedColor = new Color(0.6f, 0.6f, 0.6f, 0.16f);
+				colors.pressedColor = new Color(0.6f, 0.6f, 0.6f, 0.32f);
+			}
 			selectable.colors = colors;
+		}
+
+		private static Color Transparent(Color color)
+		{
+			color.a = 0;
+			return color;
 		}
 
 		private static bool Same(Color32 a, Color32 b) => a.r == b.r && a.g == b.g && a.b == b.b;
