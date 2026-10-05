@@ -462,13 +462,21 @@ namespace Arcade.Compose
 		public SkinDatas skinData;
 		[System.NonSerialized]
 		public Dictionary<string, Labelled<Sprite>> ExternalBackgrounds;
+		// The folder holding the player: dataPath is AffdataEdit_Data beside the exe on Windows,
+		// but AffdataEdit.app/Contents on macOS, where the updater replaces the whole app.
+		private static string InstallFolderPath
+		{
+			get
+			{
+				var folder = new DirectoryInfo(Application.dataPath).Parent;
+				return (Application.platform == RuntimePlatform.OSXPlayer ? folder.Parent : folder).FullName;
+			}
+		}
 		public string SkinFolderPath
 		{
 			get
 			{
-				// Note: We do not hase the executable path available, so we use the dataPath
-				// but relationship between executable path and data path can be different in different platform.
-				return Path.Combine(new DirectoryInfo(Application.dataPath).Parent.FullName, "Skin");
+				return Path.Combine(InstallFolderPath, "Skin");
 			}
 		}
 
@@ -476,8 +484,7 @@ namespace Arcade.Compose
 		{
 			get
 			{
-				// Note: Same as above
-				return Path.Combine(new DirectoryInfo(Application.dataPath).Parent.FullName, "Background");
+				return Path.Combine(InstallFolderPath, "Background");
 			}
 		}
 		private void Awake()

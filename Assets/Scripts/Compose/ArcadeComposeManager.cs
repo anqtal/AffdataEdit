@@ -372,7 +372,7 @@ namespace Arcade.Compose
 				Screen.SetResolution(Screen.currentResolution.width, Screen.currentResolution.height, FullScreenMode.FullScreenWindow);
 				return;
 			}
-			Vector2Int size = AdeScreenResolution.GetWindowedSize(resolution, Screen.mainWindowDisplayInfo.workArea);
+			Vector2Int size = AdeScreenResolution.GetWindowedSize(resolution, Screen.mainWindowDisplayInfo.workArea, AdeScreenResolution.ScaleFactor);
 			Debug.Log($"[window] requested={resolution}, applied={size.x}x{size.y}");
 			Screen.SetResolution(size.x, size.y, FullScreenMode.Windowed);
 		}

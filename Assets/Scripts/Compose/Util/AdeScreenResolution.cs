@@ -1,11 +1,15 @@
+using System;
 using System.Globalization;
+using System.Runtime.InteropServices;
 using UnityEngine;
 
 namespace Arcade.Compose
 {
 	public static class AdeScreenResolution
 	{
-		public static Vector2Int GetWindowedSize(string resolution, RectInt workArea)
+		// The resolution setting is in points; on a 2x Retina display a window takes twice the
+		// pixels, which is what Screen.SetResolution and the work area use on macOS.
+		public static Vector2Int GetWindowedSize(string resolution, RectInt workArea, float scaleFactor = 1)
 		{
 			string[] dimensions = resolution?.Split('x');
 			if (dimensions == null || dimensions.Length != 2 ||
@@ -15,6 +19,11 @@ namespace Arcade.Compose
 			{
 				width = 1280;
 				height = 720;
+			}
+			if (scaleFactor > 1)
+			{
+				width = Mathf.RoundToInt(width * scaleFactor);
+				height = Mathf.RoundToInt(height * scaleFactor);
 			}
 
 			// DPI is physical pixel density, not the operating system's window scale.
@@ -30,5 +39,25 @@ namespace Arcade.Compose
 
 			return new Vector2Int(width, height);
 		}
+
+#if UNITY_STANDALONE_OSX && !UNITY_EDITOR
+		private const string ObjC = "/usr/lib/libobjc.A.dylib";
+		[DllImport(ObjC)] private static extern IntPtr objc_getClass(string name);
+		[DllImport(ObjC)] private static extern IntPtr sel_registerName(string name);
+		[DllImport(ObjC, EntryPoint = "objc_msgSend")] private static extern IntPtr SendPointer(IntPtr receiver, IntPtr selector);
+		[DllImport(ObjC, EntryPoint = "objc_msgSend")] private static extern double SendDouble(IntPtr receiver, IntPtr selector);
+
+		// [[NSScreen mainScreen] backingScaleFactor]: 2 on Retina displays.
+		public static float ScaleFactor
+		{
+			get
+			{
+				IntPtr screen = SendPointer(objc_getClass("NSScreen"), sel_registerName("mainScreen"));
+				return screen == IntPtr.Zero ? 1 : (float)SendDouble(screen, sel_registerName("backingScaleFactor"));
+			}
+		}
+#else
+		public static float ScaleFactor => 1;
+#endif
 	}
 }

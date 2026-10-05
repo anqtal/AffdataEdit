@@ -126,7 +126,8 @@ namespace Arcade.Compose
             entered = true;
             AdeInputManager.Instance.Controls.Enable();
             Destroy(blocker);
-            Destroy(gameObject);
+            // Destroying the object would stop a background updater refresh.
+            if (!refreshingUpdater) Destroy(gameObject);
         }
 
         private IEnumerator CheckAtStartup()
@@ -220,7 +221,7 @@ namespace Arcade.Compose
                 if (request.result != UnityWebRequest.Result.Success)
                 {
                     Debug.Log($"Updater check unavailable: {request.error}");
-                    refreshingUpdater = false;
+                    EndRefresh();
                     yield break;
                 }
                 try
@@ -232,7 +233,7 @@ namespace Arcade.Compose
                         throw new FormatException("unexpected updater manifest");
                     if (File.Exists(target) && new FileInfo(target).Length == size && Hash(target) == sha)
                     {
-                        refreshingUpdater = false;
+                        EndRefresh();
                         yield break;
                     }
                 }
@@ -240,7 +241,7 @@ namespace Arcade.Compose
                     || error is InvalidCastException || error is OverflowException || error is IOException || error is UnauthorizedAccessException)
                 {
                     Debug.Log($"Updater check skipped: {error.Message}");
-                    refreshingUpdater = false;
+                    EndRefresh();
                     yield break;
                 }
             }
@@ -269,7 +270,13 @@ namespace Arcade.Compose
                     try { File.Delete(download); } catch (Exception) { }
                 }
             }
+            EndRefresh();
+        }
+
+        private void EndRefresh()
+        {
             refreshingUpdater = false;
+            if (entered) Destroy(gameObject);
         }
 
         private static string Hash(string path)
