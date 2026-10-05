@@ -6,10 +6,10 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
-  group: windows-release
+  group: release
   cancel-in-progress: false
 
 jobs:
@@ -72,13 +72,13 @@ jobs:
         run: |
           sudo dmesg -T | grep -iE 'killed process|out of memory|oom' | tail -n 20 || true
           tail -n 240 "$RUNNER_TEMP/memory.log" || true
-      - name: Include latest independent updater
+      # The updater is published on its own; AffdataEdit keeps it up to date.
+      - name: Get latest independent updater
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release download --repo anqtal/AffdataEdit-Updater --pattern AffdataEdit-Updater.exe --pattern SHA256SUMS --dir "$RUNNER_TEMP/updater"
-          (cd "$RUNNER_TEMP/updater" && sha256sum --check --ignore-missing SHA256SUMS)
-          cp "$RUNNER_TEMP/updater/AffdataEdit-Updater.exe" Build/Windows/
+          (cd "$RUNNER_TEMP/updater" && sha256sum --check --ignore-missing SHA256SUMS && rm SHA256SUMS)
           python3 - <<'PY'
           import json, os
           from pathlib import Path
@@ -95,23 +95,15 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
         run: |
           python -m pip install boto3
-          python Tools/Release/publish.py
-      - name: Publish Windows release and remove previous releases
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          tag="build-${GITHUB_RUN_NUMBER}-${GITHUB_RUN_ATTEMPT}"
-          (cd Build/Windows && zip -qr "$RUNNER_TEMP/AffdataEdit-Windows-x64.zip" .)
-          gh release create "$tag" "$RUNNER_TEMP/AffdataEdit-Windows-x64.zip" --target "$GITHUB_SHA" --title "AffdataEdit Windows $tag" --notes "Windows x64. Commit: $GITHUB_SHA. Launch AffdataEdit-Updater.exe to update." --latest
-          gh api --paginate "repos/$GITHUB_REPOSITORY/releases" --jq '.[].tag_name' > "$RUNNER_TEMP/release-tags"
-          while IFS= read -r old; do
-            if [ "$old" != "$tag" ]; then gh release delete "$old" --yes --cleanup-tag; fi
-          done < "$RUNNER_TEMP/release-tags"
+          python Tools/Release/publish.py windows Build/Windows AffdataEdit.exe
+          python Tools/Release/publish.py updater/windows "$RUNNER_TEMP/updater" AffdataEdit-Updater.exe
 
-  # macOS is built for testing only: the app is uploaded as a workflow artifact and is not
-  # published to R2 or a GitHub release.
   build-macos:
     runs-on: ubuntu-24.04
+    env:
+      R2_ACCOUNT_ID: ${{ vars.R2_ACCOUNT_ID }}
+      R2_BUCKET: ${{ vars.R2_BUCKET }}
+      R2_PUBLIC_URL: ${{ vars.R2_PUBLIC_URL }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -123,10 +115,12 @@ jobs:
           UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
         run: |
           echo "owner=$(id -u):$(id -g)" >> "$GITHUB_OUTPUT"
-          for name in UNITY_EMAIL UNITY_PASSWORD; do
-            if [ -z "${!name}" ]; then echo "::error::Missing GitHub secret: $name"; exit 1; fi
+          for name in R2_ACCOUNT_ID R2_BUCKET R2_PUBLIC_URL R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY UNITY_EMAIL UNITY_PASSWORD; do
+            if [ -z "${!name}" ]; then echo "::error::Missing GitHub secret/variable: $name"; exit 1; fi
           done
           if [ -z "$UNITY_LICENSE" ] && [ -z "$UNITY_SERIAL" ]; then
             echo "::error::Set UNITY_LICENSE or UNITY_SERIAL in GitHub Secrets"; exit 1
@@ -151,11 +145,29 @@ jobs:
           chownFilesTo: ${{ steps.configuration.outputs.owner }}
           versioning: None
           allowDirtyBuild: true
-      # A tarball keeps the executable bits and symlinks inside the .app bundle.
-      - name: Package macOS app
-        run: tar -czf "$RUNNER_TEMP/AffdataEdit-macOS.tar.gz" -C Build/macOS AffdataEdit.app
-      - uses: actions/upload-artifact@v4
+      - name: Get latest independent updater
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download --repo anqtal/AffdataEdit-Updater --pattern AffdataEdit-Updater-macOS.zip --pattern SHA256SUMS --dir "$RUNNER_TEMP/download"
+          (cd "$RUNNER_TEMP/download" && sha256sum --check --ignore-missing SHA256SUMS)
+          unzip -q "$RUNNER_TEMP/download/AffdataEdit-Updater-macOS.zip" -d "$RUNNER_TEMP/updater"
+          chmod 755 "$RUNNER_TEMP/updater/AffdataEdit-Updater"
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          url = os.environ['R2_PUBLIC_URL'].rstrip('/') + '/macos/latest.json'
+          Path('Build/macOS/updater-config.json').write_text(json.dumps({'manifestUrl': url}), encoding='utf-8')
+          Path('Build/macOS/build-version.txt').write_text(os.environ['GITHUB_SHA'], encoding='utf-8')
+          PY
+      - uses: actions/setup-python@v6
         with:
-          name: AffdataEdit-macOS
-          path: ${{ runner.temp }}/AffdataEdit-macOS.tar.gz
-          retention-days: 14
+          python-version: '3.12'
+      - name: Publish file objects and update manifest
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: |
+          python -m pip install boto3
+          python Tools/Release/publish.py macos Build/macOS AffdataEdit.app/Contents/MacOS/AffdataEdit
+          python Tools/Release/publish.py updater/macos "$RUNNER_TEMP/updater" AffdataEdit-Updater

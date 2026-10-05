@@ -1,6 +1,8 @@
 using System;
 using System.Collections;
+using System.Diagnostics;
 using System.IO;
+using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 using Arcade.Compose.Feature;
 using UnityEngine.SceneManagement;
@@ -9,18 +11,27 @@ using Newtonsoft.Json.Linq;
 using UnityEngine;
 using UnityEngine.Networking;
 using UnityEngine.UI;
+using Debug = UnityEngine.Debug;
 
 namespace Arcade.Compose
 {
     // Built players installed by the updater check R2's latest.json when the editor scene
     // opens. Only a confirmed newer version blocks the editor; if the check cannot complete
     // (offline, timeout, bad manifest) the user may retry or continue with this version.
+    // The updater beside AffdataEdit is kept current from its own manifest, so the updater
+    // never has to replace itself.
     public sealed class AdeUpdateChecker : MonoBehaviour
     {
         private const string EditorSceneName = "ArcEditor";
         private static readonly Regex CommitPattern = new Regex("^[0-9a-fA-F]{40}$");
+        private static readonly bool Mac = Application.platform == RuntimePlatform.OSXPlayer;
+        private static readonly string UpdaterName = Mac ? "AffdataEdit-Updater" : "AffdataEdit-Updater.exe";
+        // AffdataEdit_Data on Windows, AffdataEdit.app/Contents on macOS.
+        private static readonly string Folder = Mac
+            ? Path.GetDirectoryName(Path.GetDirectoryName(Application.dataPath))
+            : Path.GetDirectoryName(Application.dataPath);
 
-        private bool updateRequired, entered;
+        private bool updateRequired, entered, refreshingUpdater;
         private AdeDualDialog dialog;
         private Text messageText;
         private GameObject blocker;
@@ -38,9 +49,8 @@ namespace Arcade.Compose
 
         private void Start()
         {
-            // Builds without the updater's files (development or macOS builds) are not checked.
-            string folder = Path.GetDirectoryName(Application.dataPath);
-            if (!File.Exists(Path.Combine(folder, "build-version.txt")) || !File.Exists(Path.Combine(folder, "updater-config.json")))
+            // Builds without the updater's files (development builds) are not checked.
+            if (!File.Exists(Path.Combine(Folder, "build-version.txt")) || !File.Exists(Path.Combine(Folder, "updater-config.json")))
             {
                 Destroy(gameObject);
                 return;
@@ -56,7 +66,11 @@ namespace Arcade.Compose
             dialog.Title.text = "检查更新";
             messageText = AdeUiKit.CreateLabelRow(AdeUiKit.Content(dialog), inputRow.GetComponentInChildren<Text>(true).transform, "");
             dialog.LeftButtonText.text = "重试";
-            AdeUiKit.SetOnClick(dialog.LeftButton, () => StartCoroutine(CheckAtStartup()));
+            AdeUiKit.SetOnClick(dialog.LeftButton, () =>
+            {
+                if (updateRequired) StartCoroutine(LaunchUpdater());
+                else StartCoroutine(CheckAtStartup());
+            });
             AdeUiKit.SetOnClick(dialog.RightButton, () =>
             {
                 if (updateRequired) Application.Quit();
@@ -91,7 +105,8 @@ namespace Arcade.Compose
         {
             messageText.text = text;
             bool failed = !isChecking && !updateRequired;
-            dialog.LeftButton.gameObject.SetActive(failed);
+            dialog.LeftButton.gameObject.SetActive(failed || updateRequired);
+            dialog.LeftButtonText.text = updateRequired ? "立即更新" : "重试";
             dialog.RightButton.interactable = !isChecking;
             dialog.RightButtonText.text = updateRequired ? "退出" : "继续使用";
             // The dark theme's close button is only offered once the check has failed.
@@ -117,9 +132,8 @@ namespace Arcade.Compose
         private IEnumerator CheckAtStartup()
         {
             SetState(true, "正在检查最新版本…");
-            string folder = Path.GetDirectoryName(Application.dataPath);
-            string versionPath = Path.Combine(folder, "build-version.txt");
-            string configPath = Path.Combine(folder, "updater-config.json");
+            string versionPath = Path.Combine(Folder, "build-version.txt");
+            string configPath = Path.Combine(Folder, "updater-config.json");
             if (!File.Exists(versionPath) || !File.Exists(configPath))
             {
                 FailCheck();
@@ -174,6 +188,7 @@ namespace Arcade.Compose
                     yield break;
                 }
             }
+            if (!refreshingUpdater) StartCoroutine(RefreshUpdater(manifestUri));
             if (latestVersion == null || !CommitPattern.IsMatch(latestVersion))
             {
                 FailCheck();
@@ -185,7 +200,105 @@ namespace Arcade.Compose
                 yield break;
             }
             updateRequired = true;
-            SetState(false, "当前版本不是最新版，请先更新。\n\n关闭 AffdataEdit 后，运行程序目录中的\nAffdataEdit-Updater.exe 完成更新，再重新启动。");
+            SetState(false, "当前版本不是最新版，请先更新。\n\n点击“立即更新”后 AffdataEdit 会退出，\n更新器完成更新后会重新启动它。");
+        }
+
+        // Replaces the updater beside AffdataEdit when its manifest lists a different file.
+        // Failures only keep the current updater, which can still update AffdataEdit.
+        private IEnumerator RefreshUpdater(Uri manifestUri)
+        {
+            refreshingUpdater = true;
+            var updaterUri = new Uri(manifestUri, $"../updater/{(Mac ? "macos" : "windows")}/latest.json");
+            string target = Path.Combine(Folder, UpdaterName);
+            string sha;
+            long size;
+            using (var request = UnityWebRequest.Get(updaterUri.AbsoluteUri))
+            {
+                request.timeout = 10;
+                request.SetRequestHeader("Cache-Control", "no-cache");
+                yield return request.SendWebRequest();
+                if (request.result != UnityWebRequest.Result.Success)
+                {
+                    Debug.Log($"Updater check unavailable: {request.error}");
+                    refreshingUpdater = false;
+                    yield break;
+                }
+                try
+                {
+                    JToken file = JObject.Parse(request.downloadHandler.text)["files"]?[0];
+                    sha = ((string)file?["sha256"])?.ToLowerInvariant();
+                    size = (long?)file?["size"] ?? -1;
+                    if ((string)file?["path"] != UpdaterName || sha == null || sha.Length != 64 || size < 0)
+                        throw new FormatException("unexpected updater manifest");
+                    if (File.Exists(target) && new FileInfo(target).Length == size && Hash(target) == sha)
+                    {
+                        refreshingUpdater = false;
+                        yield break;
+                    }
+                }
+                catch (Exception error) when (error is JsonException || error is ArgumentException || error is FormatException
+                    || error is InvalidCastException || error is OverflowException || error is IOException || error is UnauthorizedAccessException)
+                {
+                    Debug.Log($"Updater check skipped: {error.Message}");
+                    refreshingUpdater = false;
+                    yield break;
+                }
+            }
+            string download = target + ".download";
+            using (var request = new UnityWebRequest(new Uri(updaterUri, "objects/" + sha).AbsoluteUri, "GET",
+                new DownloadHandlerFile(download) { removeFileOnAbort = true }, null))
+            {
+                request.timeout = 120;
+                yield return request.SendWebRequest();
+                try
+                {
+                    if (request.result != UnityWebRequest.Result.Success)
+                        throw new IOException(request.error);
+                    if (new FileInfo(download).Length != size || Hash(download) != sha)
+                        throw new IOException("updater hash mismatch");
+                    if (Mac) Process.Start("/bin/chmod", $"755 \"{download}\"").WaitForExit();
+                    // Replaced by renaming; on Windows a running updater cannot be deleted and is kept.
+                    if (File.Exists(target)) File.Delete(target);
+                    File.Move(download, target);
+                    Debug.Log("Updater refreshed");
+                }
+                catch (Exception error) when (error is IOException || error is UnauthorizedAccessException
+                    || error is InvalidOperationException || error is System.ComponentModel.Win32Exception)
+                {
+                    Debug.Log($"Updater refresh failed: {error.Message}");
+                    try { File.Delete(download); } catch (Exception) { }
+                }
+            }
+            refreshingUpdater = false;
+        }
+
+        private static string Hash(string path)
+        {
+            using (var sha = SHA256.Create())
+            using (var stream = File.OpenRead(path))
+                return BitConverter.ToString(sha.ComputeHash(stream)).Replace("-", "").ToLowerInvariant();
+        }
+
+        // Opens the updater (in Terminal on macOS) and quits so it can replace AffdataEdit.
+        private IEnumerator LaunchUpdater()
+        {
+            dialog.LeftButton.interactable = false;
+            while (refreshingUpdater) yield return null;
+            string updater = Path.Combine(Folder, UpdaterName);
+            try
+            {
+                if (!File.Exists(updater)) throw new FileNotFoundException(updater);
+                if (Mac) Process.Start("/usr/bin/open", $"-a Terminal \"{updater}\"");
+                else Process.Start(new ProcessStartInfo(updater) { UseShellExecute = true, WorkingDirectory = Folder });
+                Application.Quit();
+            }
+            catch (Exception error) when (error is IOException || error is InvalidOperationException
+                || error is System.ComponentModel.Win32Exception)
+            {
+                Debug.Log($"Updater launch failed: {error.Message}");
+                dialog.LeftButton.interactable = true;
+                messageText.text = $"无法启动更新器，请关闭 AffdataEdit 后手动运行\n{updater}";
+            }
         }
 
         private void FailCheck()
