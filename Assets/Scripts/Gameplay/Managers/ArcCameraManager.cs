@@ -28,24 +28,36 @@ namespace Arcade.Gameplay
 		{
 			get
 			{
-				return new Vector3(0, 9f + 4.5f * EnwidenRatio, (Is16By9 ? 9f : 8f) + (Is16By9 ? 4.5f : 4f) * EnwidenRatio);
+				return new Vector3(0, 9f + 4.5f * EnwidenRatio, Aspect(9f, 8f) + Aspect(4.5f, 4f) * EnwidenRatio);
 			}
 		}
 		public Vector3 ResetRotation
 		{
 			get
 			{
-				return new Vector3(Is16By9 ? 26.565f : 27.378f, 180, 0);
+				return new Vector3(Aspect(26.565f, 27.378f), 180, 0);
 			}
 		}
 
-		public bool Is16By9
+		// Arcade Alpha scales a 1280x720 design resolution into the gameplay view: views wider
+		// than 16:9 widen it, narrower ones raise it toward 960 (4:3). Camera values blend
+		// between the 16:9 and 4:3 setups by that height instead of switching at one ratio.
+		private const float DesignWidth = 1280, DesignHeight = 720, DesignHeight4By3 = 960;
+
+		public Vector2 DesignResolution
 		{
 			get
 			{
-				return (1f * GameplayCamera.pixelWidth / GameplayCamera.pixelHeight) - (16f / 9f) > -1f / 9f;
+				float w = Mathf.Max(1, GameplayCamera.pixelWidth), h = Mathf.Max(1, GameplayCamera.pixelHeight);
+				float scale = Mathf.Min(w / DesignWidth, h / DesignHeight);
+				return new Vector2(w / scale, h / scale);
 			}
 		}
+
+		// 0 at 16:9 or wider, 1 at 4:3 or narrower.
+		public float AspectBlend => Mathf.Clamp01((DesignResolution.y - DesignHeight) / (DesignHeight4By3 - DesignHeight));
+
+		private float Aspect(float wide, float narrow) => Mathf.Lerp(wide, narrow, AspectBlend);
 
 		private void Awake()
 		{
@@ -72,13 +84,13 @@ namespace Arcade.Gameplay
 		{
 			// Canvas resize callbacks can arrive while scene objects are being destroyed.
 			if (!GameplayCamera || !SkyInputLabel) return;
-			GameplayCamera.fieldOfView = Is16By9 ? 50 : 65;
+			GameplayCamera.fieldOfView = Aspect(50, 65);
 			GameplayCamera.nearClipPlane = 1f / 100f;
 			GameplayCamera.farClipPlane = 10000f;
 			// Arcade Alpha's label position and scale.
-			SkyInputLabel.localPosition = new Vector3(Is16By9 ? -7.1f : -6.5f, 0.13f, 0);
+			SkyInputLabel.localPosition = new Vector3(-(DesignResolution.x * 0.5f / 100f + Aspect(0.7f, -0.1f)), 0.13f, 0);
 			SkyInputLabel.localScale = new Vector3(0.6667f, 0.6667f, 1);
-			GameplayCamera.transform.position = new Vector3(0, 9, Is16By9 ? 9 : 8);
+			GameplayCamera.transform.position = new Vector3(0, 9, Aspect(9, 8));
 			GameplayCamera.transform.LookAt(new Vector3(0, -5.5f, -20), new Vector3(0, 1, 0));
 			IsReset = true;
 		}
@@ -162,7 +174,7 @@ namespace Arcade.Gameplay
 			{
 				CurrentTilt = pos;
 			}
-			GameplayCamera.transform.LookAt(new Vector3(0, -5.5f + 4.5f * EnwidenRatio, -20f + (Is16By9 ? 4.5f : 4f) * EnwidenRatio), new Vector3(CurrentTilt, 1 - CurrentTilt, 0));
+			GameplayCamera.transform.LookAt(new Vector3(0, -5.5f + 4.5f * EnwidenRatio, -20f + Aspect(4.5f, 4f) * EnwidenRatio), new Vector3(CurrentTilt, 1 - CurrentTilt, 0));
 		}
 	}
 }
