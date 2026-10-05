@@ -40,6 +40,7 @@ namespace Arcade.Gameplay
 		private float earliestRenderTime = 0;
 		private float latestRenderTime = 0;
 		private int phaseShaderId = 0;
+		private MaterialPropertyBlock phaseBlock;
 		private float phase = 0;
 		public float CurrentSpeed { get; set; }
 		public List<ArcTiming> Timings { get => timings; }
@@ -80,10 +81,7 @@ namespace Arcade.Gameplay
 			Timings.Clear();
 			timingGroups.Clear();
 			AdeTimingEditor.Instance.SetCurrentTimingGroup(null);
-			foreach (var renderer in TrackComponentRenderers)
-			{
-				renderer.sharedMaterial.SetFloat(phaseShaderId, 0);
-			}
+			SetTrackPhase(0);
 			HideExceededBeatlineInstance(0);
 		}
 		public void Load(List<ArcTiming> arcTimings, List<ArcTimingGroup> arcTimingGroups)
@@ -514,9 +512,17 @@ namespace Arcade.Gameplay
 		{
 			phase += Velocity / 172.25f * 10.5f * (ArcGameplayManager.Instance.IsPlaying ? CurrentSpeed : 0) * Time.deltaTime;
 			phase -= Mathf.Floor(phase);
+			SetTrackPhase(phase);
+		}
+		// A property block keeps the scrolling phase off the shared track material assets.
+		private void SetTrackPhase(float value)
+		{
+			phaseBlock ??= new MaterialPropertyBlock();
 			foreach (var renderer in TrackComponentRenderers)
 			{
-				renderer.sharedMaterial.SetFloat(phaseShaderId, phase);
+				renderer.GetPropertyBlock(phaseBlock);
+				phaseBlock.SetFloat(phaseShaderId, value);
+				renderer.SetPropertyBlock(phaseBlock);
 			}
 		}
 

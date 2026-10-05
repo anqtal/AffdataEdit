@@ -16,6 +16,8 @@ public static class GameplayEditModePreview
 	private static RawImage content;
 	private static RenderTexture originalTexture;
 	private static Rect originalRect;
+	private static RenderTexture resizedAsset;
+	private static Vector2Int assetSize;
 	private static double nextCheck;
 
 	static GameplayEditModePreview()
@@ -34,6 +36,7 @@ public static class GameplayEditModePreview
 
 	private static void Update()
 	{
+		if (resizedAsset && EditorApplication.isPlaying) RestoreAssetSize();
 		if (EditorApplication.isPlayingOrWillChangePlaymode || EditorApplication.timeSinceStartup < nextCheck) return;
 		nextCheck = EditorApplication.timeSinceStartup + 0.2;
 		var compose = Object.FindAnyObjectByType<ArcadeComposeManager>();
@@ -100,6 +103,8 @@ public static class GameplayEditModePreview
 		if (!rect && preview && originalTexture
 			&& (originalTexture.width != preview.width || originalTexture.height != preview.height))
 		{
+			resizedAsset = originalTexture;
+			assetSize = new Vector2Int(originalTexture.width, originalTexture.height);
 			originalTexture.Release();
 			originalTexture.width = preview.width;
 			originalTexture.height = preview.height;
@@ -115,6 +120,19 @@ public static class GameplayEditModePreview
 		camera = null;
 		content = null;
 		Release();
+	}
+
+	// Once the runtime resizer renders into its own texture, the asset gets its saved size
+	// back and is not left modified.
+	private static void RestoreAssetSize()
+	{
+		var compose = Object.FindAnyObjectByType<ArcadeComposeManager>();
+		if (compose && compose.GameplayCamera && compose.GameplayCamera.targetTexture == resizedAsset) return;
+		resizedAsset.Release();
+		resizedAsset.width = assetSize.x;
+		resizedAsset.height = assetSize.y;
+		resizedAsset.Create();
+		resizedAsset = null;
 	}
 
 	private static void Release()
