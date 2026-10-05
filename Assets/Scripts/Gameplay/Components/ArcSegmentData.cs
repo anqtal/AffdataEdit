@@ -21,7 +21,7 @@ namespace Arcade.Gameplay
             FromPos = from; ToPos = to; Width = width; FromTiming = start; ToTiming = end;
             FromHeight = startHeight; ToHeight = endHeight;
         }
-        public void Submit(ArcNoteRenderer renderer, Matrix4x4 parent, Texture normal, Texture highlight, Texture gold)
+        public void Submit(ArcNoteRenderer renderer, Matrix4x4 parent, Texture normal, Texture highlight, Texture gold, int colorId)
         {
             if (!Enable || FromPos == ToPos) return;
             var local = Matrix4x4.identity;
@@ -31,10 +31,20 @@ namespace Arcade.Gameplay
             local.SetColumn(3, new Vector4(FromPos.x,FromPos.y,FromPos.z,1));
             var data = ArcNoteRenderer.NoteInstance.Create(parent * local, 2, Selected);
             data.HighColor = HighColor; data.LowColor = LowColor;
+            data.Options.y = IsTrace ? 1 : ArcNoteRenderer.ArcOpacityMultiplier;
             // Alpha colors a whole segment by its end height.
             data.ClipHeight = new Vector4(From,To,ToHeight,ToHeight);
             if (UseGoldTrace && !Highlight) data.UvTransform = new Vector4(-.5f,1,.5f,0);
-            renderer.Submit(ArcNoteMeshes.Segment, Highlight ? highlight : UseGoldTrace ? gold : normal, data, "Arc", 0);
+            Texture texture = Highlight ? highlight : UseGoldTrace ? gold : normal;
+            if (IsTrace)
+                renderer.Submit(ArcNoteMeshes.Segment, texture, data, "Arc", 0);
+            else
+            {
+                // AffdataPlay/Alpha: endpoint world height and color, with the right face +500.
+                int order = 3 * colorId + 4 * (int)(parent.MultiplyPoint3x4(ToPos).y * 100f);
+                renderer.Submit(ArcNoteMeshes.Segment, texture, data, "Arc", order, submesh: 1);
+                renderer.Submit(ArcNoteMeshes.Segment, texture, data, "Arc", order + 500, submesh: 2);
+            }
             local.m13 = 0; local.m12 = 0;
             data.Transform = parent * local;
             data.Options = new Vector4(4,1,0,0);

@@ -410,7 +410,7 @@ namespace Arcade.Gameplay
             if (!enable) return;
             var matrix = transform.localToWorldMatrix;
             var gold = traceBodyGoldTexture;
-            foreach (var segment in segments) segment.Submit(renderer, matrix, DefaultTexture, HighlightTexture, gold);
+            foreach (var segment in segments) segment.Submit(renderer, matrix, DefaultTexture, HighlightTexture, gold, arc.Color);
             renderer.SubmitHead(this);
             renderer.SubmitSprite(HeightIndicatorRenderer, 0, true);
             renderer.SubmitSprite(ArcCapRenderer, 0);

@@ -117,24 +117,24 @@ namespace Arcade.Gameplay
 				arcEffects.Add(color, state);
 			}
 			state.Owners.RemoveAll(owner => !owner);
-			if (state.Owners.Contains(renderer) == enable && (state.Effect || !enable)) return;
-			if (enable) state.Owners.Add(renderer);
-			else state.Owners.Remove(renderer);
+			bool registered = state.Owners.Contains(renderer);
+            if (registered == enable && (!enable || (state.Effect && ArcLongNoteEffect.Get(state.Effect).Active))) return;
+			if (enable && !registered) state.Owners.Add(renderer);
+			else if (!enable) state.Owners.Remove(renderer);
 			if (!state.Effect) state.Effect = CreateLongNoteAnchor($"Arc hit {color}", renderer.JudgeEffect);
 			ArcArcRenderer current = state.Owners.Count > 0 ? state.Owners[state.Owners.Count - 1] : null;
 			var effect = ArcLongNoteEffect.Get(state.Effect);
 			if (current)
 			{
-				// Parent to the arc's judge point so the particle tracks it in the same frame.
+				// Keep the shared anchor outside pooled Arc objects; follow the judge point in LateUpdate.
 				CopyLongNoteSkin(current.JudgeEffect, state.Effect);
-				state.Effect.transform.SetParent(current.JudgeEffectTransform, false);
-				state.Effect.transform.localPosition = Vector3.zero;
+				effect.FollowTarget = current.JudgeEffectTransform;
 				effect.RefreshSkin();
 				effect.SetEmission(true);
 			}
 			else
 			{
-				state.Effect.transform.SetParent(HoldNoteEffects[0].transform.parent, true);
+				effect.FollowTarget = null;
 				effect.SetEmission(false);
 			}
 		}

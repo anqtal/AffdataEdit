@@ -12,6 +12,8 @@ namespace Arcade.Gameplay
     public sealed class ArcNoteRenderer : MonoBehaviour
     {
         internal static ArcNoteRenderer Instance { get; private set; }
+        // AffdataPlay's Arc shader applies this after the skin and note alpha.
+        internal const float ArcOpacityMultiplier = 0.9f;
         [StructLayout(LayoutKind.Sequential)]
         internal struct NoteInstance
         {
@@ -31,13 +33,13 @@ namespace Arcade.Gameplay
             public NoteInstance Data;
             public int Submesh, Layer, LayerValue, Order, Queue, DepthTest, DepthWrite;
             public bool SameDraw(Item other) => Mesh == other.Mesh && Texture == other.Texture && Submesh == other.Submesh
-                && Layer == other.Layer && Order == other.Order && Queue == other.Queue
+                && Layer == other.Layer && Queue == other.Queue
                 && DepthTest == other.DepthTest && DepthWrite == other.DepthWrite;
         }
         private struct SortKey
         {
             public int Index, LayerValue, Order, Queue;
-            public float Distance;
+            public float Distance, PrimaryDistance;
         }
         private sealed class Draw
         {
@@ -172,6 +174,7 @@ namespace Arcade.Gameplay
             data.HighColor = sourceProperties.HasColor("_HighColor") ? sourceProperties.GetColor("_HighColor") : arc.HighColor;
             data.LowColor = sourceProperties.HasColor("_LowColor") ? sourceProperties.GetColor("_LowColor") : arc.LowColor;
             data.ClipHeight.z = data.ClipHeight.w = arc.Arc.YStart;
+            data.Options.y = arc.Arc.IsVoid ? 1 : ArcOpacityMultiplier;
             Submit(ArcNoteMeshes.Head, arc.Highlight ? arc.HighlightTexture : arc.DefaultTexture, data, "ArcTap", 1);
         }
 
@@ -213,9 +216,10 @@ namespace Arcade.Gameplay
                 sortingLayer = (id, SortingLayer.GetLayerValueFromID(id));
                 sortingLayers.Add(layer, sortingLayer);
             }
+            float distance = orthographic ? Vector3.Dot(bounds.center - cameraPosition, cameraForward)
+                : (bounds.center - cameraPosition).sqrMagnitude;
             sortKeys.Add(new SortKey { Index = items.Count, LayerValue = sortingLayer.value, Order = order, Queue = queue,
-                Distance = orthographic ? Vector3.Dot(bounds.center - cameraPosition, cameraForward)
-                    : (bounds.center - cameraPosition).sqrMagnitude });
+                Distance = distance, PrimaryDistance = layer == "Arc" ? distance : 0 });
             items.Add(new Item { Mesh = mesh, Texture = texture ? texture : Texture2D.whiteTexture, Data = data,
                 Layer = sortingLayer.id, LayerValue = sortingLayer.value, Order = order, Queue = queue,
                 Submesh = submesh, DepthWrite = depthWrite, DepthTest = depthTest });
@@ -231,6 +235,8 @@ namespace Arcade.Gameplay
         private static int Compare(SortKey a, SortKey b)
         {
             int c = a.LayerValue.CompareTo(b.LayerValue);
+            // Within the Arc layer, draw far segments first; height/color/face order breaks ties.
+            if (c == 0) c = b.PrimaryDistance.CompareTo(a.PrimaryDistance);
             if (c == 0) c = a.Order.CompareTo(b.Order);
             if (c == 0) c = a.Queue.CompareTo(b.Queue);
             if (c == 0) c = b.Distance.CompareTo(a.Distance);
@@ -252,7 +258,7 @@ namespace Arcade.Gameplay
             if (items.Count == 0) return;
             // Sort compact keys, keeping matrices and instance data out of the sort's copies.
             sortKeys.Sort(Compare);
-            // Keep transparent order: only adjacent compatible items share a draw.
+            // Keep transparent order: adjacent compatible items can share a draw even across sort orders.
             for (int start = 0; start < items.Count;)
             {
                 Item item = items[sortKeys[start].Index];

@@ -8,11 +8,20 @@ namespace Arcade.Gameplay
     {
         private static Mesh segment, shadow, head, cube, sfx, bracket, connection;
         private static readonly Dictionary<Sprite, Mesh> sprites = new Dictionary<Sprite, Mesh>();
-        public static Mesh Segment => segment ? segment : segment = Make("Arc segment",
-            new[] { new Vector3(0,.5f,0), new Vector3(0,.5f,1), new Vector3(1,-.5f,1),
-                new Vector3(1,-.5f,0), new Vector3(-1,-.5f,1), new Vector3(-1,-.5f,0) },
-            new[] { Vector2.zero, Vector2.up, Vector2.one, Vector2.right, Vector2.one, Vector2.right },
-            new[] { 0,3,2, 0,2,1, 0,5,4, 0,4,1 });
+        public static Mesh Segment => segment ? segment : segment = CreateSegment();
+        private static Mesh CreateSegment()
+        {
+            var mesh = Make("Arc segment",
+                new[] { new Vector3(0,.5f,0), new Vector3(0,.5f,1), new Vector3(1,-.5f,1),
+                    new Vector3(1,-.5f,0), new Vector3(-1,-.5f,1), new Vector3(-1,-.5f,0) },
+                new[] { Vector2.zero, Vector2.up, Vector2.one, Vector2.right, Vector2.one, Vector2.right },
+                new[] { 0,3,2, 0,2,1, 0,5,4, 0,4,1 });
+            // Submesh 0 retains the complete trace; solid Arcs sort the two faces independently.
+            mesh.subMeshCount = 3;
+            mesh.SetTriangles(new[] { 0,3,2, 0,2,1 }, 1);
+            mesh.SetTriangles(new[] { 0,5,4, 0,4,1 }, 2);
+            return mesh;
+        }
         public static Mesh Shadow => shadow ? shadow : shadow = Make("Arc shadow",
             new[] { new Vector3(-1,0,0), new Vector3(-1,0,1), new Vector3(1,0,1), new Vector3(1,0,0) },
             new[] { Vector2.zero, Vector2.up, Vector2.one, Vector2.right }, new[] { 0,1,2, 0,2,3 });
