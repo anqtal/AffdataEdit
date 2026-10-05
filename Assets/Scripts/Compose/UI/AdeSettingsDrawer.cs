@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using LitMotion;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -19,10 +20,9 @@ namespace Arcade.Compose
 		private const float BarShadow = 20;
 		// The built-in check sprite is dark gray, so the dark theme swaps in a white check;
 		// the light theme keeps the scene's sprite and color.
-		private Image[] checks = new Image[0];
-		private Sprite[] lightSprites = new Sprite[0];
-		private Color[] lightColors = new Color[0];
+		private readonly Dictionary<Image, (Sprite sprite, Color color)> checks = new Dictionary<Image, (Sprite, Color)>();
 		private Sprite darkCheck;
+		private RectTransform content;
 		private static readonly Color DarkFill = new Color32(0x1F, 0x1F, 0x1F, 0xFF), LightFill = new Color32(0xF3, 0xF3, 0xF3, 0xFF);
 
 		private RectTransform drawer, viewport;
@@ -74,7 +74,7 @@ namespace Arcade.Compose
 			viewport.anchorMin = Vector2.zero;
 			viewport.anchorMax = Vector2.one;
 			viewport.sizeDelta = Vector2.zero;
-			var content = Child("Content", viewport, typeof(VerticalLayoutGroup), typeof(ContentSizeFitter));
+			content = Child("Content", viewport, typeof(VerticalLayoutGroup), typeof(ContentSizeFitter));
 			content.anchorMin = new Vector2(0, 1);
 			content.anchorMax = new Vector2(1, 1);
 			content.pivot = new Vector2(0.5f, 1);
@@ -99,17 +99,7 @@ namespace Arcade.Compose
 			while (source.childCount > 0) source.GetChild(0).SetParent(content, false);
 			Arrange(content);
 			darkCheck = Resources.Load<Sprite>("AffdataEdit/Icons/Checkmark");
-			var toggles = content.GetComponentsInChildren<Toggle>(true);
-			checks = new Image[toggles.Length];
-			lightSprites = new Sprite[toggles.Length];
-			lightColors = new Color[toggles.Length];
-			for (int i = 0; i < toggles.Length; i++)
-			{
-				checks[i] = toggles[i].graphic as Image;
-				if (!checks[i]) continue;
-				lightSprites[i] = checks[i].sprite;
-				lightColors[i] = checks[i].color;
-			}
+			CollectChecks();
 
 			AdeUiTheme.AddRoot(drawer);
 			AdeUiKit.SetOnClick(settingButton, Toggle);
@@ -121,13 +111,21 @@ namespace Arcade.Compose
 		{
 			if (fill) fill.color = AdeUiTheme.Dark ? DarkFill : LightFill;
 			bool dark = AdeUiTheme.Dark && darkCheck;
-			for (int i = 0; i < checks.Length; i++)
+			foreach (var pair in checks)
 			{
-				if (!checks[i]) continue;
-				Sprite sprite = dark ? darkCheck : lightSprites[i];
-				if (checks[i].sprite != sprite) checks[i].sprite = sprite;
-				checks[i].color = dark ? Color.white : lightColors[i];
+				if (!pair.Key) continue;
+				Sprite sprite = dark ? darkCheck : pair.Value.sprite;
+				if (pair.Key.sprite != sprite) pair.Key.sprite = sprite;
+				pair.Key.color = dark ? Color.white : pair.Value.color;
 			}
+		}
+
+		// Rows added after the drawer was built, such as the theme switch, are picked up on open.
+		private void CollectChecks()
+		{
+			foreach (var toggle in content.GetComponentsInChildren<Toggle>(true))
+				if (toggle.graphic is Image check && !checks.ContainsKey(check))
+					checks.Add(check, (check.sprite, check.color));
 		}
 
 		private static RectTransform Child(string name, Transform parent, params System.Type[] components)
@@ -216,7 +214,11 @@ namespace Arcade.Compose
 			if (!drawer) return;
 			open = !open;
 			motion.TryCancel();
-			if (open) drawer.gameObject.SetActive(true);
+			if (open)
+			{
+				CollectChecks();
+				drawer.gameObject.SetActive(true);
+			}
 			float target = open ? 1 : 0;
 			float duration = (open ? OpenSeconds : CloseSeconds) * Mathf.Abs(target - progress);
 			motion = LMotion.Create(progress, target, Mathf.Max(0.01f, duration))
