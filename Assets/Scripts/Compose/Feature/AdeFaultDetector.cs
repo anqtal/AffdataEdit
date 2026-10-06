@@ -239,7 +239,7 @@ namespace Arcade.Compose
 					sw.WriteLine(c.Reason);
 					foreach (var f in c.Faults)
 					{
-						sw.WriteLine($"\t谱面时间:{f.Timing.ToString(CultureInfo.InvariantCulture)}\t音频时间:{f.Timing + ArcGameplayManager.Instance.ChartAudioOffset.ToString(CultureInfo.InvariantCulture)}");
+						sw.WriteLine($"\t谱面时间:{f.Timing.ToString(CultureInfo.InvariantCulture)}\t音频时间:{(f.Timing + ArcGameplayManager.Instance.ChartAudioOffset).ToString(CultureInfo.InvariantCulture)}");
 					}
 					count += c.Faults.Count;
 				}
