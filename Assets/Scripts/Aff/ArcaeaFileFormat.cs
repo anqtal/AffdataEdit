@@ -249,6 +249,15 @@ namespace Arcade.Aff
 			}
 			writer.Close();
 		}
+		// One item as written in an aff file, e.g. for quoting it in reports.
+		public static string FormatItem(IRawAffItem item)
+		{
+			using (var writer = new StringWriter(CultureInfo.InvariantCulture))
+			{
+				writeItem(writer, item);
+				return writer.ToString().TrimEnd();
+			}
+		}
 		static void writeItem(TextWriter writer, IRawAffItem item, string intent = "")
 		{
 			if (item is RawAffTiming timing)
