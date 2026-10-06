@@ -4,7 +4,7 @@
 
 独立更新器：<https://github.com/anqtal/AffdataEdit-Updater>
 
-构建 Windows x64 和 macOS。每次 push 到 master 自动构建；本地未 push 的 commit 不会触发。
+构建 Windows x64 和 macOS（仅 Apple 芯片）。每次 push 到 master 自动构建；本地未 push 的 commit 不会触发。
 只通过 R2 发布，不再发布 GitHub Release 或 artifact，安装和更新都通过独立更新器，
 只提供最新版本。各平台构建成功后上传 R2，并获取独立更新器的最新 Release，校验 SHA-256
 后单独发布到 R2 的 `updater/<平台>/`。构建失败保留上一版。
