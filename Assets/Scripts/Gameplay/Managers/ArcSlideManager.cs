@@ -124,7 +124,9 @@ namespace Arcade.Gameplay
                     if (slide.IsFloor) ArcEffectManager.Instance.PlayTapSound();
                     else ArcEffectManager.Instance.PlayArcSound();
                 }
-                slide.Instance.GetComponent<ArcSlideVisual>().Present(now, game.Auto && !slide.NoInput());
+                // Match Play: noinput still consumes passed geometry unless noclip is set.
+                bool consume = (game.Auto || slide.NoInput()) && !(slide.TimingGroup?.NoClip ?? false);
+                slide.Instance.GetComponent<ArcSlideVisual>().Present(now, consume);
                 if (hit)
                 {
                     var root = slide.GroupRoot;

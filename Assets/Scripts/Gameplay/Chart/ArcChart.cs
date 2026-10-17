@@ -1573,6 +1573,7 @@ namespace Arcade.Gameplay.Chart
 		public List<ArcTiming> Timings = new List<ArcTiming>();
 		public string Attributes = "";
 		public bool NoInput = false;
+		public bool NoClip = false;
 		public bool FadingHolds = false;
         public Color32 TraceColor;
         public bool UseTraceColor;
@@ -1586,6 +1587,7 @@ namespace Arcade.Gameplay.Chart
 		public void ApplyAttributes(string attributes)
 		{
 			Attributes = attributes;
+			NoClip = false;
             TraceColor = new Color32(0, 0, 0, 0);
             UseTraceColor = false;
             TraceBodyGold = false;
@@ -1620,6 +1622,11 @@ namespace Arcade.Gameplay.Chart
 				if (attribute == "fadingholds")
 				{
 					FadingHolds = true;
+					continue;
+				}
+				if (attribute == "noclip")
+				{
+					NoClip = true;
 					continue;
 				}
 				Match matchAngleX = Regex.Match(attribute, "^anglex([0-9]+)$");
