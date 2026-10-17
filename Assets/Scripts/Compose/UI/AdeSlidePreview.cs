@@ -16,12 +16,15 @@ namespace Arcade.Compose.UI
         private ArcSlide edit;
         private int corner;
         private IReadOnlyList<float> gridPositions;
+        private float gridScaleFactor = 1f;
 
         private void Update()
         {
             var positions = AdeGridManager.Instance ? AdeGridManager.Instance.VerticalXPositions : null;
-            if (ReferenceEquals(gridPositions, positions)) return;
+            float scaleFactor = canvas ? canvas.scaleFactor : 1f;
+            if (ReferenceEquals(gridPositions, positions) && gridScaleFactor == scaleFactor) return;
             gridPositions = positions;
+            gridScaleFactor = scaleFactor;
             SetVerticesDirty();
         }
         protected override void OnPopulateMesh(VertexHelper vh)
@@ -40,8 +43,16 @@ namespace Arcade.Compose.UI
                 if (x < ArcSlide.MinX || x > ArcSlide.MaxX) continue;
                 var bottom = Point(x, 0);
                 var top = Point(x, 1);
-                var halfWidth = new Vector2(.5f, 0);
-                Quad(vh, bottom - halfWidth, bottom + halfWidth, top - halfWidth, top + halfWidth,
+                // A UI unit can be less than a screen pixel when the window is scaled down.
+                var width = new Vector2(1f / gridScaleFactor, 0);
+                bottom -= width / 2;
+                top -= width / 2;
+                if (canvas)
+                {
+                    bottom = RectTransformUtility.PixelAdjustPoint(bottom, rectTransform, canvas);
+                    top = RectTransformUtility.PixelAdjustPoint(top, rectTransform, canvas);
+                }
+                Quad(vh, bottom, bottom + width, top, top + width,
                     new Color(.85f, .85f, .95f, .75f));
             }
             foreach(float t in new[]{0f,1f})

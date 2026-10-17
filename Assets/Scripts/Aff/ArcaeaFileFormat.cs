@@ -283,8 +283,9 @@ namespace Arcade.Aff
 			else if (item is RawAffSlide slide)
 			{
 				writer.WriteLine(intent + string.Format(CultureInfo.InvariantCulture,
-					"slide({0},{1},{2:0.################################################},{3:0.################################################},{4:0.################################################},{5:0.################################################},{6},{7},{8});", slide.Timing, slide.EndTiming,
-					(double)slide.StartCenter, (double)slide.StartWidth, (double)slide.EndCenter, (double)slide.EndWidth, slide.LeftCurve, slide.RightCurve, (int)slide.Height));
+					"slide({0},{1},{2},{3},{4},{5},{6},{7},{8});", slide.Timing, slide.EndTiming,
+					FormatSlideCoordinate(slide.StartCenter), FormatSlideCoordinate(slide.StartWidth),
+					FormatSlideCoordinate(slide.EndCenter), FormatSlideCoordinate(slide.EndWidth), slide.LeftCurve, slide.RightCurve, (int)slide.Height));
 			}
 			else if (item is RawAffArc arc)
 			{
@@ -334,6 +335,15 @@ namespace Arcade.Aff
 				}
 				writer.WriteLine($"{intent}}};");
 			}
+		}
+		private static string FormatSlideCoordinate(float value)
+		{
+			// Preserve the float on reload without exposing the extra digits of a double cast.
+			string text = value.ToString("R", CultureInfo.InvariantCulture);
+			if (text.IndexOf('E') < 0) return text;
+			// AFF only accepts decimal notation; expand the already rounded float text.
+			return double.Parse(text, CultureInfo.InvariantCulture)
+				.ToString("0.################################################", CultureInfo.InvariantCulture);
 		}
 		public static string FormatHexColor(Color32 color)
 		{
