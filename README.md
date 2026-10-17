@@ -1,6 +1,16 @@
 # AffdataEdit
 
-Arcade is a utility used to edit and preview aff files. The original Arcade repository was taken down due to [GitHub's DMCA takedown policy](https://docs.github.com/en/site-policy/content-removal-policies/dmca-takedown-policy) (see [the DMCA takedown request](https://github.com/github/dmca/blob/master/2019/02/2019-02-27-Arcaea.md)). The author of the original Arcade, [cnSchwarzer](https://github.com/cnSchwarzer) aka Sch, refused to remove copyrighted content owned by Lowiro, the developer of Arcaea. Sch used a Chinese code hosting platform after that instead.
+## Special Thanks to
+- [@LAM0578](https://github.com/LAM0578)
+- [@linwenxuan04](https://github.com/Linwenxuan04)
+
+for their technical support!
+
+## Project Overview
+
+AffdataEdit is forked from Arcade-plus by yojohanshinwataikei which also forked from the original Arcade by Schwarzer, containing some useful features from Arcade-Alpha by LAM0578 and rendering implementaion from AffdataPlay. Due to copyrights issues, source code of AffdataPlay will not be available.
+
+AffdataEdit is a utility used to edit and preview aff files and has some advanced features for AffdataPlay. The original Arcade repository was taken down due to [GitHub's DMCA takedown policy](https://docs.github.com/en/site-policy/content-removal-policies/dmca-takedown-policy) (see [the DMCA takedown request](https://github.com/github/dmca/blob/master/2019/02/2019-02-27-Arcaea.md)). The author of the original Arcade, [cnSchwarzer](https://github.com/cnSchwarzer) aka Sch, refused to remove copyrighted content owned by Lowiro, the developer of Arcaea. Sch used a Chinese code hosting platform after that instead.
 
 AffdataEdit is a fork of [Arcade-plus](https://github.com/yojohanshinwataikei/Arcade-plus), which is itself a fork of Arcade that brought it back to GitHub. Like Arcade-plus, it does not contain any copyrighted content, but uses a skinning feature instead. AffdataEdit also includes parts of the code of AffdataPlay, the Affdata game client, such as its audio playback, and adds AffdataNet integration, new features, redesigns and performance optimizations.
 
