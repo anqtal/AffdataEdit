@@ -35,7 +35,7 @@ namespace Arcade.Gameplay
             shadowObject = new GameObject("Slide shadow", typeof(MeshFilter), typeof(MeshRenderer));
             shadowObject.layer = 9;
             shadowObject.transform.SetParent(transform, false);
-            shadowObject.transform.localPosition = new Vector3(0, -ArcAlgorithm.ArcYToWorld(1) + 0.02f, 0);
+            shadowObject.transform.localPosition = new Vector3(0, -note.WorldHeight + 0.02f, 0);
             shadowObject.GetComponent<MeshFilter>().sharedMesh = mesh;
             shadow = shadowObject.GetComponent<MeshRenderer>(); shadow.forceRenderingOff = true; shadow.sortingLayerName = "Shadow"; shadow.sharedMaterial = ArcSlideManager.Instance.ShadowMaterial;
             transform.position = new Vector3(0, note.WorldHeight, 0);
@@ -75,10 +75,11 @@ namespace Arcade.Gameplay
             if (!visible) return;
             // Store geometry relative to the head. Scrolling only moves the transform.
             transform.position = new Vector3(0, note.WorldHeight, startZ);
+            shadowObject.transform.localPosition = new Vector3(0, -note.WorldHeight + 0.02f, 0);
             body.renderingLayerMask = note.Selected ? ArcGameplayManager.Instance.SelectionLayerMask : 1u;
             int hash = System.HashCode.Combine(note.Timing, note.EndTiming, note.StartCenter, note.StartWidth,
                 note.EndCenter, note.EndWidth, note.LeftCurve, note.RightCurve);
-            hash = System.HashCode.Combine(hash, timing.BaseBpm, timing.SettingVelocity, note.IsFloor);
+            hash = System.HashCode.Combine(hash, timing.BaseBpm, timing.SettingVelocity, note.Height);
             foreach (var point in timing.GetTiming(note.TimingGroup))
                 hash = System.HashCode.Combine(hash, point.Timing, point.Bpm);
             int start = consume ? Mathf.Max(note.Timing, now) : note.Timing;

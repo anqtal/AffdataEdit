@@ -63,10 +63,18 @@ namespace Arcade.Aff
 		public float? Smoothness;
 		public List<RawAffArctap> ArcTaps;
 	}
+	public enum SlideHeight
+	{
+		Ground = 0,
+		Sky = 1,
+		HighSky = 2,
+	}
 	public class RawAffSlide : IRawAffNestableItem
 	{
 		public int Timing, EndTiming, LeftCurve, RightCurve;
-		public bool IsFloor;
+		public SlideHeight Height = SlideHeight.Sky;
+		// Compatibility for callers using the former two-plane model.
+		public bool IsFloor { get => Height == SlideHeight.Ground; set => Height = value ? SlideHeight.Ground : SlideHeight.Sky; }
 		public float StartCenter, StartWidth, EndCenter, EndWidth;
 	}
 	public class RawAffCamera : IRawAffNestableItem
@@ -276,7 +284,7 @@ namespace Arcade.Aff
 			{
 				writer.WriteLine(intent + string.Format(CultureInfo.InvariantCulture,
 					"slide({0},{1},{2:0.################################################},{3:0.################################################},{4:0.################################################},{5:0.################################################},{6},{7},{8});", slide.Timing, slide.EndTiming,
-					(double)slide.StartCenter, (double)slide.StartWidth, (double)slide.EndCenter, (double)slide.EndWidth, slide.LeftCurve, slide.RightCurve, slide.IsFloor ? "true" : "false"));
+					(double)slide.StartCenter, (double)slide.StartWidth, (double)slide.EndCenter, (double)slide.EndWidth, slide.LeftCurve, slide.RightCurve, (int)slide.Height));
 			}
 			else if (item is RawAffArc arc)
 			{
@@ -592,18 +600,35 @@ namespace Arcade.Aff
             return int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out curve);
         }
 
+		private static bool TryParseSlideHeight(string value, out SlideHeight height)
+		{
+			height = SlideHeight.Sky;
+			if (int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int number)
+				&& number >= 0 && number <= 2)
+			{
+				height = (SlideHeight)number;
+				return true;
+			}
+
+			// 已废弃的 isfloor Slide 语法，预计两个月后（2026-12-18）移除。
+			// 加载时自动迁移 true -> 0、false -> 1，保存时只输出高度枚举，旧谱仍可打开。
+			if (!bool.TryParse(value, out bool isFloor)) return false;
+			height = isFloor ? SlideHeight.Ground : SlideHeight.Sky;
+			return true;
+		}
+
 		void GenSlide(ArcaeaFileFormatParser.EventContext context)
 		{
 			RejectSubevents(context, "slide");
 			RejectSegment(context, "slide");
 			if (context.values() == null || (context.values().value().Length != 8 && context.values().value().Length != 9))
 			{
-				chart.error.Add($"第 {context.Start.Line + lineOffset} 行：slide 需要 8 个参数，以及可选的 isfloor 布尔参数。");
+				chart.error.Add($"第 {context.Start.Line + lineOffset} 行：slide 需要 8 个参数，以及可选的高度枚举（0 地面、1 天空、2 高空）。");
 				return;
 			}
 			var v = context.values().value();
 			int start, end, left, right;
-			bool isFloor = false;
+			SlideHeight height = SlideHeight.Sky;
 			float sc, sw, ec, ew;
 			if (!int.TryParse(v[0].GetText(), NumberStyles.Integer, CultureInfo.InvariantCulture, out start)
 				|| !int.TryParse(v[1].GetText(), NumberStyles.Integer, CultureInfo.InvariantCulture, out end)
@@ -613,15 +638,15 @@ namespace Arcade.Aff
 				|| !float.TryParse(v[5].GetText(), NumberStyles.Float, CultureInfo.InvariantCulture, out ew)
 				|| !TryParseSlideCurve(v[6].GetText(), out left)
 				|| !TryParseSlideCurve(v[7].GetText(), out right)
-				|| (v.Length == 9 && !bool.TryParse(v[8].GetText(), out isFloor))
+				|| (v.Length == 9 && !TryParseSlideHeight(v[8].GetText(), out height))
 				|| (long)end - start < 2 || (long)end - start > int.MaxValue || left < 0 || left > 3 || right < 0 || right > 3
 				|| !ArcSlide.ValidShape(sc, sw, ec, ew, left, right))
 			{
-				chart.error.Add($"第 {context.Start.Line + lineOffset} 行：slide 参数无效；需要至少 2ms、有效范围及 0/1/2/3（b）曲线。");
+				chart.error.Add($"第 {context.Start.Line + lineOffset} 行：slide 参数无效；需要至少 2ms、有效范围、0/1/2/3（b）曲线及 0/1/2 高度。");
 				return;
 			}
 			context.value = new RawAffSlide { Timing = start, EndTiming = end, StartCenter = sc,
-				StartWidth = sw, EndCenter = ec, EndWidth = ew, LeftCurve = left, RightCurve = right, IsFloor = isFloor };
+				StartWidth = sw, EndCenter = ec, EndWidth = ew, LeftCurve = left, RightCurve = right, Height = height };
 		}
 
 		void GenArc(ArcaeaFileFormatParser.EventContext context)

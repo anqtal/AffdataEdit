@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Arcade.Aff;
 using Arcade.Gameplay.Chart;
 using UnityEngine;
 
@@ -12,7 +13,7 @@ namespace Arcade.Gameplay
         public Material ShadowMaterial { get; private set; }
         public Material BracketMaterial { get; private set; }
         public Mesh BracketMesh { get; private set; }
-        private Material glowMaterial, floorGlowMaterial, gridMaterial, blurMaterial;
+        private Material glowMaterial, floorGlowMaterial, highGlowMaterial, gridMaterial, blurMaterial;
         private sealed class Feedback
         {
             public GameObject Object;
@@ -25,7 +26,8 @@ namespace Arcade.Gameplay
         private readonly Dictionary<ArcSlide, ArcSlide> activeSegments = new Dictionary<ArcSlide, ArcSlide>();
         private readonly List<Vector2> activeRanges = new List<Vector2>();
         private readonly List<Vector2> floorRanges = new List<Vector2>();
-        private ArcSlideJudgementGrid grid, floorGrid;
+        private readonly List<Vector2> highRanges = new List<Vector2>();
+        private ArcSlideJudgementGrid grid, floorGrid, highGrid;
         private int previousTime = int.MinValue;
         private bool previousPlaying;
 
@@ -51,6 +53,11 @@ namespace Arcade.Gameplay
             floorGlowMaterial = Make("SpcSkyLineGlow");
             floorGlowMaterial.SetTexture("_DownscaledGrid", floorGrid.SharpTexture);
             floorGlowMaterial.SetTexture("_DownscaledBlurredGrid", floorGrid.BlurredTexture);
+            highGrid = new ArcSlideJudgementGrid();
+            highGrid.Build(gridMaterial, blurMaterial, 1024, 576);
+            highGlowMaterial = Make("SpcSkyLineGlow");
+            highGlowMaterial.SetTexture("_DownscaledGrid", highGrid.SharpTexture);
+            highGlowMaterial.SetTexture("_DownscaledBlurredGrid", highGrid.BlurredTexture);
             gameObject.AddComponent<Arcade.Compose.UI.AdeSlideEditor>();
         }
         private static Material Make(string name)
@@ -80,7 +87,8 @@ namespace Arcade.Gameplay
         }
         public void ResetFeedback()
         {
-            previousTime = int.MinValue; previousPlaying = false; grid?.ResetState(); floorGrid?.ResetState(); activeRanges.Clear(); floorRanges.Clear();
+            previousTime = int.MinValue; previousPlaying = false; grid?.ResetState(); floorGrid?.ResetState(); highGrid?.ResetState();
+            activeRanges.Clear(); floorRanges.Clear(); highRanges.Clear();
             foreach (var hit in feedback.Values) { hit.Opacity = 0; if (hit.Object) hit.Object.SetActive(false); }
         }
         private Feedback CreateFeedback()
@@ -101,7 +109,7 @@ namespace Arcade.Gameplay
             int now = game.ChartTiming;
             bool discontinuity = previousTime == int.MinValue || now < previousTime || (long)now - previousTime > 250;
             if (discontinuity) ResetFeedback();
-            activeRanges.Clear(); floorRanges.Clear(); activeSegments.Clear();
+            activeRanges.Clear(); floorRanges.Clear(); highRanges.Clear(); activeSegments.Clear();
             foreach (var slide in Slides)
             {
                 if (!slide.Instance) slide.Instantiate();
@@ -136,13 +144,15 @@ namespace Arcade.Gameplay
                 if (hit)
                 {
                     effect.Range = slide.Range((now - slide.Timing) / (float)(slide.EndTiming - slide.Timing));
-                    effect.Opacity = 1; (slide.IsFloor ? floorRanges : activeRanges).Add(effect.Range);
+                    effect.Opacity = 1;
+                    (slide.IsFloor ? floorRanges : slide.Height == SlideHeight.HighSky ? highRanges : activeRanges).Add(effect.Range);
                 }
                 if (effect == null) continue;
                 effect.Object.transform.position = new Vector3(0, slide.WorldHeight + (slide.IsFloor ? .025f : 0), -.01f);
                 effect.Object.transform.localScale = new Vector3(slide.WorldWidth * 2f / .8f, slide.IsFloor ? 1f : .75f, 1);
                 effect.Object.transform.rotation = Quaternion.Euler(slide.IsFloor ? 90 : 0, 180, 0);
-                effect.Renderer.sharedMaterial = slide.IsFloor ? floorGlowMaterial : glowMaterial;
+                effect.Renderer.sharedMaterial = slide.IsFloor ? floorGlowMaterial
+                    : slide.Height == SlideHeight.HighSky ? highGlowMaterial : glowMaterial;
                 if (!hit) effect.Opacity = game.IsPlaying && !slide.GroupHide() && !slide.NoInput()
                     ? Mathf.Max(0, effect.Opacity - Time.deltaTime / 0.3f) : 0;
                 effect.Object.SetActive(effect.Opacity > 0);
@@ -157,6 +167,9 @@ namespace Arcade.Gameplay
             floorGrid.SetSkyRanges(floorRanges);
             floorGrid.SetPresentationClock(Mathf.Max(0, now / 1000f));
             floorGrid.UpdateFrame(game.IsPlaying && !discontinuity ? Mathf.Max(0, now - previousTime) / 1000f : 0);
+            highGrid.SetSkyRanges(highRanges);
+            highGrid.SetPresentationClock(Mathf.Max(0, now / 1000f));
+            highGrid.UpdateFrame(game.IsPlaying && !discontinuity ? Mathf.Max(0, now - previousTime) / 1000f : 0);
             previousTime = now;
             previousPlaying = game.IsPlaying;
         }
@@ -191,11 +204,11 @@ namespace Arcade.Gameplay
             }
             ordered.Sort((a, b) => a.note.Timing != b.note.Timing
                 ? a.note.Timing.CompareTo(b.note.Timing) : a.index.CompareTo(b.index));
-            var previous = new Dictionary<(ArcTimingGroup, bool), ArcSlide>();
+            var previous = new Dictionary<(ArcTimingGroup, SlideHeight), ArcSlide>();
             foreach (var item in ordered)
             {
                 var current = item.note;
-                var key = (current.TimingGroup, current.IsFloor);
+                var key = (current.TimingGroup, current.Height);
                 if (previous.TryGetValue(key, out var before))
                 {
                     // Logical continuity does not require horizontally overlapping ranges.
@@ -219,8 +232,8 @@ namespace Arcade.Gameplay
         }
         private void OnDestroy()
         {
-            Clean(); grid?.Dispose(); floorGrid?.Dispose();
-            foreach (var material in new[] { BodyMaterial, ShadowMaterial, BracketMaterial, glowMaterial, floorGlowMaterial, gridMaterial, blurMaterial })
+            Clean(); grid?.Dispose(); floorGrid?.Dispose(); highGrid?.Dispose();
+            foreach (var material in new[] { BodyMaterial, ShadowMaterial, BracketMaterial, glowMaterial, floorGlowMaterial, highGlowMaterial, gridMaterial, blurMaterial })
                 if (material) Destroy(material);
             if (Instance == this) Instance = null;
         }

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using Arcade.Aff;
 using Arcade.Compose.Command;
 using Arcade.Compose.Editing;
 using Arcade.Compose.MarkingMenu;
@@ -18,9 +19,7 @@ namespace Arcade.Compose.UI
     {
         private readonly List<GameObject> rows = new List<GameObject>();
         private InputField startRange, endRange;
-        private Dropdown leftCurve, rightCurve;
-        private Toggle isFloor;
-        private Image floorIntermediate;
+        private Dropdown leftCurve, rightCurve, height;
         private AdeSlidePreview preview;
         private MarkingMenuItem menu;
         private bool ready;
@@ -34,14 +33,7 @@ namespace Arcade.Compose.UI
             endRange = RangeRow(editor.EndPos, "结束范围", false);
             leftCurve = CurveRow(editor.CurveType, "左侧曲线", true);
             rightCurve = CurveRow(editor.CurveType, "右侧曲线", false);
-            var floorRow = Instantiate(editor.IsVoid, editor.IsVoid.parent); floorRow.name = "天地镜像";
-            floorRow.GetComponentsInChildren<Text>(true)[0].text = "天地镜像";
-            isFloor = floorRow.GetComponentInChildren<Toggle>(true);
-            isFloor.onValueChanged = new Toggle.ToggleEvent();
-            isFloor.onValueChanged.AddListener(value => Apply(note => note.IsFloor = value));
-            floorIntermediate = floorRow.GetComponentsInChildren<Image>(true).FirstOrDefault(image => image.name == editor.IsVoidIntermediate.name);
-            if (floorIntermediate) floorIntermediate.gameObject.SetActive(false);
-            rows.Add(floorRow.gameObject);
+            height = HeightRow(editor.CurveType);
             var shape = new GameObject("Slide shape preview", typeof(RectTransform), typeof(LayoutElement), typeof(AdeSlidePreview));
             shape.transform.SetParent(editor.Timing.parent, false);
             shape.GetComponent<LayoutElement>().preferredHeight = 112;
@@ -113,6 +105,16 @@ namespace Arcade.Compose.UI
             }));
             rows.Add(row.gameObject); return dropdown;
         }
+        private Dropdown HeightRow(RectTransform template)
+        {
+            var row = Instantiate(template, template.parent); row.name = "Slide 高度";
+            row.GetComponentsInChildren<Text>(true)[0].text = "高度";
+            var dropdown = row.GetComponentInChildren<Dropdown>(true);
+            dropdown.onValueChanged = new Dropdown.DropdownEvent(); dropdown.ClearOptions();
+            dropdown.AddOptions(new List<string> { "地面", "普通天空", "高空（enwiden）" });
+            dropdown.onValueChanged.AddListener(value => Apply(note => note.Height = (SlideHeight)value));
+            rows.Add(row.gameObject); return dropdown;
+        }
         private void Apply(Action<ArcSlide> edit)
         {
             var selected = AdeSelectionManager.Instance.SelectedNotes;
@@ -138,8 +140,9 @@ namespace Arcade.Compose.UI
             foreach (var row in rows) row.SetActive(active);
             if (!active) return;
             var note = (ArcSlide)selected[0];
-            isFloor.SetIsOnWithoutNotify(note.IsFloor);
-            if (floorIntermediate) floorIntermediate.gameObject.SetActive(selected.Cast<ArcSlide>().Any(n => n.IsFloor != note.IsFloor));
+            height.SetValueWithoutNotify((int)note.Height);
+            height.RefreshShownValue();
+            if (selected.Cast<ArcSlide>().Any(n => n.Height != note.Height)) height.captionText.text = "混合";
             startRange.SetTextWithoutNotify(selected.Cast<ArcSlide>().All(n => n.StartCenter == note.StartCenter && n.StartWidth == note.StartWidth)
                 ? Range(note.StartCenter, note.StartWidth) : "-,-");
             endRange.SetTextWithoutNotify(selected.Cast<ArcSlide>().All(n => n.EndCenter == note.EndCenter && n.EndWidth == note.EndWidth)

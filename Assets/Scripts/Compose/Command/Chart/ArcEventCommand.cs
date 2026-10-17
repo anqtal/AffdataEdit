@@ -1,4 +1,5 @@
 using Arcade.Gameplay.Chart;
+using Arcade.Aff;
 using Arcade.Gameplay;
 using System.Collections.Generic;
 using UnityEngine;
@@ -49,7 +50,7 @@ namespace Arcade.Compose.Command
                 Timing = arc.Timing, EndTiming = arc.EndTiming, TimingGroup = arc.TimingGroup,
                 StartCenter = arc.XStart, EndCenter = arc.XEnd,
                 StartWidth = width, EndWidth = width, LeftCurve = curve, RightCurve = curve,
-                IsFloor = false,
+                Height = SlideHeight.Sky,
             };
             if (!slide.IsValid) return false;
             var slides = new[] { slide };

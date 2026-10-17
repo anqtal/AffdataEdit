@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Arcade.Aff;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.InputSystem;
@@ -76,7 +77,10 @@ namespace Arcade.Compose.Operation
                 if (note is ArcSlide slide)
                 {
                     var mirrored = (ArcSlide)slide.Clone();
-                    mirrored.IsFloor = !slide.IsFloor;
+                    // Slides use discrete planes; choose the sky plane nearest the current SkyInput.
+                    mirrored.Height = slide.IsFloor
+                        ? (top > (1f + 1.61f) / 2 ? SlideHeight.HighSky : SlideHeight.Sky)
+                        : SlideHeight.Ground;
                     commands.Add(new EditArcEventCommand(slide, mirrored));
                     continue;
                 }

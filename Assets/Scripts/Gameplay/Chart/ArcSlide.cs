@@ -8,9 +8,11 @@ namespace Arcade.Gameplay.Chart
         public const float MinX = -0.5f, MaxX = 1.5f;
         public float StartCenter = 0.5f, StartWidth = 1f / 3, EndCenter = 0.5f, EndWidth = 1f / 3;
         public int LeftCurve, RightCurve;
-        public bool IsFloor;
-        // Ground is the mirrored sky plane: Arc Y = -2/9 (approximately -0.22).
-        public float WorldHeight => ArcAlgorithm.ArcYToWorld(IsFloor ? -2f / 9f : 1f);
+        public SlideHeight Height = SlideHeight.Sky;
+        // Compatibility for callers using the former two-plane model.
+        public bool IsFloor { get => Height == SlideHeight.Ground; set => Height = value ? SlideHeight.Ground : SlideHeight.Sky; }
+        // Authored heights stay fixed, like Arc coordinates, regardless of enwiden progress.
+        public float WorldHeight => ArcAlgorithm.ArcYToWorld(IsFloor ? -2f / 9f : Height == SlideHeight.HighSky ? 1.61f : 1f);
         public float WorldWidth => 8.5f;
         public float WorldX(float normalizedX) => WorldWidth * (0.5f - normalizedX);
         public ArcTimingGroup TimingGroup { get; set; }
@@ -26,7 +28,7 @@ namespace Arcade.Gameplay.Chart
             Timing = raw.Timing; EndTiming = raw.EndTiming; TimingGroup = group;
             StartCenter = raw.StartCenter; StartWidth = raw.StartWidth;
             EndCenter = raw.EndCenter; EndWidth = raw.EndWidth;
-            LeftCurve = raw.LeftCurve; RightCurve = raw.RightCurve; IsFloor = raw.IsFloor;
+            LeftCurve = raw.LeftCurve; RightCurve = raw.RightCurve; Height = raw.Height;
         }
         public Vector2 Range(float progress)
         {
@@ -39,6 +41,7 @@ namespace Arcade.Gameplay.Chart
             return kind == 1 ? Mathf.Sin(t * Mathf.PI / 2) : kind == 2 ? 1 - Mathf.Cos(t * Mathf.PI / 2) : kind == 3 ? t * t * (3 - 2 * t) : t;
         }
         public bool IsValid => EndTiming > (long)Timing + 1 && (long)EndTiming - Timing <= int.MaxValue && LeftCurve >= 0 && LeftCurve <= 3 && RightCurve >= 0 && RightCurve <= 3
+            && Height >= SlideHeight.Ground && Height <= SlideHeight.HighSky
             && ValidShape(StartCenter, StartWidth, EndCenter, EndWidth, LeftCurve, RightCurve);
         public static bool ValidRange(float center, float width) => width > 0 && center - width / 2 >= MinX && center + width / 2 <= MaxX;
         // The two easing functions can cross even when both endpoints are valid.
@@ -116,12 +119,12 @@ namespace Arcade.Gameplay.Chart
             base.Assign(values);
             var n = (ArcSlide)values;
             StartCenter = n.StartCenter; StartWidth = n.StartWidth; EndCenter = n.EndCenter; EndWidth = n.EndWidth;
-            LeftCurve = n.LeftCurve; RightCurve = n.RightCurve; IsFloor = n.IsFloor; TimingGroup = n.TimingGroup;
+            LeftCurve = n.LeftCurve; RightCurve = n.RightCurve; Height = n.Height; TimingGroup = n.TimingGroup;
             Rebuild();
         }
         public IRawAffItem IntoRawItem() => new RawAffSlide { Timing = Timing, EndTiming = EndTiming,
             StartCenter = StartCenter, StartWidth = StartWidth, EndCenter = EndCenter, EndWidth = EndWidth,
-            LeftCurve = LeftCurve, RightCurve = RightCurve, IsFloor = IsFloor };
+            LeftCurve = LeftCurve, RightCurve = RightCurve, Height = Height };
         public override void Instantiate()
         {
             Instance = new GameObject("Slide", typeof(MeshFilter), typeof(MeshRenderer), typeof(MeshCollider));
