@@ -137,6 +137,7 @@ namespace Arcade.Compose
 		private bool switchingMode = false;
 		private int playShotTiming = 0;
 		private bool previewing = false;
+		private bool advancing = false;
 
 		private void Awake()
 		{
@@ -314,19 +315,32 @@ namespace Arcade.Compose
 			CheckScroll();
 			if (IsEditorMode)
 			{
-				// Alpha: hold Space to preview and return on release; Q plays or pauses in place.
+				// Space previews with rollback; Shift+Space advances in place; Q toggles playback.
 				var hotkeys = AdeInputManager.Instance.Hotkeys;
 				if (AdeInputManager.Instance.CheckHotkeyActionPressed(hotkeys.PlayWhenHolding))
 				{
 					previewing = false;
+					advancing = false;
 					if (GameplayManager.IsPlaying) GameplayManager.Pause();
 					else GameplayManager.Play();
 				}
+				else if (AdeInputManager.Instance.CheckHotkeyActionPressed(hotkeys.AdvanceWhenHolding))
+				{
+					previewing = false;
+					advancing = true;
+					if (!GameplayManager.IsPlaying) GameplayManager.Play();
+				}
 				else if (AdeInputManager.Instance.CheckHotkeyActionPressed(hotkeys.PreviewWhenHolding))
 				{
+					advancing = false;
 					if (!GameplayManager.IsPlaying) GameplayManager.Play();
 					playShotTiming = GameplayManager.AudioTiming;
 					previewing = true;
+				}
+				else if (advancing && !AdeInputManager.Instance.CheckHotkeyActionPressing(hotkeys.AdvanceWhenHolding))
+				{
+					advancing = false;
+					GameplayManager.Pause();
 				}
 				else if (previewing && !AdeInputManager.Instance.CheckHotkeyActionPressing(hotkeys.PreviewWhenHolding))
 				{
@@ -336,7 +350,11 @@ namespace Arcade.Compose
 					GameplayManager.ResetJudge();
 				}
 			}
-			else previewing = false;
+			else
+			{
+				previewing = false;
+				advancing = false;
+			}
 			if (AdeInputManager.Instance.CheckHotkeyActionPressed(AdeInputManager.Instance.Hotkeys.PlayOrPause))
 			{
 				if (IsEditorMode) Play();

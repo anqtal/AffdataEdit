@@ -186,6 +186,15 @@
                     "initialStateCheck": true
                 },
                 {
+                    "name": "Advance When Holding",
+                    "type": "Button",
+                    "id": "8619c4c5-5322-4dd0-a97d-bbe0828122f1",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
                     "name": "Play Or Pause",
                     "type": "Value",
                     "id": "9ec2475b-e083-4ab6-9137-f1e1c2db9746",
@@ -1538,6 +1547,39 @@
                     "processors": "",
                     "groups": "",
                     "action": "Preview When Holding",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "Shift + Space",
+                    "id": "7b56769c-0c27-4f7b-a520-24dd2702d901",
+                    "path": "OneModifier(modifiersOrder=1)",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Advance When Holding",
+                    "isComposite": true,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "modifier",
+                    "id": "e242cc68-fff5-4ecd-b541-75597c73a74d",
+                    "path": "<Keyboard>/shift",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Advance When Holding",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "binding",
+                    "id": "2263a547-39ed-4f03-9dde-864635941b90",
+                    "path": "<Keyboard>/space",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Advance When Holding",
                     "isComposite": false,
                     "isPartOfComposite": true
                 },

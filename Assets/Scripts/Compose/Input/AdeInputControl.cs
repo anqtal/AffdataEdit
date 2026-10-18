@@ -295,6 +295,16 @@ namespace Arcade.Compose
                     ""priority"": 0
                 },
                 {
+                    ""name"": ""Advance When Holding"",
+                    ""type"": ""Button"",
+                    ""id"": ""8619c4c5-5322-4dd0-a97d-bbe0828122f1"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false,
+                    ""priority"": 0
+                },
+                {
                     ""name"": ""Play Or Pause"",
                     ""type"": ""Value"",
                     ""id"": ""9ec2475b-e083-4ab6-9137-f1e1c2db9746"",
@@ -1667,6 +1677,39 @@ namespace Arcade.Compose
                     ""isPartOfComposite"": true
                 },
                 {
+                    ""name"": ""Shift + Space"",
+                    ""id"": ""7b56769c-0c27-4f7b-a520-24dd2702d901"",
+                    ""path"": ""OneModifier(modifiersOrder=1)"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Advance When Holding"",
+                    ""isComposite"": true,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": ""modifier"",
+                    ""id"": ""e242cc68-fff5-4ecd-b541-75597c73a74d"",
+                    ""path"": ""<Keyboard>/shift"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Advance When Holding"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": true
+                },
+                {
+                    ""name"": ""binding"",
+                    ""id"": ""2263a547-39ed-4f03-9dde-864635941b90"",
+                    ""path"": ""<Keyboard>/space"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Advance When Holding"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": true
+                },
+                {
                     ""name"": ""Key With Modifiers"",
                     ""id"": ""0c3bf0e1-74ba-4d76-994e-99324954d4c6"",
                     ""path"": ""KeyWithModifiers"",
@@ -2534,6 +2577,7 @@ namespace Arcade.Compose
             m_ArcadeHotkey_ClickToCreateArctapMode = m_ArcadeHotkey.FindAction("Click To Create Arctap Mode", throwIfNotFound: true);
             m_ArcadeHotkey_PlayWhenHolding = m_ArcadeHotkey.FindAction("Play When Holding", throwIfNotFound: true);
             m_ArcadeHotkey_PreviewWhenHolding = m_ArcadeHotkey.FindAction("Preview When Holding", throwIfNotFound: true);
+            m_ArcadeHotkey_AdvanceWhenHolding = m_ArcadeHotkey.FindAction("Advance When Holding", throwIfNotFound: true);
             m_ArcadeHotkey_PlayOrPause = m_ArcadeHotkey.FindAction("Play Or Pause", throwIfNotFound: true);
             m_ArcadeHotkey_ToggleGrid = m_ArcadeHotkey.FindAction("Toggle Grid", throwIfNotFound: true);
             m_ArcadeHotkey_ReselectTiming = m_ArcadeHotkey.FindAction("Reselect Timing", throwIfNotFound: true);
@@ -2656,6 +2700,7 @@ namespace Arcade.Compose
         private readonly InputAction m_ArcadeHotkey_ClickToCreateArctapMode;
         private readonly InputAction m_ArcadeHotkey_PlayWhenHolding;
         private readonly InputAction m_ArcadeHotkey_PreviewWhenHolding;
+        private readonly InputAction m_ArcadeHotkey_AdvanceWhenHolding;
         private readonly InputAction m_ArcadeHotkey_PlayOrPause;
         private readonly InputAction m_ArcadeHotkey_ToggleGrid;
         private readonly InputAction m_ArcadeHotkey_ReselectTiming;
@@ -2763,6 +2808,10 @@ namespace Arcade.Compose
             /// Provides access to the underlying input action "ArcadeHotkey/PreviewWhenHolding".
             /// </summary>
             public InputAction @PreviewWhenHolding => m_Wrapper.m_ArcadeHotkey_PreviewWhenHolding;
+            /// <summary>
+            /// Provides access to the underlying input action "ArcadeHotkey/AdvanceWhenHolding".
+            /// </summary>
+            public InputAction @AdvanceWhenHolding => m_Wrapper.m_ArcadeHotkey_AdvanceWhenHolding;
             /// <summary>
             /// Provides access to the underlying input action "ArcadeHotkey/PlayOrPause".
             /// </summary>
@@ -2913,6 +2962,9 @@ namespace Arcade.Compose
                 @PreviewWhenHolding.started += instance.OnPreviewWhenHolding;
                 @PreviewWhenHolding.performed += instance.OnPreviewWhenHolding;
                 @PreviewWhenHolding.canceled += instance.OnPreviewWhenHolding;
+                @AdvanceWhenHolding.started += instance.OnAdvanceWhenHolding;
+                @AdvanceWhenHolding.performed += instance.OnAdvanceWhenHolding;
+                @AdvanceWhenHolding.canceled += instance.OnAdvanceWhenHolding;
                 @PlayOrPause.started += instance.OnPlayOrPause;
                 @PlayOrPause.performed += instance.OnPlayOrPause;
                 @PlayOrPause.canceled += instance.OnPlayOrPause;
@@ -3032,6 +3084,9 @@ namespace Arcade.Compose
                 @PreviewWhenHolding.started -= instance.OnPreviewWhenHolding;
                 @PreviewWhenHolding.performed -= instance.OnPreviewWhenHolding;
                 @PreviewWhenHolding.canceled -= instance.OnPreviewWhenHolding;
+                @AdvanceWhenHolding.started -= instance.OnAdvanceWhenHolding;
+                @AdvanceWhenHolding.performed -= instance.OnAdvanceWhenHolding;
+                @AdvanceWhenHolding.canceled -= instance.OnAdvanceWhenHolding;
                 @PlayOrPause.started -= instance.OnPlayOrPause;
                 @PlayOrPause.performed -= instance.OnPlayOrPause;
                 @PlayOrPause.canceled -= instance.OnPlayOrPause;
@@ -3378,6 +3433,13 @@ namespace Arcade.Compose
             /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
             /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
             void OnPreviewWhenHolding(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "Advance When Holding" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnAdvanceWhenHolding(InputAction.CallbackContext context);
             /// <summary>
             /// Method invoked when associated input action "Play Or Pause" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
             /// </summary>
