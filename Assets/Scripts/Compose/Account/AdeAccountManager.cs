@@ -37,7 +37,7 @@ namespace Arcade.Compose
 		private AdeDualDialog dialog;
 		private GameObject usernameRow, pinRow;
 		private InputField usernameInput, pinInput;
-		private Text statusText;
+		private Text statusText, introductionText;
 
 		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
 		private static void Bootstrap()
@@ -68,7 +68,7 @@ namespace Arcade.Compose
 			UpdateView();
 		}
 
-		// The login dialog reuses the OBS dialog and its "label + input" rows.
+		// Reuse the dialog shell and input controls, but give the account form its own layout.
 		private void BuildDialog()
 		{
 			AdeDualDialog source = Feature.AdeObsManager.Instance != null ? Feature.AdeObsManager.Instance.OBSDialog : null;
@@ -79,35 +79,88 @@ namespace Arcade.Compose
 				return;
 			}
 			dialog = AdeUiKit.CloneDialog(source, "AccountDialog");
-			dialog.Title.text = "AffdataNet 账号";
+			dialog.Title.text = "AffdataNet";
 			Transform content = AdeUiKit.Content(dialog);
+            var form = content.GetComponent<VerticalLayoutGroup>();
+            form.padding = new RectOffset(28, 28, 20, 24);
+            form.spacing = 18;
+            form.childControlWidth = form.childControlHeight = true;
+            form.childForceExpandWidth = true;
+            form.childForceExpandHeight = false;
+            AdeUiKit.SetMaxHeight(dialog, 520);
+            ((RectTransform)dialog.View.transform).SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, 600);
+            introductionText = CreateFormText(content, inputRow, "登录账号，连接你的云端谱面", 22);
 
 			usernameRow = AdeUiKit.CloneRow(inputRow, content, "Username");
 			usernameRow.GetComponentInChildren<Text>(true).text = "用户名";
 			usernameInput = usernameRow.GetComponentInChildren<InputField>(true);
 			usernameInput.characterLimit = 64;
+            usernameInput.text = "";
+            StyleField(usernameRow, usernameInput, "输入 AffdataNet 用户名");
 
 			pinRow = AdeUiKit.CloneRow(inputRow, content, "Pin");
 			pinRow.GetComponentInChildren<Text>(true).text = "PIN";
 			pinInput = pinRow.GetComponentInChildren<InputField>(true);
 			pinInput.contentType = InputField.ContentType.Pin;
 			pinInput.characterLimit = 6;
+            pinInput.text = "";
+            StyleField(pinRow, pinInput, "输入 6 位 PIN");
+            CreateFormText(pinRow.transform, inputRow, "使用在 AffdataNet 网站设置的游戏 PIN", 18);
 			pinInput.onEndEdit.AddListener(_ =>
 			{
 				if (Keyboard.current != null && (Keyboard.current.enterKey.isPressed || Keyboard.current.numpadEnterKey.isPressed))
 					OnPrimary();
 			});
 
-			statusText = AdeUiKit.CreateLabelRow(content, inputRow.GetComponentInChildren<Text>(true).transform, "");
+			statusText = CreateFormText(content, inputRow, "", 20);
 
-			AdeUiKit.SetOnClick(dialog.LeftButton, OnPrimary);
-			AdeUiKit.SetOnClick(dialog.RightButton, dialog.Close);
-			dialog.RightButtonText.text = "关闭";
+			AdeUiKit.SetOnClick(dialog.RightButton, OnPrimary);
+			AdeUiKit.SetOnClick(dialog.LeftButton, dialog.Close);
+			dialog.LeftButtonText.text = "取消";
 			dialog.OnClose += () =>
 			{
 				if (pinInput != null) pinInput.text = "";
 			};
 		}
+
+        private static Text CreateFormText(Transform parent, Transform template, string caption, int fontSize)
+        {
+            Text label = AdeUiKit.CreateLabelRow(parent, template.GetComponentInChildren<Text>(true).transform, caption);
+            label.fontSize = fontSize;
+            label.raycastTarget = false;
+            label.transform.parent.GetComponent<HorizontalLayoutGroup>().padding = new RectOffset();
+            label.GetComponent<LayoutElement>().preferredWidth = 480;
+            return label;
+        }
+
+        private static void StyleField(GameObject row, InputField input, string placeholder)
+        {
+            DestroyImmediate(row.GetComponent<HorizontalLayoutGroup>());
+            var layout = row.AddComponent<VerticalLayoutGroup>();
+            layout.spacing = 8;
+            layout.childControlWidth = layout.childControlHeight = true;
+            layout.childForceExpandWidth = true;
+            layout.childForceExpandHeight = false;
+            var label = row.transform.Find("Text").GetComponent<Text>();
+            label.fontSize = 20;
+            label.alignment = TextAnchor.MiddleLeft;
+            label.raycastTarget = false;
+            var size = input.GetComponent<LayoutElement>();
+            size.minWidth = 0;
+            size.preferredWidth = 480;
+            size.preferredHeight = 48;
+            input.textComponent.fontSize = 24;
+            input.textComponent.alignment = TextAnchor.MiddleLeft;
+            input.textComponent.rectTransform.offsetMin = new Vector2(14, 0);
+            input.textComponent.rectTransform.offsetMax = new Vector2(-14, 0);
+            var hint = Instantiate(input.textComponent, input.transform, false);
+            hint.name = "Placeholder";
+            hint.text = placeholder;
+            hint.fontStyle = FontStyle.Normal;
+            hint.color = new Color(.55f, .55f, .55f, 1);
+            hint.raycastTarget = false;
+            input.placeholder = hint;
+        }
 
 		public void ShowLoginWindow()
 		{
@@ -148,8 +201,11 @@ namespace Arcade.Compose
 			usernameRow.SetActive(!IsLoggedIn);
 			pinRow.SetActive(!IsLoggedIn);
 			if (!IsLoggedIn && session == null && string.IsNullOrEmpty(usernameInput.text)) usernameInput.text = PlayerPrefs.GetString(PrefsKey + "User", "");
-			dialog.LeftButtonText.text = IsLoggedIn ? "退出登录" : (loggingIn ? "登录中…" : "登录");
-			dialog.LeftButton.interactable = !loggingIn;
+			introductionText.text = IsLoggedIn ? "账号已连接，可以使用云端谱面" : "登录账号，连接你的云端谱面";
+            usernameInput.interactable = pinInput.interactable = !loggingIn;
+            dialog.LeftButtonText.text = IsLoggedIn ? "关闭" : "取消";
+			dialog.RightButtonText.text = IsLoggedIn ? "退出登录" : (loggingIn ? "登录中…" : "登录");
+			dialog.RightButton.interactable = !loggingIn;
 		}
 
 		private void LoadSession()
