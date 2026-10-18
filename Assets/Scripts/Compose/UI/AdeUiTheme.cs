@@ -9,7 +9,7 @@ namespace Arcade.Compose
 	// Light/dark editor chrome. Every themed graphic is classified by its sprite and by a
 	// colour that belongs to exactly one palette entry, so applying either theme is
 	// stateless and also covers UI cloned or instantiated later.
-	public sealed class AdeUiTheme : MonoBehaviour
+	public sealed partial class AdeUiTheme : MonoBehaviour
 	{
 		private const string EditorSceneName = "ArcEditor";
 		private const string PreferenceKey = "AffdataEdit.DarkUi";
@@ -167,17 +167,19 @@ namespace Arcade.Compose
 				root.GetComponentsInChildren(true, selectables);
 				foreach (Selectable selectable in selectables)
 				{
+					StyleControl(selectable);
 					if (selectable.transition == Selectable.Transition.ColorTint && selectable.targetGraphic)
 						targets[selectable.targetGraphic] = selectable;
 				}
 				root.GetComponentsInChildren(true, graphics);
 				foreach (Graphic graphic in graphics) Apply(graphic);
 			}
+			StyleEditorPanels();
 			if (Dark) AlignDialogControls();
 		}
 
 		// Places the buttons and the close button EdgeGap inside the visible edge of the
-		// dialog sprites, measured from the laid-out rects, so their corners are concentric.
+		// dialog sprites, measured from the laid-out rects for a consistent margin.
 		private void AlignDialogControls()
 		{
 			var skin = ArcSkinManager.Instance;
@@ -226,6 +228,7 @@ namespace Arcade.Compose
 		{
 			bool text = graphic is Text;
 			string sprite = graphic is Image image && image.sprite ? image.sprite.name : null;
+			if (sprite != null && sprite.StartsWith("Theme")) return;
 			targets.TryGetValue(graphic, out Selectable selectable);
 			Color32 current = graphic.color;
 			Color32 normal = selectable ? (Color32)selectable.colors.normalColor : default;
@@ -295,7 +298,11 @@ namespace Arcade.Compose
 				ApplyDialogLayouts();
 				return;
 			}
-			if (darkSprites == null) darkSprites = LoadDarkSprites();
+			if (darkSprites == null)
+			{
+				darkSprites = LoadDarkSprites();
+				if (darkSprites != null) CreateDialogShapes();
+			}
 			if (darkSprites == null) return;
 			ApplyDialogLayouts();
 			Sprite Get(int i) => darkSprites[i];
@@ -314,9 +321,8 @@ namespace Arcade.Compose
 		}
 
 		// Dark dialogs follow VS Code: a left-aligned title, a close button and compact
-		// buttons on the right. Corners are concentric with the 22px dialog corner: each
-		// control sits 12px from the edge and has a 10px radius. Light restores the
-		// CommonSingle/CommonDual prefab layout.
+		// buttons on the right. Rounded controls keep a generous 20px inset from
+		// the frame. Light restores the CommonSingle/CommonDual prefab layout.
 		private void ApplyDialogLayouts()
 		{
 			var skin = ArcSkinManager.Instance;
@@ -324,6 +330,7 @@ namespace Arcade.Compose
 			{
 				if (!dialog) continue;
 				LayoutTitle(dialog.Title);
+				LayoutDialogFrame(dialog.DialogBackground, dialog.DialogTop);
 				LayoutButton(dialog.CompleteButton, dialog.ButtonText, new Vector2(0.5f, 0), new Vector2(0, 4), new Vector2(788, 58), 0);
 				LayoutClose(dialog);
 			}
@@ -331,6 +338,7 @@ namespace Arcade.Compose
 			{
 				if (!dialog) continue;
 				LayoutTitle(dialog.Title);
+				LayoutDialogFrame(dialog.DialogBackground, dialog.DialogTop);
 				LayoutButton(dialog.LeftButton, dialog.LeftButtonText, new Vector2(0, 0), new Vector2(-1, 4), new Vector2(395, 58), 1);
 				LayoutButton(dialog.RightButton, dialog.RightButtonText, new Vector2(1, 0), new Vector2(1, 4), new Vector2(395, 58), 0);
 				LayoutClose(dialog);
@@ -338,11 +346,18 @@ namespace Arcade.Compose
 		}
 
 		private const float ButtonWidth = 170, ButtonHeight = 46, ButtonGap = 12, TitlePadding = 28, TitleHeight = 74;
-		// Controls sit this far inside the visible dialog edge; 22 - 12 gives their 10px radius.
-		private const float EdgeGap = 12;
-		// Transparent margins of the dark dialog sprites (right, bottom).
-		private static readonly Vector2 BackgroundMargin = new Vector2(1, 2), HeaderMargin = new Vector2(1, 0);
+		private const float EdgeGap = 20;
+		private static readonly Vector2 BackgroundMargin = Vector2.zero, HeaderMargin = Vector2.zero;
 		private const string TitleSpacerName = "ThemeTitleSpacer", CloseName = "ThemeClose";
+
+		private static void LayoutDialogFrame(Image background, Image header)
+		{
+			background.rectTransform.sizeDelta = Dark ? Vector2.zero : new Vector2(6, -68);
+			background.rectTransform.anchoredPosition = Dark ? Vector2.zero : new Vector2(3, -40);
+			header.rectTransform.sizeDelta = new Vector2(0, Dark ? TitleHeight : 159);
+			header.rectTransform.anchoredPosition = Dark ? Vector2.zero : new Vector2(0, 74);
+			background.type = header.type = Dark ? UnityEngine.UI.Image.Type.Sliced : UnityEngine.UI.Image.Type.Tiled;
+		}
 
 		// The view's VerticalLayoutGroup owns the title rect, so in dark mode the title leaves
 		// the layout and a spacer of the same height keeps the content below in place.
@@ -378,6 +393,8 @@ namespace Arcade.Compose
 		{
 			if (!button) return;
 			var rect = (RectTransform)button.transform;
+			var footer = rect.parent.GetComponent<LayoutElement>();
+			if (footer) footer.preferredHeight = Dark ? ButtonHeight + EdgeGap * 2 : 66;
 			Vector2 anchor = Dark ? new Vector2(1, 0) : lightAnchor;
 			rect.anchorMin = rect.anchorMax = rect.pivot = anchor;
 			// The dark position is set by AlignDialogControls once the layout is known.
@@ -394,18 +411,20 @@ namespace Arcade.Compose
 			Transform existing = view.Find(CloseName);
 			if (existing)
 			{
+				existing.gameObject.SetActive(Dark);
 				// Cloned dialogs copy the button with its listeners stripped.
 				existing.SetAsLastSibling();
 				AdeUiKit.SetOnClick(existing.GetComponent<Button>(), dialog.Close);
 				return;
 			}
+			if (!Dark) return;
 			var go = new GameObject(CloseName, typeof(RectTransform), typeof(Image), typeof(Button), typeof(LayoutElement));
 			go.GetComponent<LayoutElement>().ignoreLayout = true;
 			var rect = (RectTransform)go.transform;
 			rect.SetParent(view, false);
 			rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(1, 1);
 			rect.sizeDelta = new Vector2(42, 42);
-			// The secondary button sprite (10px radius) only shows while hovered or pressed.
+			// The secondary button sprite only shows while hovered or pressed.
 			var background = go.GetComponent<Image>();
 			background.sprite = darkSprites[5];
 			background.type = UnityEngine.UI.Image.Type.Sliced;
