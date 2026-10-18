@@ -1,0 +1,49 @@
+// Arcade Alpha's FFT and linear frequency mapping, at its default 256 samples / 0.5 gain.
+#pragma kernel CSMain
+
+#define FFT_SIZE 256
+#define WIDTH 512
+#define HEIGHT 128
+
+StructuredBuffer<float> _AudioSamples;
+StructuredBuffer<int> _BitReversalTable;
+StructuredBuffer<float2> _TwiddleFactors;
+RWTexture2D<float4> _ResultTexture;
+int _TotalSamples;
+float _SampleRate;
+float _StartTime;
+float _Duration;
+
+// A group cooperates on one time column, keeping the FFT in shared memory.
+groupshared float2 fftData[FFT_SIZE];
+[numthreads(128, 1, 1)]
+void CSMain(uint3 group : SV_GroupID, uint lane : SV_GroupIndex)
+{
+    float time = (group.x / (float)WIDTH) * _Duration + _StartTime;
+    int startSample = (int)floor(time * _SampleRate - FFT_SIZE * 0.5) - FFT_SIZE / 2;
+    for (uint i = lane; i < FFT_SIZE; i += FFT_SIZE / 2)
+    {
+        int index = startSample + (int)i;
+        float value = 0;
+        if (index >= 0 && index < _TotalSamples - 1) value = _AudioSamples[index];
+        fftData[_BitReversalTable[i]] = float2(value, 0);
+    }
+    GroupMemoryBarrierWithGroupSync();
+    for (uint stage = 0; stage < 8; stage++)
+    {
+        uint halfLen = 1u << stage;
+        uint k = lane & (halfLen - 1u);
+        uint u = ((lane >> stage) << (stage + 1u)) + k;
+        uint v = u + halfLen;
+        float2 twiddle = _TwiddleFactors[k * (128u >> stage)];
+        float2 a = fftData[u];
+        float2 b = fftData[v];
+        float2 t = float2(twiddle.x * b.x - twiddle.y * b.y, twiddle.x * b.y + twiddle.y * b.x);
+        fftData[u] = a + t;
+        fftData[v] = a - t;
+        GroupMemoryBarrierWithGroupSync();
+    }
+    uint frequency = (uint)((lane / (float)HEIGHT) * (FFT_SIZE / 2 - 1));
+    float value = saturate(length(fftData[frequency]) * 0.5);
+    _ResultTexture[uint2(group.x, lane)] = float4(value, 0, 0, 1);
+}

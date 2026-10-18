@@ -28,6 +28,7 @@ namespace Arcade.Audio
         [DllImport("bass")] internal static extern bool BASS_SampleFree(int sample);
         [DllImport("bass")] internal static extern bool BASS_ChannelGetInfo(int handle, out ChannelInfo info);
         [DllImport("bass")] internal static extern int BASS_ChannelGetData(int handle, byte[] buffer, int length);
+        [DllImport("bass")] internal static extern int BASS_ChannelGetData(int handle, [Out] float[] buffer, int length);
         [DllImport("bass_fx")] internal static extern int BASS_FX_TempoCreate(int source, uint flags);
         [DllImport("bassopus")] internal static extern int BASS_OPUS_StreamCreateFile(bool memory, IntPtr data, long offset, long length, uint flags);
 

@@ -97,6 +97,7 @@ namespace Arcade.Compose
 			// Move the settings out of the dialog, which is no longer opened.
 			Transform source = AdeUiKit.Content(dialog);
 			while (source.childCount > 0) source.GetChild(0).SetParent(content, false);
+			AddSpectrumToggle(compose);
 			Arrange(content);
 			darkCheck = Resources.Load<Sprite>("AffdataEdit/Icons/Checkmark");
 			CollectChecks();
@@ -118,6 +119,22 @@ namespace Arcade.Compose
 				if (pair.Key.sprite != sprite) pair.Key.sprite = sprite;
 				pair.Key.color = dark ? Color.white : pair.Value.color;
 			}
+		}
+
+		private void AddSpectrumToggle(ArcadeComposeManager compose)
+		{
+			Transform template = compose.PlaybackSyncToggle.GetComponentInParent<HorizontalLayoutGroup>(true).transform;
+			GameObject row = AdeUiKit.CloneRow(template, template.parent, "ShowSpectrum");
+			row.transform.SetSiblingIndex(template.GetSiblingIndex() + 1);
+			row.GetComponentInChildren<Text>(true).text = "显示频谱";
+			Toggle toggle = row.GetComponentInChildren<Toggle>(true);
+			toggle.SetIsOnWithoutNotify(compose.ArcadePreference.ShowSpectrum);
+			toggle.onValueChanged.AddListener(value =>
+			{
+				compose.ArcadePreference.ShowSpectrum = value;
+				compose.SavePreferences();
+			});
+			gameObject.AddComponent<AdeAudioSpectrum>();
 		}
 
 		// Rows added after the drawer was built, such as the theme switch, are picked up on open.

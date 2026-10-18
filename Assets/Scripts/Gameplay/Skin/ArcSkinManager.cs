@@ -145,6 +145,7 @@ namespace Arcade.Gameplay
 				noteSideData.ArcVoid, noteSideData.ArcDesignant, noteSideData.ArcTapDesignant);
 		}
 		private bool darkShadow;
+		public bool IsDarkSide => darkShadow;
         public Color GetShadowTint(bool trace = false)
         {
             var color = darkShadow ? Color.white : Color.black;

@@ -42,6 +42,34 @@ namespace Arcade.Audio
             clip.externalData = Wav(new byte[checked(frames * channels * 2)], channels, frequency);
             return clip;
         }
+        // A separate decode stream keeps spectrum reads independent of playback and tempo.
+        internal float[] ReadSpectrumSamples(out int frequency)
+        {
+            using (var voice = new BassVoice(this, false))
+            {
+                BassNative.Check(BassNative.BASS_ChannelGetInfo(voice.Handle, out BassNative.ChannelInfo info), "spectrum info");
+                frequency = info.Frequency;
+                long bytes = BassNative.BASS_ChannelGetLength(voice.Handle, 0);
+                BassNative.Check(bytes >= 0, "spectrum length");
+                var samples = new float[checked((int)(bytes / sizeof(float) / info.Channels))];
+                var buffer = new float[4096 * info.Channels];
+                int offset = 0;
+                while (offset < samples.Length)
+                {
+                    int count = System.Math.Min(buffer.Length, (samples.Length - offset) * info.Channels);
+                    int read = BassNative.BASS_ChannelGetData(voice.Handle, buffer, count * sizeof(float));
+                    if (read < 0 && BassNative.BASS_ErrorGetCode() == 38) break; // BASS_ERROR_ENDED
+                    BassNative.Check(read > 0, "spectrum decode");
+                    int frames = read / sizeof(float) / info.Channels;
+                    BassNative.Check(frames > 0, "spectrum frames");
+                    // Alpha analyzes the first channel without averaging stereo channels.
+                    for (int i = 0; i < frames; i++) samples[offset + i] = buffer[i * info.Channels];
+                    offset += frames;
+                }
+                if (offset != samples.Length) System.Array.Resize(ref samples, offset);
+                return samples;
+            }
+        }
         private static byte[] Wav(byte[] pcm, int channels, int frequency)
         {
             using (var stream = new MemoryStream())
