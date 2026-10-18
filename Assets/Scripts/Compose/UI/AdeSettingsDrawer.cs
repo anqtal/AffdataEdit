@@ -97,6 +97,7 @@ namespace Arcade.Compose
 			// Move the settings out of the dialog, which is no longer opened.
 			Transform source = AdeUiKit.Content(dialog);
 			while (source.childCount > 0) source.GetChild(0).SetParent(content, false);
+			if (Arcade.Audio.BassOutputSettings.IsWindows) AdeAudioOutputSettings.AddTo(compose);
 			AddSpectrumToggle(compose);
 			Arrange(content);
 			darkCheck = Resources.Load<Sprite>("AffdataEdit/Icons/Checkmark");

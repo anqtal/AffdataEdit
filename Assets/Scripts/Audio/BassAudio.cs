@@ -25,11 +25,14 @@ namespace Arcade.Audio
         internal static void EnsureInitialized()
         {
             if (instance) return;
+            uint flags = BassOutputSettings.ConfigureDevice();
             // Native state can survive an Editor domain reload. Error 14 means the
             // device is already initialized and can be reused by the new owner.
-            if (!BassNative.BASS_Init(-1, 48000, 0, System.IntPtr.Zero, System.IntPtr.Zero)
+            if (!BassNative.BASS_Init(-1, 48000, flags, System.IntPtr.Zero, System.IntPtr.Zero)
                 && BassNative.BASS_ErrorGetCode() != 14)
                 BassNative.Check(false, "initialize");
+            // Keep silence flowing while editing so the device need not wake on play.
+            BassNative.Check(BassNative.BASS_SetConfig(50, 1), "keep audio output active"); // BASS_CONFIG_DEV_NONSTOP
             BassNative.BASS_SetConfig(0, 100); // output buffer in milliseconds
             BassNative.BASS_SetConfig(1, 5);   // update period
             var go = new GameObject("BASS Audio");

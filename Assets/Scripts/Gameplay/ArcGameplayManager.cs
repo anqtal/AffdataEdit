@@ -115,12 +115,14 @@ namespace Arcade.Gameplay
 
 		private void Update()
 		{
-			deltaDspTime = BassAudio.Clock - lastDspTime;
-			lastDspTime = BassAudio.Clock;
+			double now = BassAudio.Clock;
+			deltaDspTime = now - lastDspTime;
+			lastDspTime = now;
 			if (IsPlaying)
 			{
 				float playBackSpeed = ArcAudioManager.Instance.PlayBackSpeed;
-				AudioTimingWithoutGlobalOffset += Time.deltaTime * playBackSpeed;
+				// Count only time after playback began, not the previous editor frame.
+				AudioTimingWithoutGlobalOffset += (float)deltaDspTime * playBackSpeed;
 				if (EnablePlaybackSync && AudioTimingWithoutGlobalOffset <= Length)
 				{
 					float t = ArcAudioManager.Instance.Timing;
@@ -205,6 +207,7 @@ namespace Arcade.Gameplay
 			ArcAudioManager.Instance.Stop();
 			ArcAudioManager.Instance.Timing = 0;
 			ArcAudioManager.Instance.PlayDelayed(3 / ArcAudioManager.Instance.PlayBackSpeed);
+			lastDspTime = BassAudio.Clock;
 			IsPlaying = true;
 		}
 
@@ -224,6 +227,8 @@ namespace Arcade.Gameplay
 					ArcAudioManager.Instance.Play();
 				}
 			}
+			// Seeking and starting the stream can prepare buffers synchronously.
+			lastDspTime = BassAudio.Clock;
 			IsPlaying = true;
 		}
 		public void Pause()
