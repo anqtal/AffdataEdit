@@ -1677,10 +1677,10 @@ namespace Arcade.Compose
                     ""isPartOfComposite"": true
                 },
                 {
-                    ""name"": ""Shift + Space"",
+                    ""name"": ""Key With Modifiers"",
                     ""id"": ""7b56769c-0c27-4f7b-a520-24dd2702d901"",
-                    ""path"": ""OneModifier(modifiersOrder=1)"",
-                    ""interactions"": """",
+                    ""path"": ""KeyWithModifiers"",
+                    ""interactions"": ""HotKey(needModifier3=true)"",
                     ""processors"": """",
                     ""groups"": """",
                     ""action"": ""Advance When Holding"",
@@ -1688,9 +1688,9 @@ namespace Arcade.Compose
                     ""isPartOfComposite"": false
                 },
                 {
-                    ""name"": ""modifier"",
-                    ""id"": ""e242cc68-fff5-4ecd-b541-75597c73a74d"",
-                    ""path"": ""<Keyboard>/shift"",
+                    ""name"": ""key"",
+                    ""id"": ""2263a547-39ed-4f03-9dde-864635941b90"",
+                    ""path"": ""<Keyboard>/space"",
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": """",
@@ -1699,9 +1699,31 @@ namespace Arcade.Compose
                     ""isPartOfComposite"": true
                 },
                 {
-                    ""name"": ""binding"",
-                    ""id"": ""2263a547-39ed-4f03-9dde-864635941b90"",
-                    ""path"": ""<Keyboard>/space"",
+                    ""name"": ""modifier1"",
+                    ""id"": ""a600aea1-e692-4740-9797-a6b831f89a83"",
+                    ""path"": ""<Keyboard>/ctrl"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Advance When Holding"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": true
+                },
+                {
+                    ""name"": ""modifier2"",
+                    ""id"": ""9621828a-2a55-440b-be12-0a55cf058cb3"",
+                    ""path"": ""<Keyboard>/alt"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Advance When Holding"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": true
+                },
+                {
+                    ""name"": ""modifier3"",
+                    ""id"": ""e242cc68-fff5-4ecd-b541-75597c73a74d"",
+                    ""path"": ""<Keyboard>/shift"",
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": """",
