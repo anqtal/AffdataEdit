@@ -78,6 +78,8 @@ namespace Arcade.Gameplay
 			foreach (ArcArc arc in Arcs)
 			{
 				arc.CalculateJudgeTimings();
+                if (arc.arcRenderer && arc.arcRenderer.BuiltRenderEndTiming != arc.RenderEndTiming)
+                    arc.arcRenderer.Build();
 			}
 		}
 
@@ -92,6 +94,7 @@ namespace Arcade.Gameplay
 				byStartTiming[i] = i;
 				parents[i] = -1;
 				arcs[i].RenderHead = true;
+                arcs[i].RenderEndTiming = arcs[i].EndTiming;
 			}
 			Array.Sort(byStartTiming, (a, b) =>
 			{
@@ -122,6 +125,7 @@ namespace Arcade.Gameplay
 					if (a.IsVoid == b.IsVoid && Mathf.Abs(a.XEnd - b.XStart) < 0.1f && Mathf.Abs(a.YEnd - b.YStart) < 0.01f)
 					{
 						b.RenderHead = false;
+                        a.RenderEndTiming = Mathf.Max(a.RenderEndTiming, b.Timing);
 						int rootA = FindArcGroupRoot(parents, i);
 						int rootB = FindArcGroupRoot(parents, nextIndex);
 						if (rootA == rootB) continue;

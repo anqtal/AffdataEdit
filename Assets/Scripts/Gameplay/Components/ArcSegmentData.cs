@@ -1,3 +1,4 @@
+using Affdata.Core.Chart;
 using UnityEngine;
 
 namespace Arcade.Gameplay
@@ -5,7 +6,7 @@ namespace Arcade.Gameplay
     // One CPU record per sample interval; no Transform, Renderer, or per-segment Mesh.
     internal sealed class ArcSegmentData
     {
-        public int FromTiming, ToTiming;
+        public float FromTiming, ToTiming;
         public Vector3 FromPos, ToPos;
         public float From, To = 1, FromHeight, ToHeight, Width;
         public bool Enable, Highlight, Selected, IsTrace, UseGoldTrace;
@@ -15,13 +16,14 @@ namespace Arcade.Gameplay
             get => HighColor.a;
             set { HighColor.a = value; LowColor.a = value; }
         }
-        public void BuildSegment(Vector3 from, Vector3 to, float width, int start, int end, float startHeight, float endHeight)
+        public void BuildSegment(Vector3 from, Vector3 to, float width, float start, float end, float startHeight, float endHeight)
         {
             From = 0; To = 1;
             FromPos = from; ToPos = to; Width = width; FromTiming = start; ToTiming = end;
             FromHeight = startHeight; ToHeight = endHeight;
         }
-        public void Submit(ArcNoteRenderer renderer, Matrix4x4 parent, Texture normal, Texture highlight, Texture gold, int colorId)
+        public void Submit(ArcNoteRenderer renderer, Matrix4x4 parent, Texture normal, Texture highlight, Texture gold,
+            int colorId, int sortKey)
         {
             if (!Enable || FromPos == ToPos) return;
             var local = Matrix4x4.identity;
@@ -36,15 +38,12 @@ namespace Arcade.Gameplay
             data.ClipHeight = new Vector4(From,To,ToHeight,ToHeight);
             if (UseGoldTrace && !Highlight) data.UvTransform = new Vector4(-.5f,1,.5f,0);
             Texture texture = Highlight ? highlight : UseGoldTrace ? gold : normal;
-            if (IsTrace)
-                renderer.Submit(ArcNoteMeshes.Segment, texture, data, "Arc", 0);
-            else
-            {
-                // AffdataPlay/Alpha: endpoint world height and color, with the right face +500.
-                int order = 3 * colorId + 4 * (int)(parent.MultiplyPoint3x4(ToPos).y * 100f);
-                renderer.Submit(ArcNoteMeshes.Segment, texture, data, "Arc", order, submesh: 1);
-                renderer.Submit(ArcNoteMeshes.Segment, texture, data, "Arc", order + 500, submesh: 2);
-            }
+            // Trace and solid Arc halves interleave in the same order as Play.
+            int order = ArcRenderOrder.SegmentOrder(colorId, ToPos.y);
+            renderer.Submit(ArcNoteMeshes.Segment, texture, data, "Arc", order,
+                submesh: 1, arcSortKey: sortKey);
+            renderer.Submit(ArcNoteMeshes.Segment, texture, data, "Arc", order + ArcRenderOrder.RightHalfOffset,
+                submesh: 2, arcSortKey: sortKey);
             local.m13 = 0; local.m12 = 0;
             // Core supplies the .05 floor offset; Arc width must not scale that height.
             local.m11 = 1;

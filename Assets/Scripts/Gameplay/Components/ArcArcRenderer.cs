@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Affdata.Core.Chart;
 using Affdata.Core.Geometry;
 using Arcade.Gameplay.Chart;
 using Arcade.Util.Misc;
@@ -347,6 +348,8 @@ namespace Arcade.Gameplay
 		private Color currentHighColor;
 		private Color currentLowColor;
 		private List<ArcSegmentData> segments = new List<ArcSegmentData>();
+        private readonly List<double> segmentProgress = new List<double>();
+        internal int BuiltRenderEndTiming { get; private set; }
 		private int zeroLengthVoidArcDisappearTime = int.MaxValue;
 
         private bool UsesGoldTrace => arc != null && arc.LineType == ArcLineType.TrueIsVoid
@@ -415,7 +418,10 @@ namespace Arcade.Gameplay
             if (!enable) return;
             var matrix = transform.localToWorldMatrix;
             var gold = traceBodyGoldTexture;
-            foreach (var segment in segments) segment.Submit(renderer, matrix, DefaultTexture, HighlightTexture, gold, arc.Color);
+            int noteKey = ArcRenderOrder.NoteKey(arc.TimingGroup?.Id ?? 0, arc.Timing, arc.EndTiming, arc.Color);
+            for (int i = 0; i < segments.Count; i++)
+                segments[i].Submit(renderer, matrix, DefaultTexture, HighlightTexture, gold, arc.Color,
+                    ArcRenderOrder.SegmentKey(noteKey, i, arc.IsVoid));
             renderer.SubmitHead(this);
             renderer.SubmitSprite(HeightIndicatorRenderer, 0, true);
             renderer.SubmitSprite(ArcCapRenderer, 0);
@@ -499,50 +505,44 @@ namespace Arcade.Gameplay
 				zeroLengthVoidArcDisappearTime = int.MaxValue;
 			}
 
-			float baseSize = duration < 1000 ? 14 : 7;
-			float v2 = 1f / (baseSize * arc.EffectiveSmoothness * duration / 1000f);
-			int segSize = duration > 0 ? Mathf.Max(1, (int)(duration * v2)) : 0;
-			segmentCount = 0;
-			if (segSize != 0)
-			{
-				segmentCount = duration / segSize + (duration % segSize == 0 ? 0 : 1);
-			}
-			if (segmentCount == 0 && (arc.XStart != arc.XEnd || arc.YStart != arc.YEnd))
-			{
-				segmentCount = 1;
-			}
+            BuiltRenderEndTiming = Mathf.Max(arc.EndTiming, arc.RenderEndTiming);
+            int renderDuration = BuiltRenderEndTiming - arc.Timing;
+            ArcSampling.FillProgress(segmentProgress, duration, renderDuration, arc.EffectiveSmoothness,
+                arc.IsVoid && arc.CurveType == Arcade.Gameplay.Chart.ArcCurveType.S && !AllowCrossTiming);
+            segmentCount = renderDuration == 0 && arc.XStart == arc.XEnd && arc.YStart == arc.YEnd
+                ? 0 : segmentProgress.Count - 1;
 			InstantiateSegment(segmentCount);
 
 			float startVelocity = timingManager.CalculateVelocityAtTiming(arc.Timing, arc.TimingGroup);
-			float SegmentZ(int timing) => -(AllowCrossTiming
-				? timingManager.CalculatePositionByTimingAndStart(arc.Timing, timing, arc.TimingGroup)
-				: (timing - arc.Timing) * startVelocity) / 1000f;
+            float SegmentZ(float offset)
+            {
+                if (!AllowCrossTiming) return -offset * startVelocity / 1000f;
+                float time = arc.Timing + offset;
+                int whole = Mathf.FloorToInt(time);
+                float position = timingManager.CalculatePositionByTimingAndStart(arc.Timing, whole, arc.TimingGroup)
+                    + (time - whole) * timingManager.CalculateVelocityAtTiming(whole, arc.TimingGroup);
+                return -position / 1000f;
+            }
 
 			float startHeight = 0;
 			float endHeight = arc.YStart;
 			Vector3 start = new Vector3();
 			Vector3 end = new Vector3(ArcAlgorithm.ArcXToWorld(arc.XStart),
 										ArcAlgorithm.ArcYToWorld(arc.YStart));
-			for (int i = 0; i < segmentCount - 1; ++i)
+			for (int i = 0; i < segmentCount; ++i)
 			{
+                float progress = (float)segmentProgress[i + 1];
+                float fromOffset = (float)(segmentProgress[i] * renderDuration);
+                float endOffset = (float)(segmentProgress[i + 1] * renderDuration);
+                bool last = i == segmentCount - 1;
 				startHeight = endHeight;
 				start = end;
-				endHeight = ArcAlgorithm.Y(arc.YStart, arc.YEnd, (i + 1f) * segSize / duration, arc.CurveType);
-				end = new Vector3(ArcAlgorithm.ArcXToWorld(ArcAlgorithm.X(arc.XStart, arc.XEnd, (i + 1f) * segSize / duration, arc.CurveType)),
-								  ArcAlgorithm.ArcYToWorld(ArcAlgorithm.Y(arc.YStart, arc.YEnd, (i + 1f) * segSize / duration, arc.CurveType)),
-								  SegmentZ(arc.Timing + segSize * (i + 1)));
-				segments[i].BuildSegment(start, end, arc.IsVoid ? OffsetVoid : OffsetNormal, arc.Timing + segSize * i, arc.Timing + segSize * (i + 1), startHeight, endHeight);
-			}
-
-			if (segmentCount > 0)
-			{
-				startHeight = endHeight;
-				start = end;
-				endHeight = arc.YEnd;
-				end = new Vector3(ArcAlgorithm.ArcXToWorld(arc.XEnd),
-								  ArcAlgorithm.ArcYToWorld(arc.YEnd),
-								  SegmentZ(arc.EndTiming));
-				segments[segmentCount - 1].BuildSegment(start, end, arc.IsVoid ? OffsetVoid : OffsetNormal, arc.Timing + segSize * (segmentCount - 1), arc.EndTiming, startHeight, endHeight);
+                endHeight = last ? arc.YEnd : ArcAlgorithm.Y(arc.YStart, arc.YEnd, progress, arc.CurveType);
+                float x = last ? arc.XEnd : ArcAlgorithm.X(arc.XStart, arc.XEnd, progress, arc.CurveType);
+                end = new Vector3(ArcAlgorithm.ArcXToWorld(x), ArcAlgorithm.ArcYToWorld(endHeight), SegmentZ(endOffset));
+                // Extend geometry to the successor while preserving zero-duration slam timing.
+                segments[i].BuildSegment(start, end, arc.IsVoid ? OffsetVoid : OffsetNormal,
+                    arc.Timing + fromOffset, last ? arc.EndTiming : arc.Timing + endOffset, startHeight, endHeight);
 			}
 			HighColor = GetColor(true);
 			LowColor = GetColor(false);
@@ -775,7 +775,7 @@ namespace Arcade.Gameplay
 					if (segmentCount >= 1)
 					{
 						ArcSegmentData s = segments[0];
-						int duration = s.ToTiming - s.FromTiming;
+						float duration = s.ToTiming - s.FromTiming;
 						if (duration == 0)
 						{
 							EnableHead = false;

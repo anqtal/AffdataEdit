@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
+using Affdata.Core.Chart;
 using Arcade.Gameplay.Chart;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -38,7 +39,8 @@ namespace Arcade.Gameplay
         }
         private struct SortKey
         {
-            public int Index, LayerValue, Order, Queue;
+            public int Index, LayerValue, Order, Queue, ArcKey;
+            public bool ArcFace;
             public float Distance, PrimaryDistance;
         }
         private sealed class Draw
@@ -204,7 +206,7 @@ namespace Arcade.Gameplay
         }
 
         internal void Submit(Mesh mesh, Texture texture, NoteInstance data, string layer, int order,
-            int queue = 3000, int submesh = 0, int depthWrite = 0, int depthTest = 4)
+            int queue = 3000, int submesh = 0, int depthWrite = 0, int depthTest = 4, int? arcSortKey = null)
         {
             // Shared meshes and sorting layers need one native lookup per frame, not per segment.
             if (!meshBounds.TryGetValue(mesh, out var localBounds))
@@ -223,7 +225,8 @@ namespace Arcade.Gameplay
             float distance = orthographic ? Vector3.Dot(bounds.center - cameraPosition, cameraForward)
                 : (bounds.center - cameraPosition).sqrMagnitude;
             sortKeys.Add(new SortKey { Index = items.Count, LayerValue = sortingLayer.value, Order = order, Queue = queue,
-                Distance = distance, PrimaryDistance = layer == "Arc" ? distance : 0 });
+                Distance = distance, PrimaryDistance = layer == "Arc" ? distance : 0,
+                ArcFace = arcSortKey.HasValue, ArcKey = arcSortKey.GetValueOrDefault() });
             items.Add(new Item { Mesh = mesh, Texture = texture ? texture : Texture2D.whiteTexture, Data = data,
                 Layer = sortingLayer.id, LayerValue = sortingLayer.value, Order = order, Queue = queue,
                 Submesh = submesh, DepthWrite = depthWrite, DepthTest = depthTest });
@@ -239,7 +242,14 @@ namespace Arcade.Gameplay
         private static int Compare(SortKey a, SortKey b)
         {
             int c = a.LayerValue.CompareTo(b.LayerValue);
-            // Within the Arc layer, draw far segments first; height/color/face order breaks ties.
+            // Keep the Arc faces together, after this layer's cap/connection sprites.
+            // Face ordering is independent of the editor camera, just like Play.
+            if (c == 0) c = a.ArcFace.CompareTo(b.ArcFace);
+            if (c == 0 && a.ArcFace)
+            {
+                c = ArcRenderOrder.Compare(a.Order, a.ArcKey, b.Order, b.ArcKey);
+                return c != 0 ? c : a.Index.CompareTo(b.Index);
+            }
             if (c == 0) c = b.PrimaryDistance.CompareTo(a.PrimaryDistance);
             if (c == 0) c = a.Order.CompareTo(b.Order);
             if (c == 0) c = a.Queue.CompareTo(b.Queue);

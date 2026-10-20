@@ -1178,7 +1178,7 @@ namespace Arcade.Gameplay.Chart
 	}
 	public class ArcArc : ArcLongNote, IIntoRawItem, IHasTimingGroup, ISetableTimingGroup
 	{
-
+        internal int RenderEndTiming = int.MinValue;
 		public ArcTimingGroup TimingGroup { get; set; }
 		public float XStart;
 		public float XEnd;
