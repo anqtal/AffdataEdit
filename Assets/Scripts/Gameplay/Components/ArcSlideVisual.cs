@@ -100,8 +100,8 @@ namespace Arcade.Gameplay
             if (!inRange) return;
             // Cooking a MeshCollider every playback frame is expensive; selection is only needed while paused.
             if (hitbox.enabled && hitbox.sharedMesh != mesh) hitbox.sharedMesh = mesh;
-            float visualStart = timing.CalculatePositionByTimingAndStart(0, note.Timing, note.TimingGroup) / 1000f * (1.62f / 8.5f);
-            float visualNow = timing.CalculatePositionByTimingAndStart(0, now, note.TimingGroup) / 1000f * (1.62f / 8.5f);
+            float visualStart = timing.CalculatePositionByTimingAndStart(0, note.Timing, note.TimingGroup) / 1000f * NoteMeshDefinitions.SlideVisualUnitsPerWorldUnit;
+            float visualNow = timing.CalculatePositionByTimingAndStart(0, now, note.TimingGroup) / 1000f * NoteMeshDefinitions.SlideVisualUnitsPerWorldUnit;
             properties.SetFloat("_VisualStart", visualStart); properties.SetFloat("_VisualChartProgress", visualNow);
             properties.SetFloat("_IsFirstOfGroup", note.IsGroupHead ? 1 : 0); properties.SetFloat("_IsLastOfGroup", note.IsGroupTail ? 1 : 0);
             properties.SetVector("_MissingRange", note.Overlap);
@@ -120,13 +120,14 @@ namespace Arcade.Gameplay
             int duration = note.EndTiming - note.Timing;
             // Bound geometry for very long editor notes, while retaining the source's 5ms sampling for normal notes.
             int step = Mathf.Max(5, Mathf.CeilToInt(duration / 8192f));
-            float length = ArcTimingManager.Instance.CalculatePositionByTimingAndStart(note.Timing, note.EndTiming, note.TimingGroup) / 1000f * (1.62f / 8.5f);
+            float length = ArcTimingManager.Instance.CalculatePositionByTimingAndStart(note.Timing, note.EndTiming, note.TimingGroup) / 1000f * NoteMeshDefinitions.SlideVisualUnitsPerWorldUnit;
+            if (start < note.EndTiming) AddRow(start);
             for (int t = start; t < note.EndTiming;)
             {
                 int next = (int)System.Math.Min((long)t + step, note.EndTiming);
-                int i = vertices.Count;
-                AddRow(t); AddRow(next);
-                NoteMeshDefinitions.AppendSlideSurfaceSegment(indices, i, i + 2, 2);
+                int i = vertices.Count - 2;
+                AddRow(next);
+                NoteMeshDefinitions.AppendSlideSurfaceSegment(indices, i, i + 2);
                 t = next;
             }
             mesh.Clear(); mesh.SetVertices(vertices); mesh.SetUVs(0, uv0); mesh.SetUVs(1, uv1); mesh.SetUVs(2, uv2);
@@ -137,13 +138,10 @@ namespace Arcade.Gameplay
                 float progress = (time - note.Timing) / (float)duration;
                 Vector2 range = note.Range(progress);
                 float z = -ArcTimingManager.Instance.CalculatePositionByTimingAndStart(note.Timing, time, note.TimingGroup) / 1000f;
-                float distance = ArcTimingManager.Instance.CalculatePositionByTimingAndStart(note.Timing, time, note.TimingGroup) / 1000f * (1.62f / 8.5f);
-                Vector2 stripData = new Vector2(range.y - range.x, length);
+                float distance = ArcTimingManager.Instance.CalculatePositionByTimingAndStart(note.Timing, time, note.TimingGroup) / 1000f * NoteMeshDefinitions.SlideVisualUnitsPerWorldUnit;
                 NoteMeshDefinitions.AppendSlideSurfaceRow(vertices, uv0, uv1, uv2,
-                    new NoteMeshDefinitions.SlideVertex(new Vector3(note.WorldX(range.x), 0, z),
-                        new Vector2(range.x, progress), new Vector2(0, distance), stripData),
-                    new NoteMeshDefinitions.SlideVertex(new Vector3(note.WorldX(range.y), 0, z),
-                        new Vector2(range.y, progress), new Vector2(1, distance), stripData), 2);
+                    new Vector3(note.WorldX(range.x), 0, z), new Vector3(note.WorldX(range.y), 0, z),
+                    range, progress, distance, length);
             }
         }
         internal void Submit(ArcNoteRenderer renderer)
