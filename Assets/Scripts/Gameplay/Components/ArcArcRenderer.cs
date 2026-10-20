@@ -363,7 +363,11 @@ namespace Arcade.Gameplay
 				if (arc.TraceColor.HasValue) return arc.TraceColor.Value;
 				if (arc.TimingGroup != null)
                 {
-                    if (arc.TimingGroup.TraceBodyGold) return new Color32(0xF4, 0xB9, 0x42, 255);
+                    if (arc.TimingGroup.TraceBodyGold)
+                    {
+                        var color = Affdata.Core.Chart.ArcColors.GoldTrace;
+                        return new Color32(color.R, color.G, color.B, color.A);
+                    }
                     if (arc.TimingGroup.UseTraceColor) return arc.TimingGroup.TraceColor;
                 }
                 return ArcVoid;

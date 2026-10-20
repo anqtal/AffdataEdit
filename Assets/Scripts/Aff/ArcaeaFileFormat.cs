@@ -7,6 +7,7 @@ using Antlr4.Runtime;
 using Antlr4.Runtime.Tree;
 using Arcade.Gameplay.Chart;
 using System.Globalization;
+using Affdata.Core.Colors;
 
 namespace Arcade.Aff
 {
@@ -347,21 +348,15 @@ namespace Arcade.Aff
 		}
 		public static string FormatHexColor(Color32 color)
 		{
-			string rgb = $"#{color.r:X2}{color.g:X2}{color.b:X2}";
-			return color.a == 255 ? rgb : rgb + color.a.ToString("X2", CultureInfo.InvariantCulture);
+			return HexColor.Format(new Rgba32(color.r, color.g, color.b, color.a));
 		}
 
 		// #RGB, #RGBA, #RRGGBB or #RRGGBBAA.
 		public static bool TryParseHexColor(string raw, out Color32 color)
 		{
-			color = default;
-			if (raw == null || raw.Length < 4 || raw[0] != '#') return false;
-			string hex = raw.Substring(1);
-			if (hex.Length == 3 || hex.Length == 4) hex = string.Concat(hex.Select(c => new string(c, 2)));
-			if (hex.Length == 6) hex += "FF";
-			if (hex.Length != 8 || !uint.TryParse(hex, NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture, out uint rgba)) return false;
-			color = new Color32((byte)(rgba >> 24), (byte)(rgba >> 16), (byte)(rgba >> 8), (byte)rgba);
-			return true;
+			bool success = HexColor.TryParse(raw, out Rgba32 parsed);
+			color = new Color32(parsed.R, parsed.G, parsed.B, parsed.A);
+			return success;
 		}
 
 		public static Dictionary<ArcCurveType, string> ArcCurveTypeStrings = new Dictionary<ArcCurveType, string>
