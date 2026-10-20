@@ -226,14 +226,14 @@ namespace Arcade.Gameplay.Chart
 
 	public enum ArcCurveType
 	{
-		B,
-		S,
-		Si,
-		So,
-		SiSi,
-		SiSo,
-		SoSi,
-		SoSo,
+		B = (int)Affdata.Core.Geometry.ArcCurveType.B,
+		S = (int)Affdata.Core.Geometry.ArcCurveType.S,
+		Si = (int)Affdata.Core.Geometry.ArcCurveType.Si,
+		So = (int)Affdata.Core.Geometry.ArcCurveType.So,
+		SiSi = (int)Affdata.Core.Geometry.ArcCurveType.SiSi,
+		SiSo = (int)Affdata.Core.Geometry.ArcCurveType.SiSo,
+		SoSi = (int)Affdata.Core.Geometry.ArcCurveType.SoSi,
+		SoSo = (int)Affdata.Core.Geometry.ArcCurveType.SoSo,
 	}
 	public enum CameraEaseType
 	{

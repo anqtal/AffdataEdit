@@ -210,6 +210,12 @@
         "com.unity.render-pipelines.core": "17.6.0"
       }
     },
+    "net.affdata.core": {
+      "version": "file:../../Affdata.Core",
+      "depth": 0,
+      "source": "local",
+      "dependencies": {}
+    },
     "com.unity.modules.accessibility": {
       "version": "1.0.0",
       "depth": 0,

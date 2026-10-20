@@ -2,6 +2,7 @@
     "name": "Arcade",
     "rootNamespace": "",
     "references": [
+        "Affdata.Core",
         "Demigiant.DOTween",
         "SFB.Runtime",
         "Unity.InputSystem",
