@@ -122,7 +122,7 @@ namespace Arcade.Gameplay
         {
             if (tap.ConnectedArcTaps.Count == 0) return;
             // Undo the skin's X flip and width scale, as the former connection prefab did.
-            Matrix4x4 parent = tap.RenderMatrix * Matrix4x4.Scale(new Vector3(-1f / 1.53f, 1, 1));
+            Matrix4x4 parent = tap.RenderMatrix * Matrix4x4.Scale(new Vector3(-1f / ArcTapNoteManager.Instance.WidthScale, 1, 1));
             Vector3 start = parent.MultiplyPoint3x4(Vector3.zero);
             // Keep the quad in the transformed connection plane, including vertical lines.
             Vector3 normal = Vector3.Cross(parent.MultiplyVector(Vector3.right), parent.MultiplyVector(Vector3.forward));

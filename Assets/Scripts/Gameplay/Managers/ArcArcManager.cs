@@ -365,11 +365,16 @@ namespace Arcade.Gameplay
 			{
 				foreach (ArcArcTap t in arc.ArcTaps)
 				{
-					if (t.ShadowRenderer) t.ShadowRenderer.sprite = sprite;
+                    if (t.ShadowRenderer)
+                    {
+                        t.ShadowRenderer.sprite = sprite;
+                        t.UpdateShadowTransform();
+                    }
 				}
 				if (arc.ConvertedVariousSizedArctap?.ShadowRenderer)
 				{
 					arc.ConvertedVariousSizedArctap.ShadowRenderer.sprite = sprite;
+                    arc.ConvertedVariousSizedArctap.UpdateShadowTransform();
 				}
 			}
 		}
@@ -387,7 +392,11 @@ namespace Arcade.Gameplay
 			ArcNotePrefab.GetComponent<ArcArcRenderer>().HeightIndicatorRenderer.sprite = sprite;
 			foreach (ArcArc arc in Arcs)
 			{
-				if (arc.arcRenderer) arc.arcRenderer.HeightIndicatorRenderer.sprite = sprite;
+                if (arc.arcRenderer)
+                {
+                    arc.arcRenderer.HeightIndicatorRenderer.sprite = sprite;
+                    arc.arcRenderer.BuildHeightIndicator();
+                }
 			}
 		}
 

@@ -122,13 +122,15 @@ namespace Arcade.Compose
 		{
 			get
 			{
-				return ArcTapCursor.localPosition;
+                return (Vector2)ArcTapCursor.localPosition
+                    - Vector2.up * (NoteMeshDefinitions.ArcTapCenter.y - NoteMeshDefinitions.ArcTapAnchorYOffset);
 			}
 			set
 			{
-				ArcTapCursor.localPosition = value;
+                ArcTapCursor.localPosition = (Vector3)value
+                    + Vector3.up * (NoteMeshDefinitions.ArcTapCenter.y - NoteMeshDefinitions.ArcTapAnchorYOffset);
 				SfxArcTapCursor.localPosition = (Vector3)value
-                    + NoteMeshDefinitions.SfxArcTapCenter - NoteMeshDefinitions.ArcTapCenter;
+                    + Vector3.up * (NoteMeshDefinitions.SfxArcTapCenter.y - NoteMeshDefinitions.ArcTapAnchorYOffset);
 			}
 		}
 

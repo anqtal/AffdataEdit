@@ -46,6 +46,8 @@ namespace Arcade.Gameplay
                 renderer.Submit(ArcNoteMeshes.Segment, texture, data, "Arc", order + 500, submesh: 2);
             }
             local.m13 = 0; local.m12 = 0;
+            // Core supplies the .05 floor offset; Arc width must not scale that height.
+            local.m11 = 1;
             data.Transform = parent * local;
             data.Options = new Vector4(4,1,0,0);
             Color color = ArcSkinManager.Instance.GetShadowTint(IsTrace);

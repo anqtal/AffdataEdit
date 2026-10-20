@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Affdata.Core.Geometry;
 using Arcade.Gameplay.Chart;
 using Arcade.Util.Misc;
 using UnityEngine;
@@ -463,8 +464,15 @@ namespace Arcade.Gameplay
 				EnableHeightIndicator = false;
 				return;
 			}
-			HeightIndicatorRenderer.transform.localPosition = new Vector3(ArcAlgorithm.ArcXToWorld(arc.XStart), 0, 0);
-			HeightIndicatorRenderer.transform.localScale = new Vector3(2.34f, 100 * (ArcAlgorithm.ArcYToWorld(arc.YStart) - OffsetNormal / 2), 1);
+            Sprite sprite = HeightIndicatorRenderer.sprite;
+            if (!sprite) return;
+            float height = ArcAlgorithm.ArcYToWorld(arc.YStart) - OffsetNormal / 2
+                - NoteMeshDefinitions.HeightIndicatorFloor;
+            float yScale = height / sprite.bounds.size.y;
+            HeightIndicatorRenderer.transform.localPosition = new Vector3(ArcAlgorithm.ArcXToWorld(arc.XStart),
+                NoteMeshDefinitions.HeightIndicatorFloor - sprite.bounds.min.y * yScale, 0);
+            HeightIndicatorRenderer.transform.localScale = new Vector3(
+                NoteMeshDefinitions.HeightIndicatorWidth / sprite.bounds.size.x, yScale, 1);
 			HeightIndicatorRenderer.color = Color.Lerp(
 				arc.Color == 0 ? ArcBlueLow : arc.Color == 1 ? ArcRedLow : arc.Color == 2 ? ArcGreenLow : ArcUnknownLow,
 				arc.Color == 0 ? ArcBlueHigh : arc.Color == 1 ? ArcRedHigh : arc.Color == 2 ? ArcGreenHigh : ArcUnknownHigh,

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Affdata.Core.Geometry;
 using UnityEngine;
 using Arcade.Gameplay.Chart;
 
@@ -62,6 +63,7 @@ namespace Arcade.Gameplay
 			ArcTimingManager timing = ArcTimingManager.Instance;
             Matrix4x4 parentMatrix = NoteLayer.localToWorldMatrix;
             Quaternion rotation = HoldNotePrefab.transform.localRotation;
+            float widthScale = DefaultSprite ? NoteMeshDefinitions.HoldWidth / DefaultSprite.bounds.size.x : 1f;
 
 			foreach (var t in Holds)
 			{
@@ -100,7 +102,7 @@ namespace Arcade.Gameplay
 				float pos = t.Position / 1000f;
 				float length = (endPosition - t.Position) / 1000f;
                 Vector3 position = new Vector3(t.WorldX, pos, 0);
-                Vector3 scale = new Vector3(1.53f, length / 3.79f, 1);
+                Vector3 scale = new Vector3(widthScale, length / 3.79f, 1);
                 t.RenderMatrix = parentMatrix * Matrix4x4.TRS(position, rotation, new Vector3(-scale.x, scale.y, scale.z));
                 if (t.transform)
                 {

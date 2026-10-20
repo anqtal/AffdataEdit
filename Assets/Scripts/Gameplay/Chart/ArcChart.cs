@@ -971,6 +971,9 @@ namespace Arcade.Gameplay.Chart
 
 		public void UpdateScale()
 		{
+            // CalculateVelocityAtTiming's position-units/ms equal world-units/s here.
+            shadowDepthScale = NoteMeshDefinitions.ArcTapShadowDepthScale(
+                ArcTimingManager.Instance.CalculateVelocityAtTiming(Timing, Arc.TimingGroup));
 			if (IsConvertedVariousSizedArctap)
 			{
 				LocalScale = Mathf.Abs(Arc.XEnd - Arc.XStart) * 2;
@@ -1040,6 +1043,7 @@ namespace Arcade.Gameplay.Chart
 			LocalPosition = new Vector3(ArcAlgorithm.ArcXToWorld(ArcAlgorithm.X(Arc.XStart, Arc.XEnd, t, Arc.CurveType)),
 									  ArcAlgorithm.ArcYToWorld(ArcAlgorithm.Y(Arc.YStart, Arc.YEnd, t, Arc.CurveType)) - 0.5f,
 									  -timingManager.CalculatePositionByTimingAndStart(Arc.Timing, Timing, Arc.TimingGroup) / 1000f - 0.6f);
+            UpdateScale();
 			SetupArcTapConnection();
 		}
 
@@ -1095,14 +1099,29 @@ namespace Arcade.Gameplay.Chart
 			{
 				localPosition = value;
                 if (!Model) return;
-                // project-arc places the SFX model centre 45 units below the Arc point.
-                Model.localPosition = value + (Arc.IsSfx
-                    ? NoteMeshDefinitions.SfxArcTapCenter - NoteMeshDefinitions.ArcTapCenter : Vector3.zero);
-				Vector3 p = value;
-				p.y = 0;
-				Shadow.localPosition = p;
+                Vector3 centre = Arc.IsSfx ? NoteMeshDefinitions.SfxArcTapCenter : NoteMeshDefinitions.ArcTapCenter;
+                Model.localPosition = value + Vector3.up * (centre.y - NoteMeshDefinitions.ArcTapAnchorYOffset);
+                UpdateShadowTransform();
 			}
 		}
+
+        private float shadowDepthScale = 1f;
+
+        internal void UpdateShadowTransform()
+        {
+            if (!ShadowRenderer || !ShadowRenderer.sprite) return;
+            Bounds bounds = ShadowRenderer.sprite.bounds;
+            float xScale = localScale * NoteMeshDefinitions.ArcTapShadowWidth / bounds.size.x;
+            float yScale = NoteMeshDefinitions.ArcTapShadowDepth * shadowDepthScale / bounds.size.y;
+            Shadow.localScale = new Vector3(xScale, yScale, 1);
+            Vector3 p = localPosition;
+            p.x -= bounds.center.x * xScale;
+            p.y = NoteMeshDefinitions.ArcTapShadowHeight;
+            // Sprite local Y becomes world +Z. Keep its near edge at the ArcTap timing,
+            // extending the far edge as speed changes instead of stretching around the centre.
+            p.z -= NoteMeshDefinitions.ArcTapCenter.z + bounds.max.y * yScale;
+            Shadow.localPosition = p;
+        }
 
 		internal static readonly Vector3 NormalArcTapScale = new Vector3(-4.4625f, 0.6f, -1.2f);
 		internal static readonly Vector3 SfxArcTapScale = Vector3.one * NoteMeshDefinitions.SfxArcTapScale;
@@ -1120,7 +1139,7 @@ namespace Arcade.Gameplay.Chart
 				localScale = value;
                 if (!Model) return;
                 Model.localScale = new Vector3(value * BaseModelScale.x, BaseModelScale.y, BaseModelScale.z);
-				Shadow.localScale = new Vector3(value, 1f, 1f);
+                UpdateShadowTransform();
 			}
 		}
 		public override bool Selected
