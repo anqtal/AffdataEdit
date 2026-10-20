@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Affdata.Core.Geometry;
 using Arcade.Gameplay.Chart;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -125,8 +126,7 @@ namespace Arcade.Gameplay
                 int next = (int)System.Math.Min((long)t + step, note.EndTiming);
                 int i = vertices.Count;
                 AddRow(t); AddRow(next);
-                indices.Add(i); indices.Add(i + 2); indices.Add(i + 1);
-                indices.Add(i + 1); indices.Add(i + 2); indices.Add(i + 3);
+                NoteMeshDefinitions.AppendSlideSurfaceSegment(indices, i, i + 2, 2);
                 t = next;
             }
             mesh.Clear(); mesh.SetVertices(vertices); mesh.SetUVs(0, uv0); mesh.SetUVs(1, uv1); mesh.SetUVs(2, uv2);
@@ -138,13 +138,12 @@ namespace Arcade.Gameplay
                 Vector2 range = note.Range(progress);
                 float z = -ArcTimingManager.Instance.CalculatePositionByTimingAndStart(note.Timing, time, note.TimingGroup) / 1000f;
                 float distance = ArcTimingManager.Instance.CalculatePositionByTimingAndStart(note.Timing, time, note.TimingGroup) / 1000f * (1.62f / 8.5f);
-                for (int side = 0; side < 2; side++)
-                {
-                    float x = side == 0 ? range.x : range.y;
-                    vertices.Add(new Vector3(note.WorldX(x), 0, z));
-                    uv0.Add(new Vector2(x, progress)); uv1.Add(new Vector2(side, distance));
-                    uv2.Add(new Vector2(range.y - range.x, length));
-                }
+                Vector2 stripData = new Vector2(range.y - range.x, length);
+                NoteMeshDefinitions.AppendSlideSurfaceRow(vertices, uv0, uv1, uv2,
+                    new NoteMeshDefinitions.SlideVertex(new Vector3(note.WorldX(range.x), 0, z),
+                        new Vector2(range.x, progress), new Vector2(0, distance), stripData),
+                    new NoteMeshDefinitions.SlideVertex(new Vector3(note.WorldX(range.y), 0, z),
+                        new Vector2(range.y, progress), new Vector2(1, distance), stripData), 2);
             }
         }
         internal void Submit(ArcNoteRenderer renderer)

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Affdata.Core.Geometry;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -26,7 +27,6 @@ namespace Arcade.Gameplay
         // ---- grid shape (scene values, not the C# defaults) --------------------------------
         private const int Rows = 8;
         private const int Columns = 180; // Double coverage while preserving triangle density.
-        private const float RowHeight = 1f;
         private const int TrianglesPerRow = Columns * 2 + 1;      // 361
         private const int TriangleCount = Rows * TrianglesPerRow; // 2888
 
@@ -337,63 +337,7 @@ namespace Arcade.Gameplay
         /// editor preview class, and the runtime mesh is a normalised unit block.
         /// </summary>
         private static Mesh BuildMesh()
-        {
-            float step = 1f / Columns;
-            float rowStep = 1f / Rows;
-            var verts = new Vector3[TriangleCount * 3];
-            int v = 0;
-
-            void Tri(float ax, float ay, float bx, float by, float cx, float cy)
-            {
-                verts[v++] = new Vector3(ax, ay, 0f);
-                verts[v++] = new Vector3(bx, by, 0f);
-                verts[v++] = new Vector3(cx, cy, 0f);
-            }
-
-            for (int i = 0; i < Rows; i++)
-            {
-                float top = RowHeight - i * rowStep;
-                float bottom = top - rowStep;
-
-                if (i % 2 == 0)
-                {
-                    float xt = 0f;
-                    float xb = xt + step * 0.5f;
-                    Tri(xt, top, xb, bottom, xt + step, top);          // point-down
-                    xt += step;
-                    for (int j = 0; j < Columns; j++)
-                    {
-                        Tri(xb, bottom, xt, top, xb + step, bottom);   // point-up
-                        xb += step;
-                        Tri(xt, top, xb, bottom, xt + step, top);      // point-down
-                        xt += step;
-                    }
-                }
-                else
-                {
-                    float xt = step * 0.5f;
-                    float xb = 0f;
-                    Tri(xb, bottom, xt, top, xb + step, bottom);       // point-up
-                    xb += step;
-                    for (int j = 0; j < Columns; j++)
-                    {
-                        Tri(xt, top, xb, bottom, xt + step, top);      // point-down
-                        xt += step;
-                        Tri(xb, bottom, xt, top, xb + step, bottom);   // point-up
-                        xb += step;
-                    }
-                }
-            }
-
-            var indices = new int[verts.Length];
-            for (int n = 0; n < indices.Length; n++) indices[n] = n;
-
-            var m = new Mesh { name = "ArcSlideJudgementGrid", indexFormat = IndexFormat.UInt32 };
-            m.SetVertices(verts);
-            m.SetIndices(indices, MeshTopology.Triangles, 0, false);
-            m.RecalculateBounds();
-            return m;
-        }
+            => NoteMeshDefinitions.CreateSlideJudgementGrid(Rows, Columns, Vector2.zero);
 
         /// <summary>
         /// Nb and ob from G:1356-1368. Note the divisor for Nb is the triangles per row, not
