@@ -124,8 +124,13 @@ namespace Arcade.Gameplay
             // Undo the skin's X flip and width scale, as the former connection prefab did.
             Matrix4x4 parent = tap.RenderMatrix * Matrix4x4.Scale(new Vector3(-1f / 1.53f, 1, 1));
             Vector3 start = parent.MultiplyPoint3x4(Vector3.zero);
+            // Keep the quad in the transformed connection plane, including vertical lines.
+            Vector3 normal = Vector3.Cross(parent.MultiplyVector(Vector3.right), parent.MultiplyVector(Vector3.forward));
+            if (normal.sqrMagnitude <= 0.000000000001f) return;
             Color color = ArcArcManager.Instance.ConnectionColor;
-            color.a = tap.Alpha * 0.8f;
+            // Replace the old front/back alpha blend with one surface.
+            float alpha = Mathf.Clamp01(tap.Alpha * 0.8f);
+            color.a = alpha * (2 - alpha);
             foreach (var arcTap in tap.ConnectedArcTaps)
             {
                 Vector2 position = arcTap.GetConnectionPosition();
@@ -133,8 +138,7 @@ namespace Arcade.Gameplay
                 Vector3 direction = end - start;
                 float length = direction.magnitude;
                 if (length <= 0.000001f) continue;
-                Vector3 up = Mathf.Abs(direction.y) > length * 0.999f ? Vector3.forward : Vector3.up;
-                var data = NoteInstance.Create(Matrix4x4.TRS(start, Quaternion.LookRotation(direction, up), new Vector3(1, 1, length)), 0);
+                var data = NoteInstance.Create(Matrix4x4.TRS(start, Quaternion.LookRotation(direction, normal), new Vector3(1, 1, length)), 0);
                 data.HighColor = color;
                 Submit(ArcNoteMeshes.Connection, null, data, "Arc", 3);
             }

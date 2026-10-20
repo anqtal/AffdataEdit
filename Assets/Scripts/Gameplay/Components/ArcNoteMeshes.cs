@@ -36,13 +36,13 @@ namespace Arcade.Gameplay
 
         private static Mesh CreateConnection()
         {
-            // AffdataPlay's ConnectionLine.fbx is a unit-length, radius-0.05 triangular prism.
-            float side = Mathf.Sqrt(3) * 0.025f;
+            // Match Play's quad and the old prism's projected width: .05 - (-.025).
+            const float halfWidth = 0.0375f;
             return Make("Note connection",
-                new[] { new Vector3(0, .05f, 0), new Vector3(side, -.025f, 0), new Vector3(-side, -.025f, 0),
-                    new Vector3(0, .05f, 1), new Vector3(side, -.025f, 1), new Vector3(-side, -.025f, 1) },
-                new[] { Vector2.zero, Vector2.right, Vector2.zero, Vector2.up, Vector2.one, Vector2.up },
-                new[] { 0, 1, 4, 0, 4, 3, 1, 2, 5, 1, 5, 4, 2, 0, 3, 2, 3, 5, 0, 2, 1, 3, 4, 5 });
+                new[] { new Vector3(-halfWidth, 0, 0), new Vector3(-halfWidth, 0, 1),
+                    new Vector3(halfWidth, 0, 1), new Vector3(halfWidth, 0, 0) },
+                new[] { Vector2.zero, Vector2.up, Vector2.one, Vector2.right },
+                new[] { 0, 1, 2, 0, 2, 3 });
         }
 
         public static Mesh Sprite(Sprite sprite)
