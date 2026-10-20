@@ -66,6 +66,7 @@ namespace Arcade.Gameplay
             Matrix4x4 parentMatrix = NoteLayer.localToWorldMatrix;
             Quaternion rotation = TapNotePrefab.transform.localRotation;
             float widthScale = WidthScale;
+            float spriteHeight = DefaultSprite ? DefaultSprite.bounds.size.y : 1f;
 
 			foreach (var t in Taps)
 			{
@@ -83,9 +84,11 @@ namespace Arcade.Gameplay
 				t.Enable = true;
 				float pos = t.Position / 1000f;
                 Vector3 position = new Vector3(t.WorldX, pos, 0);
-                Vector3 scale = ArcCameraManager.Instance.EditorCamera
-                    ? new Vector3(widthScale, 2, 1)
-                    : new Vector3(widthScale, (2f + 3.4f * Mathf.Max(0f, pos / 100f) * 1.5f) * 1.53f, 1);
+                float lengthScale = ArcCameraManager.Instance.EditorCamera
+                    ? 2f
+                    : NoteMeshDefinitions.TapLength(pos,
+                        timing.CalculateVelocityAtTiming(t.Timing, t.TimingGroup)) / spriteHeight;
+                Vector3 scale = new Vector3(widthScale, lengthScale, 1);
                 // Skin sprites face left; flip their mesh without flipping the picking/connection transform.
                 t.RenderMatrix = parentMatrix * Matrix4x4.TRS(position, rotation, new Vector3(-scale.x, scale.y, scale.z));
                 if (t.transform)
