@@ -7,6 +7,6 @@
 
 ## 参考项目
 
-- **首要参考：Arcade Alpha**，路径：`/Volumes/T7/ReferenceProject/Arcade-Alpha`。功能行为、编辑交互、渲染及视听资源优先参考该项目。
-- **次级参考：AffdataPlay**，本地同级的 AffdataPlay 仓库。用于补充参考；与 Arcade Alpha 存在差异时，默认以 Arcade Alpha 为准，用户明确指定的要求优先。
+- **首要参考：Arcade Alpha**，路径：`/Volumes/T7/Affdata/References/Arcade-Alpha`。功能行为、编辑交互、渲染及视听资源优先参考该项目。
+- **次级参考：AffdataPlay**，路径：`/Volumes/T7/Affdata/AffdataPlay`。用于补充参考；与 Arcade Alpha 存在差异时，默认以 Arcade Alpha 为准，用户明确指定的要求优先。
 - 参考项目默认只读；改动应落在当前 AffdataEdit 项目中，除非用户明确要求修改参考项目。
