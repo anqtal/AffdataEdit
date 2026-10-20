@@ -1,3 +1,4 @@
+using Affdata.Core.Geometry;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -126,7 +127,8 @@ namespace Arcade.Compose
 			set
 			{
 				ArcTapCursor.localPosition = value;
-				SfxArcTapCursor.localPosition = value;
+				SfxArcTapCursor.localPosition = (Vector3)value
+                    + NoteMeshDefinitions.SfxArcTapCenter - NoteMeshDefinitions.ArcTapCenter;
 			}
 		}
 

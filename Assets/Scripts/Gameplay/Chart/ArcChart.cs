@@ -1,3 +1,4 @@
+using Affdata.Core.Geometry;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -1094,7 +1095,9 @@ namespace Arcade.Gameplay.Chart
 			{
 				localPosition = value;
                 if (!Model) return;
-                Model.localPosition = value;
+                // project-arc places the SFX model centre 45 units below the Arc point.
+                Model.localPosition = value + (Arc.IsSfx
+                    ? NoteMeshDefinitions.SfxArcTapCenter - NoteMeshDefinitions.ArcTapCenter : Vector3.zero);
 				Vector3 p = value;
 				p.y = 0;
 				Shadow.localPosition = p;
@@ -1102,7 +1105,7 @@ namespace Arcade.Gameplay.Chart
 		}
 
 		internal static readonly Vector3 NormalArcTapScale = new Vector3(-4.4625f, 0.6f, -1.2f);
-		internal static readonly Vector3 SfxArcTapScale = new Vector3(4.2f, 4.2f, 4.2f);
+		internal static readonly Vector3 SfxArcTapScale = Vector3.one * NoteMeshDefinitions.SfxArcTapScale;
 
 		public Vector3 BaseModelScale { get { return Arc.IsSfx ? SfxArcTapScale : NormalArcTapScale; } }
 
