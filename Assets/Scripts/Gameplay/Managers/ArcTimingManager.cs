@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using Affdata.Core.Chart;
 using Arcade.Compose;
 using Arcade.Compose.Editing;
 using Arcade.Compose.UI;
@@ -35,7 +36,7 @@ namespace Arcade.Gameplay
 		[System.NonSerialized]
 		public List<ArcTimingGroup> timingGroups = new List<ArcTimingGroup>();
 		public SpriteRenderer[] TrackComponentRenderers;
-		private List<float> beatlineTimings = new List<float>();
+		private List<int> beatlineTimings = new List<int>();
 		private List<SpriteRenderer> beatLineInstances = new List<SpriteRenderer>();
 		private float earliestRenderTime = 0;
 		private float latestRenderTime = 0;
@@ -142,49 +143,13 @@ namespace Arcade.Gameplay
 		{
 			beatlineTimings.Clear();
 			HideExceededBeatlineInstance(0);
-			if (Timings.Count == 0)
+			var sharedTimings = new BeatLineTiming[Timings.Count];
+			for (int i = 0; i < Timings.Count; i++)
 			{
-				return;
+				ArcTiming timing = Timings[i];
+				sharedTimings[i] = new BeatLineTiming(timing.Timing, timing.Bpm, timing.BeatsPerLine);
 			}
-			for (int i = 0; i < Timings.Count; ++i)
-			{
-				if (Timings[i].Bpm == 0 || Timings[i].BeatsPerLine == 0)
-				{
-					beatlineTimings.Add(Timings[i].Timing);
-					continue;
-				}
-				float nextTiming = i + 1 >= Timings.Count ? ArcGameplayManager.Instance.Length : Timings[i + 1].Timing;
-				float segment = (60000 / Mathf.Abs(Timings[i].Bpm) * Timings[i].BeatsPerLine);
-				if (segment == 0) continue;
-				int n = 0;
-				while (true)
-				{
-					float j = Timings[i].Timing + n * segment;
-					if (j >= nextTiming)
-					{
-						break;
-					}
-					beatlineTimings.Add(j);
-					n++;
-				}
-			}
-
-			if (Timings[0].Bpm != 0 && Timings[0].BeatsPerLine != 0)
-			{
-				float t = 0;
-				float segment = 60000 / Mathf.Abs(Timings[0].Bpm) * Timings[0].BeatsPerLine;
-				int n = 0;
-				while (true)
-				{
-					n++;
-					t = -n * segment;
-					if (t < ArcGameplayManager.Instance.AllBeginChartTiming)
-					{
-						break;
-					}
-					beatlineTimings.Insert(0, t);
-				}
-			}
+			beatlineTimings.AddRange(BeatLineGenerator.Generate(sharedTimings, ArcGameplayManager.Instance.Length));
 		}
 
 		public float CalculatePositionByTiming(int Timing, ArcTimingGroup timingGroup)
@@ -488,13 +453,13 @@ namespace Arcade.Gameplay
 		private void UpdateBeatline()
 		{
 			int index = 0;
-			foreach (float t in beatlineTimings)
+			foreach (int t in beatlineTimings)
 			{
-				if (!ShouldTryRender((int)(t), null, 0, false))
+				if (!ShouldTryRender(t, null, 0, false))
 				{
 					continue;
 				}
-				float pos = CalculatePositionByTiming((int)t, null);
+				float pos = CalculatePositionByTiming(t, null);
 				if (pos > 100000 || pos < -100000)
 				{
 					continue;
