@@ -474,10 +474,7 @@ namespace Arcade.Gameplay
 			}
             SetHeightIndicatorPosition(new Vector3(ArcAlgorithm.ArcXToWorld(arc.XStart),
                 ArcAlgorithm.ArcYToWorld(arc.YStart), 0));
-			HeightIndicatorRenderer.color = Color.Lerp(
-				arc.Color == 0 ? ArcBlueLow : arc.Color == 1 ? ArcRedLow : arc.Color == 2 ? ArcGreenLow : ArcUnknownLow,
-				arc.Color == 0 ? ArcBlueHigh : arc.Color == 1 ? ArcRedHigh : arc.Color == 2 ? ArcGreenHigh : ArcUnknownHigh,
-				arc.YStart);
+			HeightIndicatorRenderer.color = GetColor(true);
 		}
         private void SetHeightIndicatorPosition(Vector3 point)
         {
@@ -842,8 +839,9 @@ namespace Arcade.Gameplay
             }
             bool clipping = (arc.Judging || arc.NoInput()) && arc.Timing < currentTiming;
             float velocity = ArcTimingManager.Instance.CalculateVelocityAtTiming(arc.Timing, arc.TimingGroup);
-            if (!heightIndicatorClip.TryGetPosition(currentTiming, clipping, velocity,
-                segments[0].FromPos + Vector3.forward * z, z + segments[0].ToPos.z,
+            float firstEndZ = z + segments[0].ToPos.z;
+            if (!heightIndicatorClip.TryGetPosition(currentTiming, currentTiming > arc.Timing, clipping, velocity,
+                segments[0].FromPos + Vector3.forward * z, firstEndZ,
                 judgementPoint, out Vector3 position))
             {
                 EnableHeightIndicator = false;
@@ -851,23 +849,9 @@ namespace Arcade.Gameplay
             }
             position.z -= z;
             SetHeightIndicatorPosition(position);
-			float pos = transform.position.z;
-			if (pos < -90 && pos > -100)
-			{
-				Color c = Color.Lerp(currentLowColor, currentHighColor, arc.YStart);
-				c.a = currentHighColor.a * (pos + 100) / 10;
-				EnableHeightIndicator = true;
-				HeightIndicatorRenderer.color = c;
-			}
-			else if (pos < -100 || pos > 100)
-			{
-				EnableHeightIndicator = false;
-			}
-			else
-			{
-				EnableHeightIndicator = true;
-				HeightIndicatorRenderer.color = Color.Lerp(currentLowColor, currentHighColor, arc.YStart);
-			}
+            EnableHeightIndicator = true;
+            HeightIndicatorRenderer.color = HeightIndicatorStyle.GetColor(GetColor(true), Alpha,
+                firstEndZ, arc.Timing == arc.EndTiming);
 		}
 		private void UpdateArcCap()
 		{
