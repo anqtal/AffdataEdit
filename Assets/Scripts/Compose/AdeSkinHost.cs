@@ -873,8 +873,9 @@ namespace Arcade.Compose
 			internalDefaultNoteData.Conflict.SfxArcTapCore = new Labelled<Texture2D> { value = rawDefaultData.SfxArcTapCoreConflict, label = "<internal:conflict>" };
 			internalDefaultNoteData.Light.ConnectionLineColor = Affdata.Core.Chart.ConnectionLineStyle.Light;
 			internalDefaultNoteData.Conflict.ConnectionLineColor = Affdata.Core.Chart.ConnectionLineStyle.Conflict;
-			internalDefaultNoteData.Light.ArcRedLow = rawDefaultData.ArcRedLow;
-			internalDefaultNoteData.Conflict.ArcRedLow = rawDefaultData.ArcRedLow;
+			var normalRedLow = Affdata.Core.Chart.ArcColors.NormalRedLow;
+			internalDefaultNoteData.Light.ArcRedLow = new Color32(normalRedLow.R, normalRedLow.G, normalRedLow.B, normalRedLow.A);
+			internalDefaultNoteData.Conflict.ArcRedLow = internalDefaultNoteData.Light.ArcRedLow;
 			internalDefaultNoteData.Light.ArcBlueLow = rawDefaultData.ArcBlueLow;
 			internalDefaultNoteData.Conflict.ArcBlueLow = rawDefaultData.ArcBlueLow;
 			internalDefaultNoteData.Light.ArcGreenLow = rawDefaultData.ArcGreenLow;
@@ -885,8 +886,9 @@ namespace Arcade.Compose
 			internalDefaultNoteData.Conflict.ArcRedHigh = rawDefaultData.ArcRedHigh;
 			internalDefaultNoteData.Light.ArcBlueHigh = rawDefaultData.ArcBlueHigh;
 			internalDefaultNoteData.Conflict.ArcBlueHigh = rawDefaultData.ArcBlueHigh;
-			internalDefaultNoteData.Light.ArcGreenHigh = rawDefaultData.ArcGreenHigh;
-			internalDefaultNoteData.Conflict.ArcGreenHigh = rawDefaultData.ArcGreenHigh;
+			var normalGreenHigh = Affdata.Core.Chart.ArcColors.NormalGreenHigh;
+			internalDefaultNoteData.Light.ArcGreenHigh = new Color32(normalGreenHigh.R, normalGreenHigh.G, normalGreenHigh.B, normalGreenHigh.A);
+			internalDefaultNoteData.Conflict.ArcGreenHigh = internalDefaultNoteData.Light.ArcGreenHigh;
 			internalDefaultNoteData.Light.ArcUnknownHigh = rawDefaultData.ArcUnknownHigh;
 			internalDefaultNoteData.Conflict.ArcUnknownHigh = rawDefaultData.ArcUnknownHigh;
 			internalDefaultNoteData.Light.ArcVoid = rawDefaultData.ArcVoid;
