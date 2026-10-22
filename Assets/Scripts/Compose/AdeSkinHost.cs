@@ -871,8 +871,8 @@ namespace Arcade.Compose
 			internalDefaultNoteData.Conflict.SfxArcTapNote = new Labelled<Texture2D> { value = rawDefaultData.SfxArcTapNoteConflict, label = "<internal:conflict>" };
 			internalDefaultNoteData.Light.SfxArcTapCore = new Labelled<Texture2D> { value = rawDefaultData.SfxArcTapCoreLight, label = "<internal:light>" };
 			internalDefaultNoteData.Conflict.SfxArcTapCore = new Labelled<Texture2D> { value = rawDefaultData.SfxArcTapCoreConflict, label = "<internal:conflict>" };
-			internalDefaultNoteData.Light.ConnectionLineColor = rawDefaultData.ConnectionLineColorLight;
-			internalDefaultNoteData.Conflict.ConnectionLineColor = rawDefaultData.ConnectionLineColorConflict;
+			internalDefaultNoteData.Light.ConnectionLineColor = Affdata.Core.Chart.ConnectionLineStyle.Light;
+			internalDefaultNoteData.Conflict.ConnectionLineColor = Affdata.Core.Chart.ConnectionLineStyle.Conflict;
 			internalDefaultNoteData.Light.ArcRedLow = rawDefaultData.ArcRedLow;
 			internalDefaultNoteData.Conflict.ArcRedLow = rawDefaultData.ArcRedLow;
 			internalDefaultNoteData.Light.ArcBlueLow = rawDefaultData.ArcBlueLow;

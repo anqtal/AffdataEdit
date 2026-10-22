@@ -339,6 +339,7 @@ namespace Arcade.Gameplay
 		private bool selected;
 		private bool headEnable;
 		private bool heightIndicatorEnable;
+        private HeightIndicatorClipState heightIndicatorClip;
 		private bool arcCapEnable;
 		private bool highlighted;
 		private bool effect;
@@ -451,6 +452,7 @@ namespace Arcade.Gameplay
 
 		public void Build()
 		{
+            heightIndicatorClip = default;
 			BuildHeightIndicator();
 			BuildSegments();
             collidersDirty = true;
@@ -470,20 +472,24 @@ namespace Arcade.Gameplay
 				EnableHeightIndicator = false;
 				return;
 			}
-            Sprite sprite = HeightIndicatorRenderer.sprite;
-            if (!sprite) return;
-            float height = ArcAlgorithm.ArcYToWorld(arc.YStart) - OffsetNormal / 2
-                - NoteMeshDefinitions.HeightIndicatorFloor;
-            float yScale = height / sprite.bounds.size.y;
-            HeightIndicatorRenderer.transform.localPosition = new Vector3(ArcAlgorithm.ArcXToWorld(arc.XStart),
-                NoteMeshDefinitions.HeightIndicatorFloor - sprite.bounds.min.y * yScale, 0);
-            HeightIndicatorRenderer.transform.localScale = new Vector3(
-                NoteMeshDefinitions.HeightIndicatorWidth / sprite.bounds.size.x, yScale, 1);
+            SetHeightIndicatorPosition(new Vector3(ArcAlgorithm.ArcXToWorld(arc.XStart),
+                ArcAlgorithm.ArcYToWorld(arc.YStart), 0));
 			HeightIndicatorRenderer.color = Color.Lerp(
 				arc.Color == 0 ? ArcBlueLow : arc.Color == 1 ? ArcRedLow : arc.Color == 2 ? ArcGreenLow : ArcUnknownLow,
 				arc.Color == 0 ? ArcBlueHigh : arc.Color == 1 ? ArcRedHigh : arc.Color == 2 ? ArcGreenHigh : ArcUnknownHigh,
 				arc.YStart);
 		}
+        private void SetHeightIndicatorPosition(Vector3 point)
+        {
+            Sprite sprite = HeightIndicatorRenderer.sprite;
+            if (!sprite) return;
+            float height = point.y - OffsetNormal / 2 - NoteMeshDefinitions.HeightIndicatorFloor;
+            float yScale = height / sprite.bounds.size.y;
+            HeightIndicatorRenderer.transform.localPosition = new Vector3(point.x,
+                NoteMeshDefinitions.HeightIndicatorFloor - sprite.bounds.min.y * yScale, point.z);
+            HeightIndicatorRenderer.transform.localScale = new Vector3(
+                NoteMeshDefinitions.HeightIndicatorWidth / sprite.bounds.size.x, yScale, 1);
+        }
 		// Off by default like Arcade Alpha: an arc body is laid out rigidly with the speed of the
 		// timing at its start. On, every segment point follows later timing changes.
 		public static bool AllowCrossTiming;
@@ -816,12 +822,35 @@ namespace Arcade.Gameplay
 		}
 		private void UpdateHeightIndicator()
 		{
-			if (arc.IsVoid || (arc.YEnd == arc.YStart && !IsHead) || arc.IsVariousSizedArctap || arc.HiddenSegments)
+			if (arc.IsVoid || (arc.YEnd == arc.YStart && !IsHead) || arc.IsVariousSizedArctap || arc.HiddenSegments || segments.Count == 0)
 			{
 				EnableHeightIndicator = false;
 				return;
 			}
 
+            int currentTiming = ArcGameplayManager.Instance.ChartTiming;
+            float z = arc.transform.localPosition.z;
+            Vector3 judgementPoint = segments[0].FromPos;
+            foreach (ArcSegmentData segment in segments)
+            {
+                float fromZ = z + segment.FromPos.z;
+                float toZ = z + segment.ToPos.z;
+                float t = fromZ / (fromZ - toZ);
+                if (float.IsNaN(t)) t = 0;
+                judgementPoint = Vector3.Lerp(segment.FromPos, segment.ToPos, t);
+                if (t >= 0 && t <= 1) break;
+            }
+            bool clipping = (arc.Judging || arc.NoInput()) && arc.Timing < currentTiming;
+            float velocity = ArcTimingManager.Instance.CalculateVelocityAtTiming(arc.Timing, arc.TimingGroup);
+            if (!heightIndicatorClip.TryGetPosition(currentTiming, clipping, velocity,
+                segments[0].FromPos + Vector3.forward * z, z + segments[0].ToPos.z,
+                judgementPoint, out Vector3 position))
+            {
+                EnableHeightIndicator = false;
+                return;
+            }
+            position.z -= z;
+            SetHeightIndicatorPosition(position);
 			float pos = transform.position.z;
 			if (pos < -90 && pos > -100)
 			{
@@ -836,9 +865,7 @@ namespace Arcade.Gameplay
 			}
 			else
 			{
-				int currentTiming = ArcGameplayManager.Instance.ChartTiming;
-				if ((arc.Judging || arc.NoInput()) && arc.Timing < currentTiming) EnableHeightIndicator = false;
-				else EnableHeightIndicator = true;
+				EnableHeightIndicator = true;
 				HeightIndicatorRenderer.color = Color.Lerp(currentLowColor, currentHighColor, arc.YStart);
 			}
 		}

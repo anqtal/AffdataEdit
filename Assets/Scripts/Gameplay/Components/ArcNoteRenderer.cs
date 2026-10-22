@@ -130,9 +130,7 @@ namespace Arcade.Gameplay
             Vector3 normal = Vector3.Cross(parent.MultiplyVector(Vector3.right), parent.MultiplyVector(Vector3.forward));
             if (normal.sqrMagnitude <= 0.000000000001f) return;
             Color color = ArcArcManager.Instance.ConnectionColor;
-            // Replace the old front/back alpha blend with one surface.
-            float alpha = Mathf.Clamp01(tap.Alpha * 0.8f);
-            color.a = alpha * (2 - alpha);
+            color.a = Mathf.Clamp01(tap.Alpha) * ConnectionLineStyle.Opacity;
             foreach (var arcTap in tap.ConnectedArcTaps)
             {
                 Vector2 position = arcTap.GetConnectionPosition();
