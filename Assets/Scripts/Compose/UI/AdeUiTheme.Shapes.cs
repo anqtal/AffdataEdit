@@ -69,6 +69,8 @@ namespace Arcade.Compose
 				handle.preserveAspect = true;
 			if (selectable is Scrollbar || !(selectable.targetGraphic is Image image) || !image.sprite) return;
 			string name = image.sprite.name;
+			if (name == "ToolBackground" && selectable is Button && !selectable.GetComponent<AdeToolbarPointerFocus>())
+				selectable.gameObject.AddComponent<AdeToolbarPointerFocus>();
 			bool themed = name.StartsWith(ControlShapePrefix);
 			if (themed) name = name.Substring(ControlShapePrefix.Length);
 			if (name != "UISprite" && name != "InputFieldBackground") return;
