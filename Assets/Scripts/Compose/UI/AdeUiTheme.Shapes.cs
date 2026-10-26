@@ -11,6 +11,7 @@ namespace Arcade.Compose
 		private const string ControlShapePrefix = "ThemeControl/";
 
 		internal static Sprite RoundedSurface => Instance.Shape("ThemeRoundedSurface", ControlRadius, Color.white, Color.white);
+        internal static Sprite PanelSurface => Instance.Shape("ThemePanel", PanelRadius, Current.Panel, Current.Border);
         internal static Sprite ReadOnlySurface => Instance.Shape("ThemeReadOnly", ControlRadius, Current.Chrome, Current.Border);
         internal static Sprite ContextMenuSurface(bool highlighted) => Instance.Shape(
             highlighted ? "ThemeContextMenuHover" : "ThemeContextMenu", ControlRadius,

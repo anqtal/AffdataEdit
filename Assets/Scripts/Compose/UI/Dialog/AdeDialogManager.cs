@@ -49,7 +49,7 @@ namespace Arcade.Compose
 
 		public Transform Opening, Closed;
 
-		private const float OpenDuration = 0.25f, CloseDuration = 0.25f, ClosedScale = 1.08f;
+		private const float TransitionDuration = 0.25f, ClosedScale = 1.08f;
 		private readonly Dictionary<AdeDialog, MotionHandle> motions = new Dictionary<AdeDialog, MotionHandle>();
 		private readonly HashSet<AdeDialog> closing = new HashSet<AdeDialog>();
 
@@ -77,10 +77,7 @@ namespace Arcade.Compose
 			}
 			group.blocksRaycasts = true;
 			AdeUiTheme.OnDialogOpened();
-			motions[dialog] = LMotion.Create(from, 1f, OpenDuration).WithEase(Ease.OutSine)
-				.WithScheduler(MotionScheduler.UpdateIgnoreTimeScale)
-				.WithOnComplete(() => motions.Remove(dialog))
-				.Bind(t => Pose(group, view, t));
+			motions[dialog] = AnimateView(group, view, from, 1f, () => motions.Remove(dialog));
 		}
 
 		public void Close(AdeDialog dialog)
@@ -100,15 +97,12 @@ namespace Arcade.Compose
 			// The dialog stops taking input at once; it is deactivated when the fade ends.
 			closing.Add(dialog);
 			group.blocksRaycasts = false;
-			motions[dialog] = LMotion.Create(from, 0f, CloseDuration).WithEase(Ease.OutSine)
-				.WithScheduler(MotionScheduler.UpdateIgnoreTimeScale)
-				.WithOnComplete(() =>
+			motions[dialog] = AnimateView(group, view, from, 0f, () =>
 				{
 					motions.Remove(dialog);
 					closing.Remove(dialog);
 					Hide(dialog);
-				})
-				.Bind(t => Pose(group, view, t));
+				});
 		}
 
 		private void Hide(AdeDialog dialog)
@@ -132,7 +126,14 @@ namespace Arcade.Compose
 			return group ? group : dialog.View.AddComponent<CanvasGroup>();
 		}
 
-		private static void Pose(CanvasGroup group, Transform view, float t)
+		internal static MotionHandle AnimateView(CanvasGroup group, Transform view, float from, float to, Action completed)
+		{
+			return LMotion.Create(from, to, TransitionDuration).WithEase(Ease.OutSine)
+				.WithScheduler(MotionScheduler.UpdateIgnoreTimeScale)
+				.WithOnComplete(completed).Bind(t => Pose(group, view, t));
+		}
+
+		internal static void Pose(CanvasGroup group, Transform view, float t)
 		{
 			if (!group) return;
 			group.alpha = t;

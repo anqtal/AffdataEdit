@@ -47,9 +47,38 @@ namespace Arcade.Compose
                 + chart.Cameras.Count(x => x.TimingGroup == group) + chart.SceneControl.Count(x => x.TimingGroup == group);
         }
 
-        private void DeleteGroup()
+        private void DuplicateGroup(int index)
         {
-            if (!Loaded() || lastGroup == null) return;
+            if (!Loaded() || index < 0 || index >= groups.Count) return;
+            var source = groups[index];
+            var copy = new ArcTimingGroup
+            {
+                Id = ArcTimingManager.Instance.timingGroups.Count + 1,
+                Timings = ArcTimingManager.Instance.GetTiming(source).Select(t => (ArcTiming)t.Clone()).ToList()
+            };
+            copy.ApplyAttributes(source?.Attributes ?? "");
+            var commands = new List<ICommand> { new AddTimingGroup(copy) };
+            var chart = ArcGameplayManager.Instance.Chart;
+            var events = chart.Taps.Cast<ArcEvent>().Concat(chart.Holds).Concat(chart.Arcs)
+                .Concat(chart.Slides).Concat(chart.Cameras).Concat(chart.SceneControl);
+            foreach (var item in events.Where(e => ((IHasTimingGroup)e).TimingGroup == source))
+            {
+                var clone = item.Clone();
+                ((ISetableTimingGroup)clone).TimingGroup = copy;
+                commands.Add(clone is ArcNote ? (ICommand)new AddArcEventCommand(clone)
+                    : new ChartControlCommand(clone, null, clone));
+            }
+            AdeCommandManager.Instance.Add(new BatchCommand(commands.ToArray(), "复制时间组"));
+            AdeTimingEditor.Instance.SetCurrentTimingGroup(copy);
+            dirty = true;
+            Message("已复制时间组及组内内容。可撤销。");
+        }
+
+        private void DeleteGroup(int index)
+        {
+            if (!Loaded() || index <= 0 || index >= groups.Count) return;
+            SelectGroup(index);
+            Refresh();
             pendingDelete = lastGroup;
             deletePrompt.text = $"删除 {GroupName(pendingDelete)} 及组内 {GroupEventCount(pendingDelete)} 个音符 / 事件？\nTiming 也会删除，操作可撤销。";
             deleteConfirmation.gameObject.SetActive(true);
@@ -73,6 +102,19 @@ namespace Arcade.Compose
                 var button = Quiet(Button(groupList, "", () => SelectGroup(index)));
                 button.GetComponentInChildren<TMP_Text>().alignment = TextAlignmentOptions.Left;
                 button.GetComponentInChildren<TMP_Text>().fontSize = 24;
+                var layout = button.gameObject.AddComponent<HorizontalLayoutGroup>();
+                layout.padding = new RectOffset(12, 12, 0, 0); layout.spacing = 8;
+                layout.childControlWidth = layout.childControlHeight = true;
+                layout.childForceExpandWidth = layout.childForceExpandHeight = false;
+                layout.childAlignment = TextAnchor.MiddleLeft;
+                Size(button.GetComponentInChildren<TMP_Text>().transform, -1, ControlHeight);
+                var detail = MutedLabel(button.transform, "", ControlHeight, 18);
+                detail.alignment = TextAlignmentOptions.Right;
+                detail.textWrappingMode = TextWrappingModes.NoWrap;
+                Size(detail.transform, 104, ControlHeight);
+                groupCopies.Add(IconButton(button.transform, "复制时间组", "Copy", () => DuplicateGroup(index)));
+                groupDeletes.Add(IconButton(button.transform, "删除时间组", "Trash", () => DeleteGroup(index)));
+                groupDetails.Add(detail);
                 groupRows.Add(button);
             }
             for (int i = 0; i < groupRows.Count; i++)
@@ -80,18 +122,19 @@ namespace Arcade.Compose
                 groupRows[i].gameObject.SetActive(i < groups.Count);
                 if (i >= groups.Count) continue;
                 var group = groups[i];
-                groupRows[i].GetComponentInChildren<TMP_Text>().text = GroupName(group)
-                    + (group == null ? "    · 基础" : "    · " + GroupEventCount(group) + " 个音符 / 事件");
+                groupRows[i].GetComponentInChildren<TMP_Text>().text = GroupName(group);
+                groupDetails[i].text = group == null ? "基础" : GroupEventCount(group) + " 个事件";
                 groupRows[i].interactable = loaded;
+                groupCopies[i].interactable = loaded;
+                groupDeletes[i].interactable = loaded && group != null;
+                Style(groupCopies[i]); Style(groupDeletes[i]);
                 Highlight(groupRows[i], group == lastGroup);
             }
             bool editable = loaded && lastGroup != null;
             groupCount.text = "时间组  ·  " + groups.Count;
-            Size(groupScroll.transform, -1, Mathf.Min(groups.Count, 4) * 44 - 4);
-            deleteGroup.interactable = editable;
+            Size(groupScroll.transform, -1, Mathf.Min(groups.Count, 4) * (ControlHeight + 4) - 4);
             groupProperties.gameObject.SetActive(editable);
             defaultGroupHint.gameObject.SetActive(!editable);
-            groupSummary.text = GroupName(lastGroup);
             noInput.SetIsOnWithoutNotify(lastGroup?.NoInput ?? false);
             fadingHolds.SetIsOnWithoutNotify(lastGroup?.FadingHolds ?? false);
             noClip.SetIsOnWithoutNotify(lastGroup?.NoClip ?? false);
@@ -149,15 +192,18 @@ namespace Arcade.Compose
             while (timingRows.Count < count)
             {
                 var row = new TimingRow();
-                row.Root = Row(timingList, "Timing", 36);
-                row.Time = Input(row.Root, "Time", -1); row.Bpm = Input(row.Root, "BPM", -1); row.Beats = Input(row.Root, "Beats", 58);
-                Quiet(Button(row.Root, "应用", () => ApplyTiming(row), 56));
+                row.Root = Row(timingList, "Timing", ControlHeight);
+                row.Time = Input(row.Root, "Time", -1); row.Bpm = Input(row.Root, "BPM", TimingBpmWidth); row.Beats = Input(row.Root, "Beats", TimingBeatsWidth);
+                Quiet(Button(row.Root, "应用", () => ApplyTiming(row), TimingApplyWidth));
                 row.Remove = Quiet(Button(row.Root, "Remove", () =>
                 {
                     if (ArcTimingManager.Instance.GetTiming(lastGroup).Count > 1)
                         AdeCommandManager.Instance.Add(new RemoveTimingEvent(lastGroup, row.Timing));
-                }, 28));
-                AdeUiIcons.SetText(row.Remove.GetComponentInChildren<TMP_Text>(), AdeUiIcons.Close);
+                }, TimingRemoveWidth));
+                var removeLabel = row.Remove.GetComponentInChildren<TMP_Text>();
+                AdeUiIcons.SetText(removeLabel, AdeUiIcons.Close);
+                removeLabel.rectTransform.offsetMin = removeLabel.rectTransform.offsetMax = Vector2.zero;
+                TimingColumns(row.Root, ControlHeight);
                 timingRows.Add(row);
             }
             for (int i = 0; i < timingRows.Count; i++)
@@ -170,7 +216,7 @@ namespace Arcade.Compose
                 row.Beats.SetTextWithoutNotify(ChartControlText.Number(row.Timing.BeatsPerLine));
                 row.Remove.interactable = count > 1;
             }
-            Size(timingScroll.transform, -1, Mathf.Clamp(count, 1, 4) * 50 - 4);
+            Size(timingScroll.transform, -1, Mathf.Clamp(count, 1, 4) * (ControlHeight + 8) - 8);
         }
 
         private void ApplyTiming(TimingRow row)
@@ -198,6 +244,22 @@ namespace Arcade.Compose
                     FillControl(page); HighlightControlRows(page); ClearMessage();
                 }));
                 button.GetComponentInChildren<TMP_Text>().alignment = TextAlignmentOptions.Left;
+                button.GetComponentInChildren<TMP_Text>().fontSize = 20;
+                Size(button.GetComponentInChildren<TMP_Text>().transform, 100, ControlHeight);
+                var layout = button.gameObject.AddComponent<HorizontalLayoutGroup>();
+                layout.padding = new RectOffset(8, 8, 0, 0); layout.spacing = 8;
+                layout.childControlWidth = layout.childControlHeight = true;
+                layout.childForceExpandWidth = layout.childForceExpandHeight = false;
+                layout.childAlignment = TextAnchor.MiddleLeft;
+                var description = Label(button.transform, "", ControlHeight, 20);
+                description.textWrappingMode = TextWrappingModes.NoWrap;
+                description.overflowMode = TextOverflowModes.Ellipsis;
+                page.Descriptions.Add(description);
+                var group = MutedLabel(button.transform, "", ControlHeight, 18);
+                group.alignment = TextAlignmentOptions.Right;
+                group.textWrappingMode = TextWrappingModes.NoWrap;
+                Size(group.transform, 72, ControlHeight);
+                page.Groups.Add(group);
                 page.Rows.Add(button);
             }
             for (int i = 0; i < page.Rows.Count; i++)
@@ -205,11 +267,13 @@ namespace Arcade.Compose
                 page.Rows[i].gameObject.SetActive(i < page.Events.Count);
                 if (i >= page.Events.Count) continue;
                 var e = page.Events[i];
-                string name = e is ArcCamera c ? $"Camera · {c.Duration} ms · {c.CameraType.ToString().ToLowerInvariant()}" : ((RawAffSceneControl)((ArcSceneControl)e).IntoRawItem()).Type;
-                page.Rows[i].GetComponentInChildren<TMP_Text>().text = $"{e.Timing} ms    {name}    {GroupName(((IHasTimingGroup)e).TimingGroup)}";
+                string name = e is ArcCamera c ? $"{c.CameraType.ToString().ToLowerInvariant()} · {c.Duration} ms" : ((RawAffSceneControl)((ArcSceneControl)e).IntoRawItem()).Type;
+                page.Rows[i].GetComponentInChildren<TMP_Text>().text = $"{e.Timing} ms";
+                page.Descriptions[i].text = name;
+                page.Groups[i].text = GroupName(((IHasTimingGroup)e).TimingGroup);
             }
             page.Scroll.gameObject.SetActive(page.Events.Count > 0);
-            Size(page.Scroll.transform, -1, Mathf.Clamp(page.Events.Count, 1, 4) * 44 - 4);
+            Size(page.Scroll.transform, -1, Mathf.Clamp(page.Events.Count, 1, 4) * (ControlHeight + 4) - 4);
             page.Summary.text = page.Events.Count == 0 ? "当前范围暂无事件，点击「+ 当前时间」添加。" : $"{page.Events.Count} 个事件";
             FillControl(page); HighlightControlRows(page);
         }
