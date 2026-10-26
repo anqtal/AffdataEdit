@@ -17,6 +17,7 @@ namespace Arcade.Compose.MarkingMenu
 
 		private bool enable;
 		private int knobCount;
+		private int themeRevision = -1;
 		private List<RectTransform> knobInstances = new List<RectTransform>();
 
 		public bool Enable
@@ -33,6 +34,7 @@ namespace Arcade.Compose.MarkingMenu
 					Line.enabled = value;
 					Initialize();
 					enable = value;
+					if (enable) ApplyTheme();
 				}
 			}
 		}
@@ -44,6 +46,7 @@ namespace Arcade.Compose.MarkingMenu
 		private void Update()
 		{
 			if (!enable) return;
+			if (themeRevision != AdeUiTheme.Revision) ApplyTheme();
 			UpdatePointer();
 		}
 		public void Initialize()
@@ -63,6 +66,7 @@ namespace Arcade.Compose.MarkingMenu
 			RectTransform knob = Instantiate(KnobPrefab, transform).GetComponent<RectTransform>();
 			knob.anchoredPosition = position;
 			knobInstances.Add(knob);
+			StyleKnob(knob.GetComponent<Image>());
 
 			Line.SetPosition(knobCount, position);
 			knobCount++;
@@ -77,6 +81,21 @@ namespace Arcade.Compose.MarkingMenu
 
 			knobCount--;
 			Line.positionCount = knobCount + 1;
+		}
+
+		private void ApplyTheme()
+		{
+			themeRevision = AdeUiTheme.Revision;
+			StyleKnob(PointerImage);
+			foreach (var knob in knobInstances) StyleKnob(knob.GetComponent<Image>());
+			Line.startColor = Line.endColor = AdeUiTheme.Current.Accent;
+		}
+
+		private static void StyleKnob(Image image)
+		{
+			image.color = AdeUiTheme.Current.Accent;
+			var outline = image.GetComponent<Shadow>();
+			if (outline) outline.effectColor = AdeUiTheme.Current.Border;
 		}
 
 		private void UpdatePointer()

@@ -12,6 +12,9 @@ namespace Arcade.Compose
 
 		internal static Sprite RoundedSurface => Instance.Shape("ThemeRoundedSurface", ControlRadius, Color.white, Color.white);
         internal static Sprite ReadOnlySurface => Instance.Shape("ThemeReadOnly", ControlRadius, Current.Chrome, Current.Border);
+        internal static Sprite ContextMenuSurface(bool highlighted) => Instance.Shape(
+            highlighted ? "ThemeContextMenuHover" : "ThemeContextMenu", ControlRadius,
+            highlighted ? Current.Selection : Current.Panel, highlighted ? Current.Accent : Current.Border);
 
 		// One geometry for the fill and its 1px inset border. Slicing preserves the radius
 		// at any panel size; 2x sampling keeps the edge smooth on scaled canvases.

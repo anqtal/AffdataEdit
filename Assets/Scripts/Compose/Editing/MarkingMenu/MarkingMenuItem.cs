@@ -63,10 +63,12 @@ namespace Arcade.Compose.MarkingMenu
 		private float pointerInItemTiming;
 		private bool active = false;
 		private MotionHandle fadeMotion;
+		private int themeRevision = -1;
 
 		private void Start()
 		{
 			Text = StartupText;
+			ApplyTheme();
 		}
 		private void OnDestroy()
 		{
@@ -77,6 +79,7 @@ namespace Arcade.Compose.MarkingMenu
 			gameObject.SetActive(true);
 			active = true;
 			fadeMotion.TryComplete();
+			ApplyTheme();
 			fadeMotion = LMotion.Create(ItemCanvasGroup.alpha, 1f, 0.15f)
 				.WithEase(Ease.OutQuad).WithScheduler(MotionScheduler.Update)
 				.BindToAlpha(ItemCanvasGroup);
@@ -91,7 +94,7 @@ namespace Arcade.Compose.MarkingMenu
 				.WithEase(Ease.OutQuad).WithScheduler(MotionScheduler.Update)
 				.WithOnComplete(() =>
 				{
-					Background.color = OutColor;
+					ApplyTheme();
 					if (!active)
 					{
 						gameObject.SetActive(false);
@@ -105,7 +108,7 @@ namespace Arcade.Compose.MarkingMenu
 			if (active)
 			{
 				PointerInItem = true;
-				Background.color = InColor;
+				ApplyTheme();
 				pointerInItemTiming = 0;
 			}
 		}
@@ -114,12 +117,32 @@ namespace Arcade.Compose.MarkingMenu
 			if (active)
 			{
 				PointerInItem = false;
-				Background.color = OutColor;
+				ApplyTheme();
 				pointerInItemTiming = 0;
 			}
 		}
+		private void ApplyTheme()
+		{
+			if (!AdeUiTheme.Instance)
+			{
+				Background.color = PointerInItem ? InColor : OutColor;
+				return;
+			}
+			themeRevision = AdeUiTheme.Revision;
+			Background.sprite = AdeUiTheme.ContextMenuSurface(PointerInItem);
+			Background.type = Image.Type.Sliced;
+			Background.color = Color.white;
+			Background.rectTransform.sizeDelta = Vector2.zero;
+			AdeEditorText.Configure(ItemText, AdeEditorText.BodySize);
+			ItemText.alignment = TMPro.TextAlignmentOptions.Center;
+			ItemText.color = AdeUiTheme.Current.Text;
+			var shadow = Background.GetComponent<Shadow>();
+			if (shadow) shadow.effectColor = new Color(0, 0, 0, AdeUiTheme.Dark ? .24f : .12f);
+		}
+
 		private void Update()
 		{
+			if (themeRevision != AdeUiTheme.Revision) ApplyTheme();
 			if (Mouse.current.rightButton.isPressed && PointerInItem)
 			{
 				pointerInItemTiming += Time.deltaTime;
