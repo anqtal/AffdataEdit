@@ -211,10 +211,11 @@
       }
     },
     "net.affdata.core": {
-      "version": "file:../../Affdata.Core",
+      "version": "https://github.com/anqtal/Affdata.Core.git#56ea4f2d9112ed1251bf2fc2c8151be25c01fe95",
       "depth": 0,
-      "source": "local",
-      "dependencies": {}
+      "source": "git",
+      "dependencies": {},
+      "hash": "56ea4f2d9112ed1251bf2fc2c8151be25c01fe95"
     },
     "com.unity.modules.accessibility": {
       "version": "1.0.0",
