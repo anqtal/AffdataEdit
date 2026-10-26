@@ -9,7 +9,7 @@ using UnityEngine.InputSystem;
 
 namespace Arcade.Compose.MarkingMenu
 {
-	public class MarkingMenuItem : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
+	public class MarkingMenuItem : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IPointerClickHandler
 	{
 		public CanvasGroup ItemCanvasGroup;
 		public RectTransform ItemRectTransform;
@@ -78,6 +78,8 @@ namespace Arcade.Compose.MarkingMenu
 		{
 			gameObject.SetActive(true);
 			active = true;
+			ItemCanvasGroup.blocksRaycasts = true;
+			GetComponent<Canvas>().sortingOrder = AdeMarkingMenuManager.MenuSortingOrder;
 			fadeMotion.TryComplete();
 			ApplyTheme();
 			fadeMotion = LMotion.Create(ItemCanvasGroup.alpha, 1f, 0.15f)
@@ -87,6 +89,7 @@ namespace Arcade.Compose.MarkingMenu
 		public void Hide()
 		{
 			active = false;
+			ItemCanvasGroup.blocksRaycasts = false;
 			PointerInItem = false;
 			pointerInItemTiming = 0;
 			fadeMotion.TryComplete();
@@ -120,6 +123,11 @@ namespace Arcade.Compose.MarkingMenu
 				ApplyTheme();
 				pointerInItemTiming = 0;
 			}
+		}
+		public void OnPointerClick(PointerEventData data)
+		{
+			if (active && data.button == PointerEventData.InputButton.Left)
+				AdeMarkingMenuManager.Instance.ClickItem(this);
 		}
 		private void ApplyTheme()
 		{

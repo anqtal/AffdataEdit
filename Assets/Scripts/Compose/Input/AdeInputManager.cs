@@ -80,7 +80,7 @@ namespace Arcade.Compose
 
 		public bool CheckHotkeyActionPressed(InputAction action)
 		{
-			if (IsFocusingOnTextField() || rebindFinishedThisFrame)
+			if (AdeMarkingMenuManager.BlocksEditorInput || IsFocusingOnTextField() || rebindFinishedThisFrame)
 			{
 				return false;
 			}
@@ -89,7 +89,7 @@ namespace Arcade.Compose
 
 		public bool CheckHotkeyActionPressing(InputAction action)
 		{
-			if (IsFocusingOnTextField() || rebindFinishedThisFrame)
+			if (AdeMarkingMenuManager.BlocksEditorInput || IsFocusingOnTextField() || rebindFinishedThisFrame)
 			{
 				return false;
 			}

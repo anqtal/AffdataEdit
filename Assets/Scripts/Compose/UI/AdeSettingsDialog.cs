@@ -68,6 +68,7 @@ namespace Arcade.Compose
             font = AdeEditorText.Font;
             originalSettings = settings.parent.parent.gameObject;
             checkmark = Resources.Load<Sprite>("AffdataEdit/Icons/Checkmark");
+            BuildContextMenuSetting(settings.Find("Wraper"));
             foreach (Transform row in settings.Find("Wraper"))
                 Register(row, row.name == "DarkUi" ? Page.Appearance : row.name == "Log" ? Page.About
                     : row.name == "PlaybackSync" || row.name == "GlobalAudioOffset" || row.name.StartsWith("WindowsAudio") ? Page.Audio : Page.General);
@@ -91,6 +92,21 @@ namespace Arcade.Compose
 
         private void Register(Transform row, Page page) => rows.Add(new BorrowedRow
         { Row = row, Parent = row.parent, Index = row.GetSiblingIndex(), Page = page });
+
+        private void BuildContextMenuSetting(Transform parent)
+        {
+            var compose = ArcadeComposeManager.Instance;
+            var template = compose.PlaybackSyncToggle.GetComponentInParent<HorizontalLayoutGroup>(true).transform;
+            var row = AdeUiKit.CloneRow(template, parent, "KeepContextMenuOpen");
+            row.GetComponentInChildren<TMP_Text>(true).text = "右键菜单保持展开";
+            var toggle = row.GetComponentInChildren<Toggle>(true);
+            toggle.SetIsOnWithoutNotify(compose.ArcadePreference.KeepContextMenuOpen);
+            toggle.onValueChanged.AddListener(value =>
+            {
+                compose.ArcadePreference.KeepContextMenuOpen = value;
+                compose.SavePreferences();
+            });
+        }
 
         private void Build(AdeSingleDialog template)
         {

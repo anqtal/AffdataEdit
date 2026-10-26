@@ -2,7 +2,12 @@ using System.Collections.Generic;
 using UnityEngine;
 using Arcade.Util.UnityExtension;
 using Arcade.Compose.MarkingMenu;
+using Arcade.Gameplay;
+using Arcade.Gameplay.Chart;
+using UnityEngine.Events;
+using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
+using UnityEngine.UI;
 
 namespace Arcade.Compose
 {
@@ -14,11 +19,20 @@ namespace Arcade.Compose
 	public class AdeMarkingMenuManager : MonoBehaviour
 	{
 		public static AdeMarkingMenuManager Instance { get; private set; }
+		public static bool BlocksEditorInput => Instance && (Instance.isOn || Instance.consumedFrame == Time.frameCount);
+		public bool IsOpen => isOn;
+		internal const int MenuSortingOrder = 30;
 
 		public MarkingMenuLine Line;
 		public List<AdeMarkingMenuItemProvider> Providers = new List<AdeMarkingMenuItemProvider>();
 
-		private Stack<MarkingMenuItem[]> shownItems = new Stack<MarkingMenuItem[]>();
+		private readonly Stack<MarkingMenuItem[]> shownItems = new Stack<MarkingMenuItem[]>();
+		private readonly List<MarkingMenuItem> parentItems = new List<MarkingMenuItem>();
+		private GameObject inputBlocker;
+		private MarkingMenuItem backItem;
+		private ArcChart openedChart;
+		private bool keepOpen;
+		private int consumedFrame = -1;
 
 		private bool isOn = false;
 		private void Awake()
@@ -27,43 +41,177 @@ namespace Arcade.Compose
 		}
 		private void Update()
 		{
-			if (Mouse.current.rightButton.wasPressedThisFrame)
-			{
-				Enter();
-			}
-			if (isOn && !Mouse.current.rightButton.isPressed)
+			var mouse = Mouse.current;
+			if (mouse == null) return;
+			var keyboard = Keyboard.current;
+			bool dialogOpen = AdeDialogManager.Instance && AdeDialogManager.Instance.Opening.childCount > 0;
+			if (isOn && (!ArcadeComposeManager.Instance.IsEditorMode || dialogOpen
+				|| openedChart != ArcGameplayManager.Instance.Chart))
 			{
 				Exit();
+				return;
 			}
-			if (isOn && Mouse.current.rightButton.isPressed)
+			if (isOn && keyboard != null && keyboard.escapeKey.wasPressedThisFrame)
 			{
-				Check();
+				Exit();
+				return;
 			}
+			if (mouse.rightButton.wasPressedThisFrame)
+			{
+				if (isOn) Exit();
+				else if (!dialogOpen && ArcadeComposeManager.Instance.IsEditorMode && PointerOverChart())
+					Enter();
+				return;
+			}
+			if (!isOn) return;
+			if (keepOpen)
+			{
+				if (keyboard != null && keyboard.backspaceKey.wasPressedThisFrame) ReturnParentMenu();
+				return;
+			}
+			if (!mouse.rightButton.isPressed)
+			{
+				var target = PointerTarget();
+				var selected = target ? target.GetComponentInParent<MarkingMenuItem>() : null;
+				if (System.Array.IndexOf(shownItems.Peek(), selected) < 0) selected = null;
+				Exit();
+				if (selected) selected.OnConfirmed.Invoke();
+			}
+			else Check();
+		}
+
+		private void LateUpdate()
+		{
+			// Retain the raycast shield through the dismissal click, including its release.
+			if (!isOn && inputBlocker && consumedFrame != Time.frameCount
+				&& (Mouse.current == null || !Mouse.current.leftButton.isPressed))
+				inputBlocker.SetActive(false);
+		}
+
+		private void OnApplicationFocus(bool focused)
+		{
+			if (!focused) Exit();
+		}
+
+		private void OnDisable()
+		{
+			Exit();
+			if (inputBlocker) inputBlocker.SetActive(false);
+		}
+
+		private void OnDestroy()
+		{
+			if (inputBlocker) Destroy(inputBlocker);
+			if (backItem) Destroy(backItem.gameObject);
+			if (Instance == this) Instance = null;
 		}
 
 		public void Enter()
 		{
+			if (isOn) return;
+			var items = GetCurrentMenuItems();
+			if (items.Length == 0) return;
+			keepOpen = ArcadeComposeManager.Instance.ArcadePreference.KeepContextMenuOpen;
+			openedChart = ArcGameplayManager.Instance.Chart;
+			CreateInputBlocker();
+			inputBlocker.SetActive(true);
+			EventSystem.current.SetSelectedGameObject(null);
+			isOn = true;
 			Line.Enable = true;
 			Line.AddJoint();
-			ShowAt(InputExtension.scaledMousePosition, GetCurrentMenuItems());
-			isOn = true;
+			ShowAt(InputExtension.scaledMousePosition, items);
 		}
+
+		private static bool PointerOverChart()
+		{
+			var target = PointerTarget();
+			return target && target.GetComponentInParent<AdeGameplayContentInputHandler>();
+		}
+
+		private static GameObject PointerTarget()
+		{
+			// Raycast this position rather than using the previous frame's hover state.
+			var pointer = new PointerEventData(EventSystem.current) { position = Mouse.current.position.ReadValue() };
+			var hits = new List<RaycastResult>();
+			EventSystem.current.RaycastAll(pointer, hits);
+			return hits.Count > 0 ? hits[0].gameObject : null;
+		}
+
+		// Closing never confirms a highlighted item. Confirmation is an explicit action.
 		public void Exit()
 		{
-			foreach (var item in shownItems.Peek())
-			{
-				if (item.PointerInItem)
-				{
-					item.OnConfirmed.Invoke(); break;
-				};
-			}
-
+			if (!isOn) return;
+			consumedFrame = Time.frameCount;
+			isOn = false;
 			Line.Enable = false;
 			foreach (var items in shownItems)
 				foreach (var item in items)
 					item.Hide();
 			shownItems.Clear();
-			isOn = false;
+			parentItems.Clear();
+			if (backItem) backItem.Hide();
+			openedChart = null;
+		}
+
+		public void ClickItem(MarkingMenuItem item)
+		{
+			if (!isOn || !keepOpen) return;
+			if (item == backItem) { ReturnParentMenu(); return; }
+			if (System.Array.IndexOf(shownItems.Peek(), item) < 0) return;
+			if (item.HasSubMenu && item.SubItems.Length > 0)
+			{
+				parentItems.Add(item);
+				ShowSubMenu(item.SubItems);
+				ShowBackItem(item);
+				return;
+			}
+			// Arc/ArcTap parents select a creation mode. Defer that until a leaf is chosen,
+			// so browsing a submenu and cancelling cannot change the current tool.
+			var parents = parentItems.ToArray();
+			Exit();
+			foreach (var parent in parents) parent.OnConfirmed.Invoke();
+			item.OnConfirmed.Invoke();
+		}
+
+		private void CreateInputBlocker()
+		{
+			if (inputBlocker) return;
+			var root = ArcadeComposeManager.Instance.EditorCanvas.GetComponent<Canvas>();
+			inputBlocker = new GameObject("ContextMenuInputBlocker", typeof(RectTransform), typeof(Canvas), typeof(GraphicRaycaster), typeof(Image), typeof(Button));
+			inputBlocker.layer = root.gameObject.layer;
+			var rect = (RectTransform)inputBlocker.transform;
+			rect.SetParent(root.transform, false);
+			rect.anchorMin = Vector2.zero;
+			rect.anchorMax = Vector2.one;
+			rect.offsetMin = rect.offsetMax = Vector2.zero;
+			var canvas = inputBlocker.GetComponent<Canvas>();
+			canvas.overrideSorting = true;
+			canvas.sortingLayerID = root.sortingLayerID;
+			canvas.sortingOrder = MenuSortingOrder - 1;
+			var image = inputBlocker.GetComponent<Image>();
+			image.color = Color.clear;
+			var button = inputBlocker.GetComponent<Button>();
+			button.targetGraphic = image;
+			button.transition = Selectable.Transition.None;
+			button.navigation = new Navigation { mode = Navigation.Mode.None };
+			button.onClick.AddListener(Exit);
+		}
+
+		private void ShowBackItem(MarkingMenuItem template)
+		{
+			if (!backItem)
+			{
+				backItem = Instantiate(template, template.transform.parent);
+				backItem.name = "ContextMenuBack";
+				backItem.StartupText = "返回";
+				backItem.HasSubMenu = false;
+				backItem.OnConfirmed = new UnityEvent();
+				backItem.OnHangOver = new UnityEvent();
+				backItem.SubItems = System.Array.Empty<MarkingMenuItem>();
+				backItem.Text = backItem.StartupText;
+			}
+			backItem.Position = template.Position;
+			backItem.Show();
 		}
 
 		public void Check()
@@ -107,10 +255,16 @@ namespace Arcade.Compose
 		}
 		public void ReturnParentMenu()
 		{
+			if (!isOn || shownItems.Count <= 1) return;
+			consumedFrame = Time.frameCount;
 			MarkingMenuItem[] items = shownItems.Pop();
 			foreach (var item in items) item.Hide();
 			items = shownItems.Peek();
 			foreach (var item in items) item.Show();
+			Line.RemoveLastJoint();
+			if (parentItems.Count > 0) parentItems.RemoveAt(parentItems.Count - 1);
+			if (parentItems.Count > 0) ShowBackItem(parentItems[parentItems.Count - 1]);
+			else if (backItem) backItem.Hide();
 		}
 
 		private float GetOptimizedDegree(float degree)

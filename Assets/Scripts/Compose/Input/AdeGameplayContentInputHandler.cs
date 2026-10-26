@@ -12,7 +12,7 @@ namespace Arcade.Compose
 
 		private bool active = false;
 
-		public static bool InputActive { get => Instance != null ? Instance.active : false; }
+		public static bool InputActive => Instance != null && Instance.active && !AdeMarkingMenuManager.BlocksEditorInput;
 		private void Awake()
 		{
 			Instance = this;

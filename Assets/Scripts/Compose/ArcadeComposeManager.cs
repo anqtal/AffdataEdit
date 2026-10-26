@@ -32,6 +32,7 @@ namespace Arcade.Compose
 		public uint UndoBufferSize = 200;
 		public bool PlaybackSync = false;
 		public bool ShowSpectrum = false;
+		public bool KeepContextMenuOpen = false;
 		public bool Auto;
 		public int GlobalAudioOffset = 0;
 		public Arcade.Gameplay.Chart.ChartSortMode ChartSortMode;
