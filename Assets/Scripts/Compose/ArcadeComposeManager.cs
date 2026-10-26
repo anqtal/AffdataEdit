@@ -22,7 +22,6 @@ namespace Arcade.Compose
 	public class ArcadePreference
 	{
 		public int AgreedUserAgreementVersion;
-		public long ReadWhatsNewVersion;
 		public string ScreenResolution = "1280x720";
 		public bool Fullscreen = false;
 		public int TargetFrameRate = -1;
@@ -41,13 +40,6 @@ namespace Arcade.Compose
 		public const float ModeSwitchDuration = 0.3f;
 		public const Ease ToEditorModeEase = Ease.OutCubic;
 		public const Ease ToPlayerModeEase = Ease.InCubic;
-		private string BuildString
-		{
-			get
-			{
-				return $"{Application.version} Build Time {new DateTime(BuildTimestamp).ToString("yyyyMMddHHmmss")}";
-			}
-		}
 
 		public static string ArcadePersistentFolder
 		{
@@ -99,14 +91,6 @@ namespace Arcade.Compose
 		public RectTransform BottomBar, LeftBar, RightBar, Bars;
 		public RectTransform TopBarView, BottomBarView, LeftBarView, RightBarView;
 
-		public long BuildTimestamp
-		{
-			get
-			{
-				return long.Parse(BuildTimestampText.text, CultureInfo.InvariantCulture);
-			}
-		}
-
 		[Header("Pause")]
 		public Button PauseButton;
 		public Image PauseButtonImage;
@@ -133,9 +117,6 @@ namespace Arcade.Compose
 		public Toggle PlaybackSyncToggle;
 		public InputField GlobalAudioOffsetInput;
 
-		public TextAsset ChangeLog;
-		public TextAsset BuildTimestampText;
-
 		private bool switchingMode = false;
 		private readonly CompositeMotionHandle modeSwitchMotions = new CompositeMotionHandle(5);
 		private int playShotTiming = 0;
@@ -145,7 +126,7 @@ namespace Arcade.Compose
 		private void Awake()
 		{
 			Instance = this;
-			Version.text = BuildString;
+			Version.text = Application.version;
 			CultureInfo.CurrentCulture = new CultureInfo("zh-Hans");
 		}
 		private void Start()
@@ -547,11 +528,6 @@ namespace Arcade.Compose
 				ArcGameplayManager.Instance.Auto = ArcadePreference.Auto;
 				AdeProjectManager.Instance.SaveMode.text = ArcadePreference.ChartSortMode == Gameplay.Chart.ChartSortMode.Timing ? "按时间" : "按类别";
 				UpdateAutoButton();
-				if (ArcadePreference.ReadWhatsNewVersion < BuildTimestamp)
-				{
-					AdeBasicSingleDialogContent.Instance.Show(ChangeLog.text);
-					ArcadePreference.ReadWhatsNewVersion = BuildTimestamp;
-				}
 				if (ArcadePreference.AgreedUserAgreementVersion < ArcadeUserAgreementDialogContent.CurrentUserAgreementVersion)
 				{
 					ArcadeUserAgreementDialogContent.Instance.OpenDialog();

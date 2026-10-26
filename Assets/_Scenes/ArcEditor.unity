@@ -13051,7 +13051,6 @@ MonoBehaviour:
   VelocitySlider: {fileID: 511094317}
   ArcadePreference:
     AgreedUserAgreementVersion: 0
-    ReadWhatsNewVersion: 0
     ScreenResolution: 1280x720
     Fullscreen: 0
     TargetFrameRate: -1
@@ -13068,8 +13067,6 @@ MonoBehaviour:
   UndoBufferSizeInput: {fileID: 1848678546}
   PlaybackSyncToggle: {fileID: 337597992}
   GlobalAudioOffsetInput: {fileID: 1619758554}
-  ChangeLog: {fileID: 4900000, guid: 609224af15c38cb4ab6e8827121d56e8, type: 3}
-  BuildTimestampText: {fileID: 4900000, guid: fafb7c5112952114396aa1d607d28d76, type: 3}
 --- !u!1 &418386281
 GameObject:
   m_ObjectHideFlags: 0
