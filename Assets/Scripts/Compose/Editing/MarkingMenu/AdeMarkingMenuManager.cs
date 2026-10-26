@@ -31,7 +31,7 @@ namespace Arcade.Compose
 			{
 				Enter();
 			}
-			if (Mouse.current.rightButton.wasReleasedThisFrame || (isOn && !Mouse.current.rightButton.isPressed))
+			if (isOn && !Mouse.current.rightButton.isPressed)
 			{
 				Exit();
 			}
