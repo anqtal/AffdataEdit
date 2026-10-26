@@ -1,6 +1,5 @@
 using Arcade.Audio;
 using System;
-using System.IO;
 using UnityEngine;
 using UnityEngine.UI;
 using Text = TMPro.TMP_Text;
@@ -23,13 +22,6 @@ namespace Arcade.Compose.Dialog
 		public AdeNumberInputWithSlider ChartAudioInput, EffectAudioInput;
 		private AdeNumberInputWithSlider guideAudioInput;
 		private SoundPreferences preferences;
-		public string PreferencesSavePath
-		{
-			get
-			{
-				return ArcadeComposeManager.ArcadePersistentFolder + "/Sound.json";
-			}
-		}
 
 		private void Awake()
 		{
@@ -71,12 +63,7 @@ namespace Arcade.Compose.Dialog
 		{
 			try
 			{
-				if (File.Exists(PreferencesSavePath))
-				{
-					PlayerPrefs.SetString("AdeSoundDialog", File.ReadAllText(PreferencesSavePath));
-					File.Delete(PreferencesSavePath);
-				}
-				preferences = JsonConvert.DeserializeObject<SoundPreferences>(PlayerPrefs.GetString("AdeSoundDialog", ""));
+				preferences = JsonConvert.DeserializeObject<SoundPreferences>(AdeSettings.GetString("AdeSoundDialog", ""));
 				if (preferences == null) preferences = new SoundPreferences();
 			}
 			catch (Exception)
@@ -95,7 +82,7 @@ namespace Arcade.Compose.Dialog
 		}
 		private void Save()
 		{
-			PlayerPrefs.SetString("AdeSoundDialog", JsonConvert.SerializeObject(preferences));
+			AdeSettings.SetString("AdeSoundDialog", JsonConvert.SerializeObject(preferences));
 		}
 
 		public void OnChartAudioChange(float val)

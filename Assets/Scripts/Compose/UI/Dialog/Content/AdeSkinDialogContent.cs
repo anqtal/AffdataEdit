@@ -92,13 +92,6 @@ namespace Arcade.Compose.Dialog
 		private Dictionary<string, AdeSkinBackgroundOption> InternalBackgroundButtons;
 		private Dictionary<string, AdeSkinBackgroundOption> ExternalBackgroundButtons;
 
-		public string PreferencesSavePath
-		{
-			get
-			{
-				return ArcadeComposeManager.ArcadePersistentFolder + "/Skin.json";
-			}
-		}
 
 		private void Awake()
 		{
@@ -278,12 +271,7 @@ namespace Arcade.Compose.Dialog
 		{
 			try
 			{
-				if (File.Exists(PreferencesSavePath))
-				{
-					PlayerPrefs.SetString("AdeSkinDialog", File.ReadAllText(PreferencesSavePath));
-					File.Delete(PreferencesSavePath);
-				}
-				preference = JsonConvert.DeserializeObject<SkinPreference>(PlayerPrefs.GetString("AdeSkinDialog", ""));
+				preference = JsonConvert.DeserializeObject<SkinPreference>(AdeSettings.GetString("AdeSkinDialog", ""));
 				if (preference == null) preference = new SkinPreference();
 			}
 			catch (Exception Ex)
@@ -438,7 +426,7 @@ namespace Arcade.Compose.Dialog
 
 		public void SavePreferences()
 		{
-			PlayerPrefs.SetString("AdeSkinDialog", JsonConvert.SerializeObject(preference));
+			AdeSettings.SetString("AdeSkinDialog", JsonConvert.SerializeObject(preference));
 		}
 		private void OnApplicationQuit()
 		{

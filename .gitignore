@@ -70,6 +70,8 @@ crashlytics-build.properties
 /Background
 /Skin
 /Arcade
+/settings.json*
+/Charts/
 
 ### macOS ###
 # General

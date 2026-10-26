@@ -33,6 +33,10 @@ def main():
     seen = set()
     for path in sorted(root.rglob("*")):
         relative = path.relative_to(root).as_posix()
+        # Runtime data belongs to the installation and must never be shipped as an update.
+        root_name = relative.split("/", 1)[0].lower()
+        if root_name == "charts" or root_name.startswith(("settings.json", "account.json")):
+            continue
         # Burst writes debug information beside the player that is not shipped.
         if "_DoNotShip" in relative or not path.is_file():
             continue

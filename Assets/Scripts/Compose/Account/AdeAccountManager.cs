@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Globalization;
+using System.IO;
 using System.Text;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -17,7 +18,6 @@ namespace Arcade.Compose
 	public sealed class AdeAccountManager : MonoBehaviour
 	{
 		private const string LoginUrl = "https://api.affdata.net/v2/game/login";
-		private const string PrefsKey = "AffdataNetAccount";
 		private const string EditorSceneName = "ArcEditor";
 		private const string RightBarPath = "ArcaeaEditor/EditorCanvas/Bars/Right/View";
 
@@ -213,7 +213,7 @@ namespace Arcade.Compose
 			if (dialog == null) return;
 			usernameRow.SetActive(!IsLoggedIn);
 			pinRow.SetActive(!IsLoggedIn);
-			if (!IsLoggedIn && session == null && string.IsNullOrEmpty(usernameInput.text)) usernameInput.text = PlayerPrefs.GetString(PrefsKey + "User", "");
+			if (!IsLoggedIn && session == null && string.IsNullOrEmpty(usernameInput.text)) usernameInput.text = AdeSettings.GetAccountUsername();
 			introductionText.text = IsLoggedIn ? "账号已连接，可以使用云端谱面" : "登录账号，连接你的云端谱面";
             usernameInput.interactable = pinInput.interactable = !loggingIn;
             dialog.LeftButtonText.text = IsLoggedIn ? "关闭" : "取消";
@@ -225,7 +225,7 @@ namespace Arcade.Compose
 		{
 			try
 			{
-				session = JsonConvert.DeserializeObject<Session>(PlayerPrefs.GetString(PrefsKey, ""));
+				session = JsonConvert.DeserializeObject<Session>(AdeSettings.GetAccountSession());
 			}
 			catch (JsonException)
 			{
@@ -235,16 +235,19 @@ namespace Arcade.Compose
 				session = null;
 		}
 
-		private void SaveSession()
+		private bool SaveSession()
 		{
-			if (session == null) PlayerPrefs.DeleteKey(PrefsKey);
-			else
+			try
 			{
-				PlayerPrefs.SetString(PrefsKey, JsonConvert.SerializeObject(session));
-				PlayerPrefs.SetString(PrefsKey + "User", session.Username);
+				AdeSettings.SaveAccountSession(session == null ? null : JsonConvert.SerializeObject(session), session?.Username);
+				UpdateView();
+				return true;
 			}
-			PlayerPrefs.Save();
-			UpdateView();
+			catch (Exception error) when (error is IOException || error is UnauthorizedAccessException || error is JsonException)
+			{
+				SetStatus("无法保存登录状态：" + error.Message);
+				return false;
+			}
 		}
 
 		private IEnumerator Login()
@@ -284,7 +287,7 @@ namespace Arcade.Compose
 						ExpiresAt = expires
 					};
 					pinInput.text = "";
-					SaveSession();
+					if (!SaveSession()) { UpdateView(); yield break; }
 					dialog.Close();
 					AdeToast.Instance?.Show($"已登录 AffdataNet：{session.Username}");
 				}
@@ -301,8 +304,9 @@ namespace Arcade.Compose
 
 		private void Logout()
 		{
+			Session previous = session;
 			session = null;
-			SaveSession();
+			if (!SaveSession()) { session = previous; UpdateView(); return; }
 			SetStatus(null);
 			AdeToast.Instance?.Show("已退出 AffdataNet 登录");
 		}

@@ -1,5 +1,4 @@
 using System;
-using System.IO;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -38,13 +37,6 @@ namespace Arcade.Compose
 		public InputField DensityInputField, VerticalXInputField, VerticalYInputField;
 		public MarkingMenuItem[] Entry;
 
-		public string PreferencesSavePath
-		{
-			get
-			{
-				return ArcadeComposeManager.ArcadePersistentFolder + "/Grid.json";
-			}
-		}
 
 		private int beatlineInUse;
 		private int verticalInUse;
@@ -600,12 +592,7 @@ namespace Arcade.Compose
 		{
 			try
 			{
-				if (File.Exists(PreferencesSavePath))
-				{
-					PlayerPrefs.SetString("AdeGridManager", File.ReadAllText(PreferencesSavePath));
-					File.Delete(PreferencesSavePath);
-				}
-				customGrid = JsonConvert.DeserializeObject<CustomGrid>(PlayerPrefs.GetString("AdeGridManager", ""));
+				customGrid = JsonConvert.DeserializeObject<CustomGrid>(AdeSettings.GetString("AdeGridManager", ""));
 				if (customGrid == null) customGrid = new CustomGrid();
 			}
 			catch (Exception)
@@ -621,7 +608,7 @@ namespace Arcade.Compose
 		}
 		private void SaveCustomGrids()
 		{
-			PlayerPrefs.SetString("AdeGridManager", JsonConvert.SerializeObject(customGrid));
+			AdeSettings.SetString("AdeGridManager", JsonConvert.SerializeObject(customGrid));
 		}
 
 		public void SwitchGridStatus()

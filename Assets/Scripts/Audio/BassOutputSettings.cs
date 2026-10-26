@@ -1,3 +1,4 @@
+using Arcade.Compose;
 using UnityEngine;
 
 namespace Arcade.Audio
@@ -15,14 +16,14 @@ namespace Arcade.Audio
         // BASS uses shared WASAPI when no DirectSound flag is supplied.
         internal static bool DirectSound
         {
-            get => PlayerPrefs.GetInt(OutputKey, 0) == 1;
-            set { PlayerPrefs.SetInt(OutputKey, value ? 1 : 0); PlayerPrefs.Save(); }
+            get => AdeSettings.GetInt(OutputKey, 0) == 1;
+            set { AdeSettings.SetInt(OutputKey, value ? 1 : 0); AdeSettings.Save(); }
         }
 
         internal static int BufferMilliseconds
         {
-            get => NormalizeBuffer(PlayerPrefs.GetInt(BufferKey, 30));
-            set { PlayerPrefs.SetInt(BufferKey, NormalizeBuffer(value)); PlayerPrefs.Save(); }
+            get => NormalizeBuffer(AdeSettings.GetInt(BufferKey, 30));
+            set { AdeSettings.SetInt(BufferKey, NormalizeBuffer(value)); AdeSettings.Save(); }
         }
 
         private static int NormalizeBuffer(int value) => value == 20 || value == 50 ? value : 30;

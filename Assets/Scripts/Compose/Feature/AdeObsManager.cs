@@ -6,7 +6,6 @@ using Arcade.Gameplay;
 using System.Threading.Tasks;
 using Arcade.Compose.Dialog;
 using Newtonsoft.Json;
-using System.IO;
 using UnityEngine.UI;
 using Text = TMPro.TMP_Text;
 using InputField = TMPro.TMP_InputField;
@@ -35,13 +34,6 @@ namespace Arcade.Compose.Feature
 		public static AdeObsManager Instance { get; private set; }
 		private OBSPreferences preference;
 
-		public string PreferencesSavePath
-		{
-			get
-			{
-				return ArcadeComposeManager.ArcadePersistentFolder + "/OBS.json";
-			}
-		}
 		public InputField ObsServerIpInput;
 		public InputField ObsServerPortInput;
 		public InputField ObsServerPasswordInput;
@@ -83,12 +75,7 @@ namespace Arcade.Compose.Feature
 		{
 			try
 			{
-				if (File.Exists(PreferencesSavePath))
-				{
-					PlayerPrefs.SetString("AdeOBSDialog", File.ReadAllText(PreferencesSavePath));
-					File.Delete(PreferencesSavePath);
-				}
-				preference = JsonConvert.DeserializeObject<OBSPreferences>(PlayerPrefs.GetString("AdeOBSDialog", ""));
+				preference = JsonConvert.DeserializeObject<OBSPreferences>(AdeSettings.GetString("AdeOBSDialog", ""));
 				if (preference == null) preference = new OBSPreferences();
 			}
 			catch (Exception Ex)
@@ -100,7 +87,7 @@ namespace Arcade.Compose.Feature
 
 		public void SavePreferences()
 		{
-			PlayerPrefs.SetString("AdeOBSDialog", JsonConvert.SerializeObject(preference));
+			AdeSettings.SetString("AdeOBSDialog", JsonConvert.SerializeObject(preference));
 		}
 		private void OnApplicationQuit()
 		{

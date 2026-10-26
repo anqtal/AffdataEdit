@@ -78,7 +78,7 @@ namespace Arcade.Compose
 		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
 		private static void Bootstrap()
 		{
-			Dark = PlayerPrefs.GetInt(PreferenceKey, 1) != 0;
+			Dark = AdeSettings.GetInt(PreferenceKey, 1) != 0;
 			LoadPresets();
 			SceneManager.sceneLoaded += (scene, mode) =>
 			{
@@ -110,7 +110,7 @@ namespace Arcade.Compose
 		{
 			if (Dark == dark) return;
 			Dark = dark;
-			PlayerPrefs.SetInt(PreferenceKey, dark ? 1 : 0);
+			AdeSettings.SetInt(PreferenceKey, dark ? 1 : 0);
 			ApplySelectedPreset();
 		}
 

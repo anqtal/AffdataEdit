@@ -49,7 +49,7 @@ namespace Arcade.Compose
 		}
 		public void OnEnable()
 		{
-			var rebinds = PlayerPrefs.GetString("hotkeyRebinding");
+			var rebinds = AdeSettings.GetString("hotkeyRebinding");
 			Debug.Log($"hotkeyRebinding:{rebinds}");
 			Hotkeys.Get().LoadBindingOverridesFromJson(rebinds);
 			Controls.Enable();
@@ -248,7 +248,7 @@ namespace Arcade.Compose
 					.OnComplete((operation) =>
 					{
 						CleanupCurrentOperation();
-						PlayerPrefs.SetString("hotkeyRebinding", Hotkeys.Get().SaveBindingOverridesAsJson());
+						AdeSettings.SetString("hotkeyRebinding", Hotkeys.Get().SaveBindingOverridesAsJson());
 					})
 					.OnCancel((operation) =>
 					{
@@ -414,7 +414,7 @@ namespace Arcade.Compose
 		{
 			SetHotkeyRebindingButton(null);
 			Hotkeys.Get().RemoveAllBindingOverrides();
-			PlayerPrefs.SetString("hotkeyRebinding", Hotkeys.Get().SaveBindingOverridesAsJson());
+			AdeSettings.SetString("hotkeyRebinding", Hotkeys.Get().SaveBindingOverridesAsJson());
 			foreach (var button in Dialog.RebindingButtons)
 			{
 				AdeInputManager.Instance.UpdateTextForHotkeyButton(button);

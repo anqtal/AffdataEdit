@@ -12,17 +12,17 @@ namespace Arcade.Compose
     // Their original dialogs and callbacks remain available as a fallback if setup fails.
     public sealed partial class AdeSettingsDialog : MonoBehaviour
     {
-        public enum Page { General, Appearance, Audio, Grid, Hotkeys, Account, About }
+        public enum Page { General, Appearance, Audio, Grid, Hotkeys, Account, Storage, About }
         public static AdeSettingsDialog Instance { get; private set; }
         public bool Ready { get; private set; }
-        private static readonly string[] Titles = { "常规", "外观", "音频", "网格", "快捷键", "账号", "关于" };
-        private readonly RectTransform[] pages = new RectTransform[7];
-        private readonly Button[] navigation = new Button[7];
-        private readonly Graphic[] icons = new Graphic[7];
+        private static readonly string[] Titles = { "常规", "外观", "音频", "网格", "快捷键", "账号", "存储", "关于" };
+        private readonly RectTransform[] pages = new RectTransform[Titles.Length];
+        private readonly Button[] navigation = new Button[Titles.Length];
+        private readonly Graphic[] icons = new Graphic[Titles.Length];
         private static readonly Page[] SourcePages = { Page.Audio, Page.Grid, Page.Hotkeys, Page.Account };
         private Toggle darkToggle;
         private readonly List<Image> checks = new List<Image>();
-        private readonly AdeDialog[] sources = new AdeDialog[7];
+        private readonly AdeDialog[] sources = new AdeDialog[Titles.Length];
         private readonly List<BorrowedRow> rows = new List<BorrowedRow>();
         private AdeSingleDialog dialog;
         private RectTransform view;
@@ -165,6 +165,7 @@ namespace Arcade.Compose
                 scroll.gameObject.SetActive(false);
             }
             BuildAppearance();
+            BuildStorage();
             BuildHotkeyGroups();
             var accountActions = Rect("AccountActions", pages[(int)Page.Account], typeof(HorizontalLayoutGroup));
             var accountLayout = accountActions.GetComponent<HorizontalLayoutGroup>();
@@ -279,6 +280,7 @@ namespace Arcade.Compose
             bool dark = AdeUiTheme.Dark;
             darkToggle?.SetIsOnWithoutNotify(dark);
             StyleAppearance();
+            StyleStorage();
             StyleHotkeyGroups();
             sidebar.color = AdeUiTheme.Current.Chrome;
             sidebar.sprite = AdeUiTheme.RoundedSurface;
@@ -327,6 +329,7 @@ namespace Arcade.Compose
             {
                 var compose = ArcadeComposeManager.Instance;
                 Transform source = page == Page.General ? compose.LeftBarView.Find("Bottom/Setting/Image")
+                    : page == Page.Storage ? compose.LeftBarView.Find("Top/Folder/Image")
                     : compose.RightBarView.Find((page == Page.Audio ? "Volume" : page == Page.Appearance ? "Skin" : page.ToString()) + "/Image");
                 var image = icon.gameObject.AddComponent<Image>(); image.sprite = source.GetComponent<Image>().sprite;
                 image.preserveAspect = true; icons[(int)page] = image;

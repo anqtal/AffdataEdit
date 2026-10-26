@@ -1,5 +1,4 @@
 using System;
-using System.IO;
 using UnityEngine;
 using UnityEngine.UI;
 using Text = TMPro.TMP_Text;
@@ -44,23 +43,6 @@ namespace Arcade.Compose
 		public const float ModeSwitchDuration = 0.3f;
 		public const Ease ToEditorModeEase = Ease.OutCubic;
 		public const Ease ToPlayerModeEase = Ease.InCubic;
-
-		public static string ArcadePersistentFolder
-		{
-			get
-			{
-				if (!Directory.Exists(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "/Arcade"))
-					Directory.CreateDirectory(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "/Arcade");
-				return Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "/Arcade";
-			}
-		}
-		public string PreferencesSavePath
-		{
-			get
-			{
-				return ArcadePersistentFolder + "/Preferences.json";
-			}
-		}
 
 		public bool IsEditorMode { get; set; } = true;
 
@@ -506,12 +488,7 @@ namespace Arcade.Compose
 		{
 			try
 			{
-				if (File.Exists(PreferencesSavePath))
-				{
-					PlayerPrefs.SetString("ArcadeComposeManagerPreference", File.ReadAllText(PreferencesSavePath));
-					File.Delete(PreferencesSavePath);
-				}
-				ArcadePreference = JsonConvert.DeserializeObject<ArcadePreference>(PlayerPrefs.GetString("ArcadeComposeManagerPreference", ""));
+				ArcadePreference = JsonConvert.DeserializeObject<ArcadePreference>(AdeSettings.GetString("ArcadeComposeManagerPreference", ""));
 				if (ArcadePreference == null) ArcadePreference = new ArcadePreference();
 			}
 			catch (Exception)
@@ -580,7 +557,7 @@ namespace Arcade.Compose
 		{
 			ArcadePreference.Velocity = ArcTimingManager.Instance.SettingVelocity;
 			ArcadePreference.Auto = ArcGameplayManager.Instance.Auto;
-			PlayerPrefs.SetString("ArcadeComposeManagerPreference", JsonConvert.SerializeObject(ArcadePreference));
+			AdeSettings.SetString("ArcadeComposeManagerPreference", JsonConvert.SerializeObject(ArcadePreference));
 		}
 
 		public void SetGlowSliderKnob(Sprite sprite)

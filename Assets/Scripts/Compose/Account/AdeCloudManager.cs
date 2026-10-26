@@ -71,11 +71,11 @@ namespace Arcade.Compose
 
 		public static AdeCloudManager Instance { get; private set; }
 
-		public static string CloudRoot => Path.Combine(ArcadeComposeManager.ArcadePersistentFolder, "Cloud");
+		public static string CloudRoot => AdeStorage.CloudChartsFolder;
 
 		private bool busy;
 		private List<CloudChart> charts = new List<CloudChart>();
-		private AdeDualDialog chooserDialog;
+		private AdeDualDialog chooserDialog, updateDialog;
 		private AdeSingleDialog listDialog;
 		private Transform listContent;
 		private Text listStatus;
@@ -108,7 +108,7 @@ namespace Arcade.Compose
 		private void Awake()
 		{
 			Instance = this;
-			realtime = PlayerPrefs.GetInt(RealtimePrefsKey, 0) == 1;
+			realtime = AdeSettings.GetInt(RealtimePrefsKey, 0) == 1;
 		}
 
 		private void OnDestroy()
@@ -134,8 +134,8 @@ namespace Arcade.Compose
 		private void ToggleRealtime()
 		{
 			realtime = !realtime;
-			PlayerPrefs.SetInt(RealtimePrefsKey, realtime ? 1 : 0);
-			PlayerPrefs.Save();
+			AdeSettings.SetInt(RealtimePrefsKey, realtime ? 1 : 0);
+			AdeSettings.Save();
 			UpdateRealtimeLabel();
 			realtimeErrorShown = false;
 			AdeToast.Instance?.Show(realtime ? "已开启实时保存到云端" : "已关闭实时保存到云端");
@@ -247,7 +247,7 @@ namespace Arcade.Compose
 				open.GetComponentInChildren<Text>(true).text = "打开";
 				LayoutElement openLayout = open.GetComponent<LayoutElement>();
 				if (openLayout != null) openLayout.preferredWidth = 120;
-				AdeUiKit.SetOnClick(open, () => StartCoroutine(OpenChart(chart)));
+				AdeUiKit.SetOnClick(open, () => RequestOpenChart(chart));
 				openButtons.Add(open);
 			}
 		}
@@ -261,7 +261,7 @@ namespace Arcade.Compose
 				DestroySkinObjects();
 				AdeSkinDialogContent.Instance?.ReapplySkin();
 			}
-			if (realtime && !uploading && Time.unscaledTime >= nextSyncTime)
+			if (realtime && !busy && !uploading && Time.unscaledTime >= nextSyncTime)
 			{
 				nextSyncTime = Time.unscaledTime + 1f;
 				StartCoroutine(Upload(false));
@@ -439,62 +439,164 @@ namespace Arcade.Compose
 			}
 		}
 
-		private IEnumerator OpenChart(CloudChart chart)
+		private void RequestOpenChart(CloudChart chart)
+		{
+			if (busy) return;
+			string folder = Path.Combine(CloudRoot, chart.ArchiveId.ToString());
+			if (!Directory.Exists(folder))
+			{
+				StartCoroutine(DownloadChart(chart));
+				return;
+			}
+			string versionFile = Path.Combine(folder, "Arcade", "RemoteVersion.txt");
+			bool complete = File.Exists(Path.Combine(folder, "base.opus"))
+				&& chart.EnabledDiffs.All(d => File.Exists(Path.Combine(folder, d + ".aff")));
+			try
+			{
+				if (complete && File.Exists(versionFile) && File.ReadAllText(versionFile) == (chart.UpdatedAt ?? ""))
+				{
+					StartCoroutine(OpenDownloadedChart(chart, folder));
+					return;
+				}
+			}
+			catch (Exception error) when (error is IOException || error is UnauthorizedAccessException)
+			{
+				SetMessage("无法读取云端谱面版本：" + error.Message);
+				return;
+			}
+			if (updateDialog == null)
+			{
+				updateDialog = AdeUiKit.CloneDialog(Feature.AdeObsManager.Instance.OBSDialog, "CloudUpdateChoice");
+				AdeUiKit.CreateLabelRow(AdeUiKit.Content(updateDialog), labelTemplate,
+					"检测到已有本地副本。可以继续编辑本地版本，或下载远端版本。\n下载成功后会将原文件夹完整保留在 Charts/Cloud/.backups 中。\n请先保存当前尚未保存的修改。");
+			}
+			updateDialog.Title.text = "云端谱面版本";
+			updateDialog.LeftButtonText.text = "打开本地副本";
+			updateDialog.RightButtonText.text = "下载远端版本";
+			AdeUiKit.SetOnClick(updateDialog.LeftButton, () =>
+			{
+				updateDialog.Close();
+				StartCoroutine(OpenDownloadedChart(chart, folder));
+			});
+			AdeUiKit.SetOnClick(updateDialog.RightButton, () =>
+			{
+				updateDialog.Close();
+				StartCoroutine(DownloadChart(chart));
+			});
+			updateDialog.Open();
+		}
+
+		private IEnumerator OpenDownloadedChart(CloudChart chart, string folder)
 		{
 			SetBusy(true);
-			string folder = Path.Combine(CloudRoot, chart.ArchiveId.ToString());
+			try
+			{
+				openedCharts[chart.ArchiveId] = chart;
+				while (AdeProjectManager.Instance.IsLoading) yield return null;
+				AdeProjectManager.Instance.OpenProjectFolder(folder);
+				while (AdeProjectManager.Instance.IsLoading) yield return null;
+				string background = Path.Combine(folder, "Arcade", "CloudBackground.jpg");
+				string track = Path.Combine(folder, "Arcade", "CloudTrack.png");
+				ApplySkin(folder, ResolveSkin(chart).Side, File.Exists(background) ? background : null,
+					File.Exists(track) ? track : null);
+				listDialog.Close();
+				AdeToast.Instance?.Show("已打开云端谱面的本地副本：" + chart.Title);
+			}
+			finally { SetBusy(false); }
+		}
+
+		private IEnumerator DownloadChart(CloudChart chart)
+		{
+			SetBusy(true);
+			string target = Path.Combine(CloudRoot, chart.ArchiveId.ToString());
+			string staging = Path.Combine(CloudRoot, ".download-" + Guid.NewGuid().ToString("N"));
+			string folder = staging;
 			string arcadeFolder = Path.Combine(folder, "Arcade");
-			Directory.CreateDirectory(arcadeFolder);
-			string files = $"/v2/game/editor/charts/{chart.ArchiveId}/files/";
-			bool ok = true;
-
-			SetMessage("正在下载音乐…");
-			yield return Download(files + "base.opus", Path.Combine(folder, "base.opus"), true, result => ok = result);
-			if (!ok) { SetBusy(false); yield break; }
-			SetMessage("正在下载封面…");
-			yield return Download(files + "base.jpg", Path.Combine(folder, "base.jpg"), false, _ => { });
-			foreach (int difficulty in chart.EnabledDiffs)
+			try { Directory.CreateDirectory(arcadeFolder); }
+			catch (Exception error) when (error is IOException || error is UnauthorizedAccessException)
 			{
-				SetMessage($"正在下载 {DifficultyNames[difficulty]} 谱面…");
-				yield return Download(files + $"{difficulty}.aff", Path.Combine(folder, $"{difficulty}.aff"), true, result => ok = result);
+				SetBusy(false);
+				SetMessage("无法创建下载目录：" + error.Message);
+				yield break;
+			}
+			try
+			{
+				string files = $"/v2/game/editor/charts/{chart.ArchiveId}/files/";
+				bool ok = true;
+
+				SetMessage("正在下载音乐…");
+				yield return Download(files + "base.opus", Path.Combine(folder, "base.opus"), true, result => ok = result);
 				if (!ok) { SetBusy(false); yield break; }
-			}
-			foreach (string sfx in chart.SfxArctap ?? new string[0])
-			{
-				SetMessage($"正在下载音效 {sfx}…");
-				yield return Download(files + Uri.EscapeDataString(sfx), Path.Combine(folder, Path.GetFileName(sfx)), false, _ => { });
-			}
+				SetMessage("正在下载封面…");
+				yield return Download(files + "base.jpg", Path.Combine(folder, "base.jpg"), false, _ => { });
+				foreach (int difficulty in chart.EnabledDiffs)
+				{
+					SetMessage($"正在下载 {DifficultyNames[difficulty]} 谱面…");
+					yield return Download(files + $"{difficulty}.aff", Path.Combine(folder, $"{difficulty}.aff"), true, result => ok = result);
+					if (!ok) { SetBusy(false); yield break; }
+				}
+				foreach (string sfx in chart.SfxArctap ?? new string[0])
+				{
+					SetMessage($"正在下载音效 {sfx}…");
+					yield return Download(files + Uri.EscapeDataString(sfx), Path.Combine(folder, Path.GetFileName(sfx)), false, _ => { });
+				}
 
-			AppliedSkin skin = ResolveSkin(chart);
-			if (skin.TrackUrl == null && skin.BackgroundUrl != null && skin.BackgroundUrl.StartsWith("/v2/game/backgrounds/", StringComparison.Ordinal))
-			{
-				SetMessage("正在获取皮肤信息…");
-				yield return ResolvePresetTrack(skin);
+				AppliedSkin skin = ResolveSkin(chart);
+				if (skin.TrackUrl == null && skin.BackgroundUrl != null && skin.BackgroundUrl.StartsWith("/v2/game/backgrounds/", StringComparison.Ordinal))
+				{
+					SetMessage("正在获取皮肤信息…");
+					yield return ResolvePresetTrack(skin);
+				}
+				string backgroundPath = Path.Combine(arcadeFolder, "CloudBackground.jpg");
+				string trackPath = Path.Combine(arcadeFolder, "CloudTrack.png");
+				bool hasBackground = false, hasTrack = false;
+				if (skin.BackgroundUrl != null)
+				{
+					SetMessage("正在下载背景…");
+					yield return Download(skin.BackgroundUrl, backgroundPath, false, result => hasBackground = result);
+				}
+				if (skin.TrackUrl != null)
+				{
+					SetMessage("正在下载轨道…");
+					yield return Download(skin.TrackUrl, trackPath, false, result => hasTrack = result);
+				}
+				try
+				{
+					WriteMetadata(folder, chart);
+					File.WriteAllText(Path.Combine(arcadeFolder, "RemoteVersion.txt"), chart.UpdatedAt ?? "");
+					AdeStorageMigration.InstallDownload(folder, target);
+				}
+				catch (Exception error) when (error is IOException || error is UnauthorizedAccessException)
+				{
+					SetMessage("无法保存下载的谱面：" + error.Message);
+					yield break;
+				}
+				folder = target;
+				arcadeFolder = Path.Combine(folder, "Arcade");
+				backgroundPath = Path.Combine(arcadeFolder, "CloudBackground.jpg");
+				trackPath = Path.Combine(arcadeFolder, "CloudTrack.png");
+				openedCharts[chart.ArchiveId] = chart;
+				while (AdeProjectManager.Instance.IsLoading) yield return null;
+				AdeProjectManager.Instance.OpenProjectFolder(folder);
+				while (AdeProjectManager.Instance.IsLoading) yield return null;
+				ApplySkin(folder, skin.Side, hasBackground ? backgroundPath : null, hasTrack ? trackPath : null);
+				SetBusy(false);
+				SetMessage("");
+				listDialog.Close();
+				AdeToast.Instance?.Show($"已打开云端谱面：{chart.Title}");
 			}
-			string backgroundPath = Path.Combine(arcadeFolder, "CloudBackground.jpg");
-			string trackPath = Path.Combine(arcadeFolder, "CloudTrack.png");
-			bool hasBackground = false, hasTrack = false;
-			if (skin.BackgroundUrl != null)
+			finally
 			{
-				SetMessage("正在下载背景…");
-				yield return Download(skin.BackgroundUrl, backgroundPath, false, result => hasBackground = result);
+				SetBusy(false);
+				if (Directory.Exists(staging))
+				{
+					try { Directory.Delete(staging, true); }
+					catch (Exception error) when (error is IOException || error is UnauthorizedAccessException)
+					{
+						Debug.LogError("无法清理未完成的谱面下载：" + error.Message);
+					}
+				}
 			}
-			if (skin.TrackUrl != null)
-			{
-				SetMessage("正在下载轨道…");
-				yield return Download(skin.TrackUrl, trackPath, false, result => hasTrack = result);
-			}
-
-			WriteMetadata(folder, chart);
-			openedCharts[chart.ArchiveId] = chart;
-			while (AdeProjectManager.Instance.IsLoading) yield return null;
-			AdeProjectManager.Instance.OpenProjectFolder(folder);
-			while (AdeProjectManager.Instance.IsLoading) yield return null;
-			ApplySkin(folder, skin.Side, hasBackground ? backgroundPath : null, hasTrack ? trackPath : null);
-			SetBusy(false);
-			SetMessage("");
-			listDialog.Close();
-			AdeToast.Instance?.Show($"已打开云端谱面：{chart.Title}");
 		}
 
 		// Mirrors AffdataPlay: the light side when enabled, otherwise the dark (conflict) side.

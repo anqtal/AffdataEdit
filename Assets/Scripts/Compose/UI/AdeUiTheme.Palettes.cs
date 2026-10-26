@@ -57,8 +57,8 @@ namespace Arcade.Compose
 
         private static void LoadPresets()
         {
-            darkPreset = FindPreset(PlayerPrefs.GetString(DarkPresetKey), true);
-            lightPreset = FindPreset(PlayerPrefs.GetString(LightPresetKey), false);
+            darkPreset = FindPreset(AdeSettings.GetString(DarkPresetKey), true);
+            lightPreset = FindPreset(AdeSettings.GetString(LightPresetKey), false);
             Revision++;
         }
         private static Preset FindPreset(string id, bool dark)
@@ -73,8 +73,8 @@ namespace Arcade.Compose
                 if (preset.Id != id) continue;
                 if (preset.IsDark) darkPreset = preset; else lightPreset = preset;
                 Dark = preset.IsDark;
-                PlayerPrefs.SetString(Dark ? DarkPresetKey : LightPresetKey, id);
-                PlayerPrefs.SetInt(PreferenceKey, Dark ? 1 : 0);
+                AdeSettings.SetString(Dark ? DarkPresetKey : LightPresetKey, id);
+                AdeSettings.SetInt(PreferenceKey, Dark ? 1 : 0);
                 ApplySelectedPreset();
                 return;
             }
@@ -82,7 +82,7 @@ namespace Arcade.Compose
         private static void ApplySelectedPreset()
         {
             Revision++;
-            PlayerPrefs.Save();
+            AdeSettings.Save();
             if (!Instance) return;
             Instance.ApplySkinSprites();
             Instance.Sweep();
