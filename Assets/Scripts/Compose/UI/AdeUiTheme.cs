@@ -22,7 +22,7 @@ namespace Arcade.Compose
 			public string Sprite;
 			public bool Text;
 			public Color32 Light, Dark, Highlighted, Pressed;
-			// The tile is transparent until hovered or pressed (toolbar icon buttons).
+			// Toolbar tiles blend into the surrounding chrome at rest.
 			public bool HiddenAtRest;
 			public bool HasStates => Highlighted.a != 0;
 		}
@@ -264,7 +264,7 @@ namespace Arcade.Compose
             }
             painted.Remove(graphic);
             // Preserve state colors supplied by tools (e.g. AUTO enabled).
-            if (selectable && sprite == "ToolBackground" && selectable.colors.normalColor.a == 0)
+            if (selectable && sprite == "ToolBackground")
                 selectable.colors = ColorBlock.defaultColorBlock;
         }
 
@@ -289,18 +289,14 @@ namespace Arcade.Compose
             colors.disabledColor = new Color(color.r, color.g, color.b, .5f);
             if (entry.HiddenAtRest)
             {
-                colors.normalColor = colors.selectedColor = colors.disabledColor = Transparent(color);
-                colors.highlightedColor = Current.Selection;
+                // Like Settings navigation, keep alpha opaque so RGB/alpha interpolation
+                // cannot create a dark flash between hover, press and release.
+                colors.normalColor = colors.disabledColor = Current.Chrome;
+                colors.highlightedColor = colors.selectedColor = Current.Selection;
                 colors.pressedColor = Color.Lerp(Current.Selection, Current.Text, .12f);
             }
             selectable.colors = colors;
         }
-
-		private static Color Transparent(Color color)
-		{
-			color.a = 0;
-			return color;
-		}
 
 		private static bool Same(Color32 a, Color32 b) => a.r == b.r && a.g == b.g && a.b == b.b;
 

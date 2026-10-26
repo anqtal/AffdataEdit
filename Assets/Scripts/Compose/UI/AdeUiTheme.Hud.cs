@@ -1,6 +1,7 @@
 using Arcade.Gameplay;
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace Arcade.Compose
 {
@@ -29,6 +30,8 @@ namespace Arcade.Compose
             compose.SetPlayPressedSprite(darkSprites[13]);
             compose.SetPauseSprite(darkSprites[14]);
             compose.SetPausePressedSprite(darkSprites[15]);
+            AlignToolbarEdges(compose.LeftBarView, compose.PauseButtonImage.rectTransform, compose.BottomBarView);
+            AlignToolbarEdges(compose.RightBarView, panel.rectTransform, compose.BottomBarView);
             var score = ArcScoreManager.Instance.ScoreText;
             score.color = Current.Text;
             score.fontSharedMaterial.SetColor("_OutlineColor", Current.Chrome);
@@ -38,6 +41,32 @@ namespace Arcade.Compose
                 label.color = label.transform.IsChildOf(panel.transform.Find("Cover")) ? Color.white
                     : label.name == "Placeholder" ? Current.Muted : Current.Text;
             }
+        }
+
+        private static void AlignToolbarEdges(RectTransform bar, RectTransform header, RectTransform footer)
+        {
+            var layout = bar.GetComponent<VerticalLayoutGroup>();
+            var corners = new Vector3[4];
+            header.GetWorldCorners(corners);
+            float topEdge = bar.rect.yMax - bar.InverseTransformPoint(corners[0]).y;
+            footer.GetWorldCorners(corners);
+            float bottomEdge = bar.InverseTransformPoint(corners[1]).y - bar.rect.yMin;
+            var buttons = bar.GetComponentsInChildren<Button>();
+            // Tool backgrounds extend beyond their 60px hit rects. Align the full square.
+            float topOutset = buttons.Length == 0 ? 0 : BackgroundOutset(buttons[0], true);
+            float bottomOutset = buttons.Length == 0 ? 0 : BackgroundOutset(buttons[buttons.Length - 1], false);
+            int top = Mathf.CeilToInt(topEdge + topOutset - .001f);
+            int bottom = Mathf.CeilToInt(bottomEdge + bottomOutset - .001f);
+            layout.padding = new RectOffset(layout.padding.left, layout.padding.right, top, bottom);
+        }
+
+        private static float BackgroundOutset(Button button, bool top)
+        {
+            var rect = (RectTransform)button.transform;
+            var corners = new Vector3[4];
+            button.targetGraphic.rectTransform.GetWorldCorners(corners);
+            return Mathf.Max(0, top ? rect.InverseTransformPoint(corners[1]).y - rect.rect.yMax
+                : rect.rect.yMin - rect.InverseTransformPoint(corners[0]).y);
         }
     }
 }
