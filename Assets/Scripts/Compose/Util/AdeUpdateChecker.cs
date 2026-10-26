@@ -11,6 +11,7 @@ using Newtonsoft.Json.Linq;
 using UnityEngine;
 using UnityEngine.Networking;
 using UnityEngine.UI;
+using Text = TMPro.TMP_Text;
 using Debug = UnityEngine.Debug;
 
 namespace Arcade.Compose

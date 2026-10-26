@@ -9,6 +9,8 @@ using UnityEngine.InputSystem;
 using UnityEngine.Networking;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using Text = TMPro.TMP_Text;
+using InputField = TMPro.TMP_InputField;
 
 namespace Arcade.Compose
 {
@@ -38,6 +40,12 @@ namespace Arcade.Compose
 		private GameObject usernameRow, pinRow;
 		private InputField usernameInput, pinInput;
 		private Text statusText, introductionText;
+		public AdeDualDialog SettingsDialog => dialog;
+		public void PrepareSettingsView()
+		{
+			SetStatus(null);
+			UpdateView();
+		}
 
 		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
 		private static void Bootstrap()
@@ -143,20 +151,20 @@ namespace Arcade.Compose
             layout.childForceExpandHeight = false;
             var label = row.transform.Find("Text").GetComponent<Text>();
             label.fontSize = 20;
-            label.alignment = TextAnchor.MiddleLeft;
+            label.alignment = TMPro.TextAlignmentOptions.Left;
             label.raycastTarget = false;
             var size = input.GetComponent<LayoutElement>();
             size.minWidth = 0;
             size.preferredWidth = 480;
             size.preferredHeight = 48;
             input.textComponent.fontSize = 24;
-            input.textComponent.alignment = TextAnchor.MiddleLeft;
+            input.textComponent.alignment = TMPro.TextAlignmentOptions.Left;
             input.textComponent.rectTransform.offsetMin = new Vector2(14, 0);
             input.textComponent.rectTransform.offsetMax = new Vector2(-14, 0);
             var hint = Instantiate(input.textComponent, input.transform, false);
             hint.name = "Placeholder";
             hint.text = placeholder;
-            hint.fontStyle = FontStyle.Normal;
+            hint.fontStyle = TMPro.FontStyles.Normal;
             hint.color = new Color(.55f, .55f, .55f, 1);
             hint.raycastTarget = false;
             input.placeholder = hint;
@@ -164,6 +172,11 @@ namespace Arcade.Compose
 
 		public void ShowLoginWindow()
 		{
+			if (AdeSettingsDialog.Instance && AdeSettingsDialog.Instance.Ready)
+			{
+				AdeSettingsDialog.Instance.Show(AdeSettingsDialog.Page.Account);
+				return;
+			}
 			if (dialog == null) return;
 			SetStatus(null);
 			UpdateView();

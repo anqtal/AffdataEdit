@@ -3,6 +3,8 @@ using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.Controls;
 using UnityEngine.UI;
+using Text = TMPro.TMP_Text;
+using InputField = TMPro.TMP_InputField;
 using static UnityEngine.InputSystem.InputActionRebindingExtensions;
 using System.Collections.Generic;
 
@@ -50,7 +52,7 @@ namespace Arcade.Compose
 			{
 				return false;
 			}
-			InputField inputField = EventSystem.currentSelectedGameObject.GetComponent<InputField>();
+			InputField inputField = selected.GetComponent<InputField>();
 			if (inputField != null)
 			{
 				if (inputField.isFocused)

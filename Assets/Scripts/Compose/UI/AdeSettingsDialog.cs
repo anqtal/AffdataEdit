@@ -1,0 +1,347 @@
+using TMPro;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+using UnityEngine;
+using UnityEngine.UI;
+using Text = TMPro.TMP_Text;
+
+namespace Arcade.Compose
+{
+    // The existing controls are borrowed only while this dialog is open and returned on close.
+    // Their original dialogs and callbacks remain available as a fallback if setup fails.
+    public sealed partial class AdeSettingsDialog : MonoBehaviour
+    {
+        public enum Page { General, Appearance, Audio, Grid, Hotkeys, Account, About }
+        public static AdeSettingsDialog Instance { get; private set; }
+        public bool Ready { get; private set; }
+        private static readonly string[] Titles = { "常规", "外观", "音频", "网格", "快捷键", "账号", "关于" };
+        private readonly RectTransform[] pages = new RectTransform[7];
+        private readonly Button[] navigation = new Button[7];
+        private readonly Graphic[] icons = new Graphic[7];
+        private static readonly Page[] SourcePages = { Page.Audio, Page.Grid, Page.Hotkeys, Page.Account };
+        private Toggle darkToggle;
+        private readonly List<Image> checks = new List<Image>();
+        private readonly AdeDialog[] sources = new AdeDialog[7];
+        private readonly List<BorrowedRow> rows = new List<BorrowedRow>();
+        private AdeSingleDialog dialog;
+        private RectTransform view;
+        private GameObject originalSettings;
+        private bool originalSettingsVisible;
+        private Sprite checkmark;
+        private Image sidebar, divider;
+        private Button accountAction;
+        private TMP_Text accountActionText;
+        private Page activePage;
+        private bool mounted;
+        private TMP_FontAsset font;
+
+        private sealed class BorrowedRow
+        {
+            public Transform Row, Parent, Host;
+            public int Index;
+            public Page Page;
+        }
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+        private static void Bootstrap()
+        {
+            UnityEngine.SceneManagement.SceneManager.sceneLoaded += (scene, mode) =>
+            {
+                if (scene.name == "ArcEditor") new GameObject(nameof(AdeSettingsDialog)).AddComponent<AdeSettingsDialog>();
+            };
+        }
+
+        private IEnumerator Start()
+        {
+            // Existing drawers, theme rows and account controls are all built in Start.
+            yield return null;
+            var compose = ArcadeComposeManager.Instance;
+            var settings = compose.LeftBar.Find("SettingsDrawer/Viewport/Content");
+            var originals = FindObjectsByType<AdeDialog>(FindObjectsInactive.Include);
+            var template = originals.OfType<AdeSingleDialog>().FirstOrDefault(d => d.name == "Setting");
+            sources[(int)Page.Grid] = originals.FirstOrDefault(d => d.name == "Grid");
+            sources[(int)Page.Audio] = originals.FirstOrDefault(d => d.name == "Sound");
+            sources[(int)Page.Hotkeys] = originals.FirstOrDefault(d => d.name == "Hotkeys");
+            sources[(int)Page.Account] = AdeAccountManager.Instance ? AdeAccountManager.Instance.SettingsDialog : null;
+            if (!settings || !template || SourcePages.Any(p => !sources[(int)p])) yield break;
+            font = AdeEditorText.Font;
+            originalSettings = settings.parent.parent.gameObject;
+            checkmark = Resources.Load<Sprite>("AffdataEdit/Icons/Checkmark");
+            foreach (Transform row in settings.Find("Wraper"))
+                Register(row, row.name == "DarkUi" ? Page.Appearance : row.name == "Log" ? Page.About
+                    : row.name == "PlaybackSync" || row.name == "GlobalAudioOffset" || row.name.StartsWith("WindowsAudio") ? Page.Audio : Page.General);
+            foreach (Transform row in settings)
+                if (row.name != "Wraper") Register(row, Page.About);
+            foreach (Page page in SourcePages)
+            {
+                int i = (int)page;
+                Transform content = AdeUiKit.Content(sources[i]);
+                Transform wrapper = content.Find("Wraper");
+                foreach (Transform row in wrapper ? wrapper : content) Register(row, (Page)i);
+            }
+            Build(template);
+            darkToggle = rows.First(r => r.Row.name == "DarkUi").Row.GetComponentInChildren<Toggle>(true);
+            foreach (var row in rows)
+                checks.AddRange(row.Row.GetComponentsInChildren<Toggle>(true).Select(t => t.graphic as Image).Where(i => i));
+            Ready = true;
+            Instance = this;
+            BindEntries();
+        }
+
+        private void Register(Transform row, Page page) => rows.Add(new BorrowedRow
+        { Row = row, Parent = row.parent, Index = row.GetSiblingIndex(), Page = page });
+
+        private void Build(AdeSingleDialog template)
+        {
+            dialog = AdeUiKit.CloneDialog(template, "SettingsCenter");
+            dialog.Title.text = "设置";
+            dialog.ButtonText.text = "关闭";
+            AdeUiKit.SetOnClick(dialog.CompleteButton, dialog.Close);
+            view = (RectTransform)dialog.View.transform;
+            foreach (var layout in view.GetComponents<LayoutGroup>()) layout.enabled = false;
+            foreach (var fitter in view.GetComponents<ContentSizeFitter>()) fitter.enabled = false;
+            view.Find("Scroll View").gameObject.SetActive(false);
+            var spacer = view.Find("ThemeTitleSpacer"); if (spacer) spacer.gameObject.SetActive(false);
+            var buttons = view.Find("Buttons") as RectTransform;
+            buttons.anchorMin = Vector2.zero; buttons.anchorMax = new Vector2(1, 0);
+            buttons.pivot = new Vector2(.5f, 0); buttons.sizeDelta = new Vector2(0, 86); buttons.anchoredPosition = Vector2.zero;
+
+            var body = Rect("SettingsBody", view);
+            Fill(body); body.offsetMin = new Vector2(20, 92); body.offsetMax = new Vector2(-20, -88);
+            var nav = Rect("Categories", body, typeof(Image), typeof(VerticalLayoutGroup));
+            nav.anchorMin = Vector2.zero; nav.anchorMax = new Vector2(0, 1); nav.pivot = Vector2.zero;
+            nav.sizeDelta = new Vector2(190, 0); sidebar = nav.GetComponent<Image>();
+            var layoutGroup = nav.GetComponent<VerticalLayoutGroup>();
+            layoutGroup.padding = new RectOffset(8, 8, 12, 12); layoutGroup.spacing = 6;
+            layoutGroup.childControlWidth = layoutGroup.childControlHeight = true;
+            layoutGroup.childForceExpandWidth = true; layoutGroup.childForceExpandHeight = false;
+            var line = Rect("Separator", body, typeof(Image));
+            line.anchorMin = Vector2.zero; line.anchorMax = new Vector2(0, 1); line.pivot = Vector2.zero;
+            line.sizeDelta = new Vector2(1, 0); line.anchoredPosition = new Vector2(206, 0);
+            divider = line.GetComponent<Image>(); divider.raycastTarget = false;
+            for (int i = 0; i < pages.Length; i++)
+            {
+                var page = (Page)i;
+                navigation[i] = MakeButton(nav, Titles[i], () => Select(page));
+                AddIcon(navigation[i], page);
+                var scroll = Rect(Titles[i], body, typeof(ScrollRect));
+                Fill(scroll); scroll.offsetMin = new Vector2(232, 0);
+                var viewport = Rect("Viewport", scroll, typeof(RectMask2D), typeof(Image)); Fill(viewport);
+                viewport.offsetMax = new Vector2(-16, 0);
+                viewport.GetComponent<Image>().color = Color.clear;
+                pages[i] = Rect("Content", viewport, typeof(VerticalLayoutGroup), typeof(ContentSizeFitter));
+                var content = pages[i]; content.anchorMin = new Vector2(0, 1); content.anchorMax = Vector2.one;
+                content.pivot = new Vector2(.5f, 1); content.sizeDelta = Vector2.zero;
+                var layout = content.GetComponent<VerticalLayoutGroup>();
+                layout.padding = new RectOffset(8, 20, 8, 24); layout.spacing = 14;
+                layout.childControlWidth = layout.childControlHeight = true;
+                layout.childForceExpandWidth = true; layout.childForceExpandHeight = false;
+                content.GetComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+                var scroller = scroll.GetComponent<ScrollRect>(); scroller.content = content; scroller.viewport = viewport;
+                scroller.horizontal = false; scroller.movementType = ScrollRect.MovementType.Clamped; scroller.scrollSensitivity = 35;
+                var bar = Instantiate(view.Find("Scroll View").GetComponentInChildren<Scrollbar>(true), scroll, false);
+                bar.onValueChanged = new Scrollbar.ScrollEvent();
+                var barRect = (RectTransform)bar.transform;
+                barRect.anchorMin = new Vector2(1, 0); barRect.anchorMax = Vector2.one; barRect.pivot = Vector2.one;
+                barRect.sizeDelta = new Vector2(12, 0); barRect.anchoredPosition = Vector2.zero;
+                scroller.verticalScrollbar = bar; scroller.verticalScrollbarVisibility = ScrollRect.ScrollbarVisibility.AutoHide;
+                scroll.gameObject.SetActive(false);
+            }
+            BuildAppearance();
+            BuildHotkeyGroups();
+            var accountActions = Rect("AccountActions", pages[(int)Page.Account], typeof(HorizontalLayoutGroup));
+            var accountLayout = accountActions.GetComponent<HorizontalLayoutGroup>();
+            accountLayout.childControlWidth = accountLayout.childControlHeight = true;
+            accountLayout.childForceExpandWidth = accountLayout.childForceExpandHeight = false;
+            accountLayout.childAlignment = TextAnchor.MiddleRight;
+            accountAction = MakeButton(accountActions, "登录", () => ((AdeDualDialog)sources[(int)Page.Account]).RightButton.onClick.Invoke());
+            var sourceImage = (Image)AdeAccountManager.Instance.SettingsDialog.RightButton.targetGraphic;
+            accountAction.image.sprite = sourceImage.sprite;
+            accountAction.image.type = Image.Type.Sliced;
+            accountActionText = accountAction.GetComponentInChildren<TMP_Text>();
+            accountActionText.alignment = TextAlignmentOptions.Center;
+            accountActionText.rectTransform.offsetMin = new Vector2(12, 0);
+            accountAction.GetComponent<LayoutElement>().preferredWidth = 180;
+            dialog.OnOpen += Mount;
+            dialog.OnClose += Release;
+            AdeUiTheme.AddRoot(view);
+            AdeUiTheme.OnSkinApplied();
+        }
+
+        public void Show(Page page)
+        {
+            if (!Ready) return;
+            if (mounted) Select(page);
+            else activePage = page;
+            dialog.Open();
+        }
+
+        private void ToggleSettings()
+        {
+            if (mounted) dialog.SwitchOpenState();
+            else Show(Page.General);
+        }
+
+        private void BindEntries()
+        {
+            var compose = ArcadeComposeManager.Instance;
+            AdeUiKit.SetOnClick(compose.LeftBarView.Find("Bottom/Setting").GetComponent<Button>(), ToggleSettings);
+            foreach (Page page in SourcePages)
+            {
+                string name = page == Page.Audio ? "Volume" : page.ToString();
+                // Hide duplicate entries only after the settings hub is ready; keep fallback controls intact.
+                compose.RightBarView.Find(name).gameObject.SetActive(false);
+            }
+        }
+
+        private void Mount()
+        {
+            if (mounted) return;
+            originalSettingsVisible = originalSettings.activeSelf;
+            originalSettings.SetActive(false);
+            foreach (var row in rows)
+            {
+                row.Row.SetParent(row.Host ? row.Host : pages[(int)row.Page], false);
+                ArrangeRow(row.Row, row.Page);
+            }
+            darkToggle.transform.parent.SetAsFirstSibling();
+            accountAction.transform.parent.SetAsLastSibling();
+            mounted = true;
+            Select(activePage, false);
+        }
+
+        private void Select(Page page) => Select(page, true);
+        private void Select(Page page, bool closePrevious)
+        {
+            if (closePrevious) sources[(int)activePage]?.OnClose?.Invoke();
+            activePage = page;
+            for (int i = 0; i < pages.Length; i++) pages[i].parent.parent.gameObject.SetActive(i == (int)page);
+            sources[(int)page]?.OnOpen?.Invoke();
+            if (page == Page.Account) AdeAccountManager.Instance.PrepareSettingsView();
+            Style();
+            StartCoroutine(ScrollToTop(page));
+        }
+
+        private IEnumerator ScrollToTop(Page page)
+        {
+            yield return null;
+            if (!mounted || activePage != page) yield break;
+            Canvas.ForceUpdateCanvases();
+            pages[(int)page].parent.parent.GetComponent<ScrollRect>().verticalNormalizedPosition = 1;
+        }
+
+        private void Release()
+        {
+            if (!mounted) return;
+            sources[(int)activePage]?.OnClose?.Invoke();
+            foreach (var row in rows.OrderBy(r => r.Index))
+            {
+                row.Row.SetParent(row.Parent, false);
+                row.Row.SetSiblingIndex(row.Index);
+            }
+            mounted = false;
+            originalSettings.SetActive(originalSettingsVisible);
+        }
+
+        private void LateUpdate()
+        {
+            if (!Ready) return;
+            var canvas = ArcadeComposeManager.Instance.EditorCanvas.rect;
+            view.sizeDelta = new Vector2(Mathf.Min(1060, canvas.width - 100), Mathf.Min(760, canvas.height - 100));
+            if (!dialog.View.activeSelf) return;
+            var source = (AdeDualDialog)sources[(int)Page.Account];
+            accountActionText.text = source.RightButtonText.text;
+            accountActionText.color = AdeUiTheme.Current.AccentText;
+            accountAction.interactable = source.RightButton.interactable;
+            accountAction.image.sprite = source.RightButton.image.sprite;
+            Style();
+        }
+
+        private void Style()
+        {
+            bool dark = AdeUiTheme.Dark;
+            darkToggle?.SetIsOnWithoutNotify(dark);
+            StyleAppearance();
+            StyleHotkeyGroups();
+            sidebar.color = AdeUiTheme.Current.Chrome;
+            sidebar.sprite = AdeUiTheme.RoundedSurface;
+            sidebar.type = Image.Type.Sliced;
+            divider.color = AdeUiTheme.Current.Border;
+            for (int i = 0; i < navigation.Length; i++)
+            {
+                bool selected = i == (int)activePage;
+                var colors = ColorBlock.defaultColorBlock;
+                // Opaque chrome avoids a dark flash when RGB and alpha fade together.
+                colors.normalColor = colors.selectedColor = selected
+                    ? AdeUiTheme.Current.Selection : AdeUiTheme.Current.Chrome;
+                colors.highlightedColor = Color.Lerp(colors.normalColor, AdeUiTheme.Current.Text, selected ? .04f : .06f);
+                colors.pressedColor = Color.Lerp(colors.normalColor, AdeUiTheme.Current.Text, .1f);
+                navigation[i].image.sprite = AdeUiTheme.RoundedSurface;
+                navigation[i].image.type = Image.Type.Sliced;
+                navigation[i].image.color = Color.white;
+                navigation[i].colors = colors;
+                var foreground = i == (int)activePage ? AdeUiTheme.Current.Text : AdeUiTheme.Current.Muted;
+                navigation[i].GetComponentInChildren<TMP_Text>().color = foreground;
+                icons[i].color = foreground;
+            }
+            foreach (var check in checks)
+            {
+                check.sprite = checkmark;
+                check.color = dark ? Color.white : new Color32(50, 50, 50, 255);
+            }
+        }
+
+        private void AddIcon(Button button, Page page)
+        {
+            var label = button.GetComponentInChildren<TMP_Text>();
+            label.rectTransform.offsetMin = new Vector2(50, 0);
+            var icon = Rect("Icon", button.transform);
+            icon.anchorMin = icon.anchorMax = new Vector2(0, .5f);
+            icon.anchoredPosition = new Vector2(26, 0); icon.sizeDelta = new Vector2(24, 24);
+            if (page == Page.About)
+            {
+                var text = icon.gameObject.AddComponent<TextMeshProUGUI>(); text.font = font;
+                AdeUiIcons.SetText(text, AdeUiIcons.Info);
+                text.fontSize = 26; text.alignment = TextAlignmentOptions.Center;
+                text.overflowMode = TextOverflowModes.Overflow;
+                icons[(int)page] = text;
+            }
+            else
+            {
+                var compose = ArcadeComposeManager.Instance;
+                Transform source = page == Page.General ? compose.LeftBarView.Find("Bottom/Setting/Image")
+                    : compose.RightBarView.Find((page == Page.Audio ? "Volume" : page == Page.Appearance ? "Skin" : page.ToString()) + "/Image");
+                var image = icon.gameObject.AddComponent<Image>(); image.sprite = source.GetComponent<Image>().sprite;
+                image.preserveAspect = true; icons[(int)page] = image;
+            }
+            icons[(int)page].raycastTarget = false;
+        }
+
+        private Button MakeButton(Transform parent, string title, UnityEngine.Events.UnityAction action)
+        {
+            var rect = Rect(title, parent, typeof(Image), typeof(Button), typeof(LayoutElement));
+            var button = rect.GetComponent<Button>(); button.targetGraphic = rect.GetComponent<Image>(); button.onClick.AddListener(action);
+            rect.GetComponent<LayoutElement>().preferredHeight = 48;
+            var labelRect = Rect("Text", rect, typeof(TextMeshProUGUI)); Fill(labelRect);
+            labelRect.offsetMin = new Vector2(20, 0); labelRect.offsetMax = new Vector2(-12, 0);
+            var label = labelRect.GetComponent<TMP_Text>(); AdeEditorText.Configure(label, AdeEditorText.BodySize);
+            label.alignment = TextAlignmentOptions.Left; label.text = title; label.raycastTarget = false;
+            return button;
+        }
+
+        private static RectTransform Rect(string name, Transform parent, params System.Type[] components)
+        {
+            var go = new GameObject(name, typeof(RectTransform)); go.layer = parent.gameObject.layer;
+            go.transform.SetParent(parent, false);
+            foreach (var component in components) go.AddComponent(component);
+            return (RectTransform)go.transform;
+        }
+        private static void Fill(RectTransform rect)
+        { rect.anchorMin = Vector2.zero; rect.anchorMax = Vector2.one; rect.offsetMin = rect.offsetMax = Vector2.zero; }
+        private void OnDestroy()
+        {
+            if (Instance == this) Instance = null;
+        }
+    }
+}

@@ -1,5 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
+using Text = TMPro.TMP_Text;
+using InputField = TMPro.TMP_InputField;
 using UnityEngine.EventSystems;
 using Arcade.Gameplay;
 using System;

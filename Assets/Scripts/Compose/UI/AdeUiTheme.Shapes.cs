@@ -8,14 +8,16 @@ namespace Arcade.Compose
 	{
 		private const float PanelRadius = 16, ControlRadius = 8;
 		private readonly Dictionary<string, Sprite> shapes = new Dictionary<string, Sprite>();
-		private readonly Dictionary<string, Sprite> originalControlSprites = new Dictionary<string, Sprite>();
 		private const string ControlShapePrefix = "ThemeControl/";
+
+		internal static Sprite RoundedSurface => Instance.Shape("ThemeRoundedSurface", ControlRadius, Color.white, Color.white);
+        internal static Sprite ReadOnlySurface => Instance.Shape("ThemeReadOnly", ControlRadius, Current.Chrome, Current.Border);
 
 		// One geometry for the fill and its 1px inset border. Slicing preserves the radius
 		// at any panel size; 2x sampling keeps the edge smooth on scaled canvases.
 		private Sprite Shape(string name, float radius, Color fill, Color border, bool topOnly = false)
 		{
-			string key = (Dark ? "Dark/" : "Light/") + name;
+			string key = Current.Id + "/" + name;
 			if (shapes.TryGetValue(key, out Sprite sprite)) return sprite;
 			const int scale = 2;
 			int size = Mathf.CeilToInt((radius * 2 + 4) * scale);
@@ -46,43 +48,35 @@ namespace Arcade.Compose
 
 		private void CreateDialogShapes()
 		{
-			darkSprites[0] = Shape("ThemeHeader", PanelRadius, C(0x181818), C(0x3C3C3C), true);
-			darkSprites[1] = Shape("ThemePanel", PanelRadius, C(0x1F1F1F), C(0x3C3C3C));
+			darkSprites[0] = Shape("ThemeHeader", PanelRadius, Current.Chrome, Current.Border, true);
+			darkSprites[1] = Shape("ThemePanel", PanelRadius, Current.Panel, Current.Border);
 			for (int i = 2; i <= 10; i += 3)
 			{
 				bool primary = i != 5;
-				darkSprites[i] = Shape(primary ? "ThemePrimary" : "ThemeSecondary", ControlRadius, C(primary ? 0x007ACCu : 0x2B2B2Bu), C(primary ? 0x168BD2u : 0x454545u));
-				darkSprites[i + 1] = Shape(primary ? "ThemePrimaryDisabled" : "ThemeSecondaryDisabled", ControlRadius, C(0x303030), C(0x3C3C3C));
-				darkSprites[i + 2] = Shape(primary ? "ThemePrimaryPressed" : "ThemeSecondaryPressed", ControlRadius, C(primary ? 0x0068ADu : 0x242424u), C(primary ? 0x168BD2u : 0x454545u));
+				darkSprites[i] = Shape(primary ? "ThemePrimary" : "ThemeSecondary", ControlRadius, primary ? Current.Accent : Current.Input, primary ? Current.Accent : Current.Border);
+				darkSprites[i + 1] = Shape(primary ? "ThemePrimaryDisabled" : "ThemeSecondaryDisabled", ControlRadius, Current.Input, Current.Border);
+				darkSprites[i + 2] = Shape(primary ? "ThemePrimaryPressed" : "ThemeSecondaryPressed", ControlRadius, Color.Lerp(primary ? Current.Accent : Current.Input, Current.Chrome, .15f), Current.Border);
 			}
 		}
 
 		private void StyleControl(Selectable selectable)
 		{
+			if (selectable is Slider slider && slider.handleRect && slider.handleRect.TryGetComponent<Image>(out var handle))
+				handle.preserveAspect = true;
 			if (selectable is Scrollbar || !(selectable.targetGraphic is Image image) || !image.sprite) return;
 			string name = image.sprite.name;
 			bool themed = name.StartsWith(ControlShapePrefix);
 			if (themed) name = name.Substring(ControlShapePrefix.Length);
 			if (name != "UISprite" && name != "InputFieldBackground") return;
-			if (!themed) originalControlSprites[name] = image.sprite;
-			if (Dark)
-			{
-				image.sprite = Shape(ControlShapePrefix + name, ControlRadius, C(0x313131), C(0x454545));
-				image.type = UnityEngine.UI.Image.Type.Sliced;
-				image.color = Color.white;
-				var colors = ColorBlock.defaultColorBlock;
-				colors.highlightedColor = new Color(1.15f, 1.15f, 1.15f);
-				colors.pressedColor = new Color(0.9f, 0.9f, 0.9f);
-				colors.selectedColor = new Color(1.08f, 1.08f, 1.08f);
-				colors.disabledColor = new Color(0.7f, 0.7f, 0.7f, 0.6f);
-				selectable.colors = colors;
-			}
-			else if (themed && originalControlSprites.TryGetValue(name, out Sprite original))
-			{
-				image.sprite = original;
-				image.color = Color.white;
-				selectable.colors = ColorBlock.defaultColorBlock;
-			}
+			image.sprite = Shape(ControlShapePrefix + name, ControlRadius, Current.Input, Current.Border);
+			image.type = UnityEngine.UI.Image.Type.Sliced;
+			image.color = Color.white;
+			var colors = ColorBlock.defaultColorBlock;
+			colors.highlightedColor = new Color(1.15f, 1.15f, 1.15f);
+			colors.pressedColor = new Color(0.9f, 0.9f, 0.9f);
+			colors.selectedColor = new Color(1.08f, 1.08f, 1.08f);
+			colors.disabledColor = new Color(0.7f, 0.7f, 0.7f, 0.6f);
+			selectable.colors = colors;
 		}
 
 		private void OnDestroy()
@@ -92,6 +86,7 @@ namespace Arcade.Compose
 				Destroy(sprite.texture);
 				Destroy(sprite);
 			}
+			if (hudMaterial) Destroy(hudMaterial);
 			if (Instance == this) Instance = null;
 		}
 	}

@@ -3,6 +3,9 @@ using System.IO;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using Text = TMPro.TMP_Text;
+using InputField = TMPro.TMP_InputField;
+using Dropdown = TMPro.TMP_Dropdown;
 using Arcade.Gameplay.Chart;
 using Arcade.Compose.Command;
 using Arcade.Gameplay;
@@ -67,7 +70,7 @@ namespace Arcade.Compose.Editing
             foreach (var button in smoothnessRow.GetComponentsInChildren<Button>(true)) button.gameObject.SetActive(false);
             smoothnessInput = smoothnessRow.GetComponentInChildren<InputField>(true);
             smoothnessInput.contentType = InputField.ContentType.DecimalNumber;
-            smoothnessInput.onEndEdit = new InputField.EndEditEvent();
+            smoothnessInput.onEndEdit = new InputField.SubmitEvent();
             smoothnessInput.onValueChanged = new InputField.OnChangeEvent();
             smoothnessInput.onEndEdit.AddListener(text => HandleValueChange(text,
                 (string raw, ref float result) =>

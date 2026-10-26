@@ -7,6 +7,7 @@ using UnityEngine;
 using Arcade.Aff.Faults;
 using System.Linq;
 using UnityEngine.UI;
+using Text = TMPro.TMP_Text;
 using System.IO;
 using System.Globalization;
 

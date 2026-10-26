@@ -1,6 +1,7 @@
 using System;
 using UnityEngine;
 using UnityEngine.UI;
+using Text = TMPro.TMP_Text;
 
 namespace Arcade.Compose
 {

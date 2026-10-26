@@ -1,6 +1,8 @@
 using System;
 using UnityEngine;
 using UnityEngine.UI;
+using Text = TMPro.TMP_Text;
+using InputField = TMPro.TMP_InputField;
 using Arcade.Gameplay.Chart;
 using Arcade.Compose.Command;
 using System.Globalization;

@@ -7,6 +7,7 @@ using Arcade.Gameplay;
 using Arcade.Gameplay.Chart;
 using UnityEngine;
 using UnityEngine.UI;
+using Text = TMPro.TMP_Text;
 
 namespace Arcade.Compose
 {

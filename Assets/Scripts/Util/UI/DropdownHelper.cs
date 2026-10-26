@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using Dropdown = TMPro.TMP_Dropdown;
 
 namespace Arcade.Util.UI
 {

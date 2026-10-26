@@ -11,6 +11,8 @@ using Arcade.Gameplay.Chart;
 using Newtonsoft.Json;
 using UnityEngine;
 using UnityEngine.UI;
+using Text = TMPro.TMP_Text;
+using InputField = TMPro.TMP_InputField;
 using Arcade.Compose.Command;
 using Arcade.Util.Loader;
 using System.Collections.Generic;

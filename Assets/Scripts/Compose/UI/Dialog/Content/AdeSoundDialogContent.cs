@@ -3,6 +3,7 @@ using System;
 using System.IO;
 using UnityEngine;
 using UnityEngine.UI;
+using Text = TMPro.TMP_Text;
 using Newtonsoft.Json;
 using Arcade.Compose.UI;
 

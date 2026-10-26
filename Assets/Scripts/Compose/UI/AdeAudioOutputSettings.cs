@@ -2,6 +2,8 @@ using Arcade.Audio;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using Text = TMPro.TMP_Text;
+using Dropdown = TMPro.TMP_Dropdown;
 
 namespace Arcade.Compose
 {

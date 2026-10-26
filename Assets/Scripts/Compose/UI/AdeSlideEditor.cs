@@ -11,6 +11,9 @@ using Arcade.Gameplay.Chart;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.UI;
+using Text = TMPro.TMP_Text;
+using InputField = TMPro.TMP_InputField;
+using Dropdown = TMPro.TMP_Dropdown;
 
 namespace Arcade.Compose.UI
 {
@@ -48,7 +51,7 @@ namespace Arcade.Compose.UI
             var help = Instantiate(editor.StartPos.GetComponentsInChildren<Text>(true)[0], editor.Timing.parent);
             help.name = "Slide range help";
             help.text = "范围：中心,宽度；X：-0.5～1.5\n竖线随 X 网格设置；拖动四角自动吸附";
-            help.fontSize = 14; help.alignment = TextAnchor.MiddleLeft;
+            help.fontSize = 14; help.alignment = TMPro.TextAlignmentOptions.Left;
             help.gameObject.AddComponent<LayoutElement>().preferredHeight = 42;
             rows.Add(help.gameObject);
             // Place additional properties before the shared timing-group row.
@@ -76,7 +79,7 @@ namespace Arcade.Compose.UI
             row.GetComponentsInChildren<Text>(true)[0].text = label;
             foreach (var button in row.GetComponentsInChildren<Button>(true)) button.gameObject.SetActive(false);
             var input = row.GetComponentInChildren<InputField>(true);
-            input.onEndEdit = new InputField.EndEditEvent(); input.onValueChanged = new InputField.OnChangeEvent();
+            input.onEndEdit = new InputField.SubmitEvent(); input.onValueChanged = new InputField.OnChangeEvent();
             input.contentType = InputField.ContentType.Standard;
             input.onEndEdit.AddListener(text =>
             {

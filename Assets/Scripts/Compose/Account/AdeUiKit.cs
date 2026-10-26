@@ -2,6 +2,8 @@ using Arcade.Gameplay;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.UI;
+using Text = TMPro.TMP_Text;
+using InputField = TMPro.TMP_InputField;
 
 namespace Arcade.Compose
 {
@@ -68,7 +70,7 @@ namespace Arcade.Compose
 			layout.childForceExpandWidth = true;
 			layout.childForceExpandHeight = false;
 			Text label = CreateLabel(row.transform, labelTemplate, text, 700);
-			label.alignment = TextAnchor.MiddleLeft;
+			label.alignment = TMPro.TextAlignmentOptions.Left;
 			return label;
 		}
 
@@ -78,7 +80,7 @@ namespace Arcade.Compose
 			item.name = "Text";
 			Text label = item.GetComponent<Text>();
 			label.text = text;
-			label.horizontalOverflow = HorizontalWrapMode.Wrap;
+			label.textWrappingMode = TMPro.TextWrappingModes.Normal;
 			LayoutElement layout = item.GetComponent<LayoutElement>() ?? item.AddComponent<LayoutElement>();
 			layout.preferredWidth = width;
 			return label;
@@ -112,7 +114,7 @@ namespace Arcade.Compose
 			foreach (MonoBehaviour behaviour in root.GetComponentsInChildren<MonoBehaviour>(true))
 			{
 				string space = behaviour.GetType().Namespace ?? "";
-				if (space.StartsWith("UnityEngine") || behaviour is AdeDialog
+				if (space.StartsWith("UnityEngine") || space == "TMPro" || behaviour is AdeDialog
 					|| behaviour is AdeAutoResizeScrollView || behaviour is AdeAutoResizeScrollViewContent)
 					continue;
 				Object.DestroyImmediate(behaviour);
@@ -125,7 +127,7 @@ namespace Arcade.Compose
 			}
 			foreach (InputField input in root.GetComponentsInChildren<InputField>(true))
 			{
-				input.onEndEdit = new InputField.EndEditEvent();
+				input.onEndEdit = new InputField.SubmitEvent();
 				input.onValueChanged = new InputField.OnChangeEvent();
 				input.onSubmit = new InputField.SubmitEvent();
 			}

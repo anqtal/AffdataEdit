@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
+using Text = TMPro.TMP_Text;
 using Arcade.Gameplay.Chart;
 using System.Globalization;
 
@@ -13,6 +14,8 @@ namespace Arcade.Gameplay
 		private void Awake()
 		{
 			Instance = this;
+            ArcBitmapText.Attach(ScoreText, true);
+            ArcBitmapText.Attach(ComboText, false);
 		}
 
 		public Text ScoreText;

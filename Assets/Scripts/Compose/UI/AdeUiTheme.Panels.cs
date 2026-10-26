@@ -1,6 +1,8 @@
 using Arcade.Compose.Editing;
 using UnityEngine;
 using UnityEngine.UI;
+using Text = TMPro.TMP_Text;
+using InputField = TMPro.TMP_InputField;
 
 namespace Arcade.Compose
 {
@@ -33,7 +35,7 @@ namespace Arcade.Compose
 					layout.padding = new RectOffset();
 					var label = row.Find("Text")?.GetComponent<Text>();
 					if (!label) continue;
-					label.alignment = TextAnchor.MiddleLeft;
+					label.alignment = TMPro.TextAlignmentOptions.Left;
 					var width = label.GetComponent<LayoutElement>() ?? label.gameObject.AddComponent<LayoutElement>();
 					width.minWidth = width.preferredWidth = 96;
 					width.flexibleWidth = 0;
@@ -58,7 +60,7 @@ namespace Arcade.Compose
 				scrollSize.preferredWidth = 384;
 				scrollSize.preferredHeight = 300;
 				var background = scroll.GetComponent<Image>();
-				background.sprite = Shape("ThemeTimingList", ControlRadius, C(Dark ? 0x181818u : 0xF5F5F5u), C(Dark ? 0x303030u : 0xDADADAu));
+				background.sprite = Shape("ThemeTimingList", ControlRadius, Current.Chrome, Current.Border);
 				background.color = Color.white;
 				background.type = UnityEngine.UI.Image.Type.Sliced;
 				if (scroll.verticalScrollbar)
@@ -93,7 +95,7 @@ namespace Arcade.Compose
 			layout.spacing = 12;
 			var background = panel.Find("Background").GetComponent<Image>();
 			background.rectTransform.offsetMin = background.rectTransform.offsetMax = Vector2.zero;
-			background.sprite = Shape("ThemePanel", PanelRadius, C(Dark ? 0x1F1F1Fu : 0xFFFFFFu), C(Dark ? 0x3C3C3Cu : 0xD0D0D0u));
+			background.sprite = Shape("ThemePanel", PanelRadius, Current.Panel, Current.Border);
 			background.color = Color.white;
 			background.type = UnityEngine.UI.Image.Type.Sliced;
 			panel.GetComponentsInChildren(true, panelLabels);
@@ -102,8 +104,8 @@ namespace Arcade.Compose
 				bool title = label.name == "ThemePanelTitle" || label.transform.parent.name == "Header";
 				bool help = label.name == "ThemeTimingColumns" || label.name == "Slide range help";
 				label.fontSize = title ? 26 : help ? 16 : 20;
-				label.color = C(Dark ? (title ? 0xE6E6E6u : help ? 0x999999u : 0xCCCCCCu) : (help ? 0x666666u : 0x323232u));
-				if (title || help) label.alignment = TextAnchor.MiddleLeft;
+				label.color = help ? Current.Muted : Current.Text;
+				if (title || help) label.alignment = TMPro.TextAlignmentOptions.Left;
 				if (label.text == "X" && label.transform.parent.name == "Remove") label.text = "×";
 				var input = label.GetComponentInParent<InputField>();
 				if (input && input.textComponent == label)

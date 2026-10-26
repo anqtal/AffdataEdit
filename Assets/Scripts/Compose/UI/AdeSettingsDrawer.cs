@@ -3,6 +3,7 @@ using LitMotion;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using Text = TMPro.TMP_Text;
 
 namespace Arcade.Compose
 {
@@ -23,7 +24,6 @@ namespace Arcade.Compose
 		private readonly Dictionary<Image, (Sprite sprite, Color color)> checks = new Dictionary<Image, (Sprite, Color)>();
 		private Sprite darkCheck;
 		private RectTransform content;
-		private static readonly Color DarkFill = new Color32(0x1F, 0x1F, 0x1F, 0xFF), LightFill = new Color32(0xF3, 0xF3, 0xF3, 0xFF);
 
 		private RectTransform drawer, viewport;
 		private CanvasGroup contentGroup;
@@ -111,7 +111,7 @@ namespace Arcade.Compose
 
 		private void Update()
 		{
-			if (fill) fill.color = AdeUiTheme.Dark ? DarkFill : LightFill;
+			if (fill) fill.color = AdeUiTheme.Current.Panel;
 			bool dark = AdeUiTheme.Dark && darkCheck;
 			foreach (var pair in checks)
 			{
@@ -198,8 +198,8 @@ namespace Arcade.Compose
 				{
 					row.childAlignment = TextAnchor.MiddleLeft;
 					label.transform.SetAsFirstSibling();
-					label.alignment = TextAnchor.MiddleLeft;
-					label.horizontalOverflow = HorizontalWrapMode.Overflow;
+					label.alignment = TMPro.TextAlignmentOptions.Left;
+					label.textWrappingMode = TMPro.TextWrappingModes.NoWrap;
 					var element = label.GetComponent<LayoutElement>();
 					if (!element) element = label.gameObject.AddComponent<LayoutElement>();
 					element.flexibleWidth = 1;
@@ -213,17 +213,17 @@ namespace Arcade.Compose
 			{
 				var footer = child.GetComponent<Text>();
 				if (!footer) continue;
-				footer.alignment = TextAnchor.MiddleCenter;
+				footer.alignment = TMPro.TextAlignmentOptions.Center;
 				footer.text = footer.text.Replace(" <size=", "\n<size=");
 				var size = child.GetComponent<LayoutElement>();
 				if (size) size.preferredHeight = -1;
 			}
 		}
 
-		private static TextAnchor Left(TextAnchor anchor) =>
-			anchor == TextAnchor.UpperCenter || anchor == TextAnchor.UpperRight ? TextAnchor.UpperLeft
-			: anchor == TextAnchor.LowerCenter || anchor == TextAnchor.LowerRight ? TextAnchor.LowerLeft
-			: anchor == TextAnchor.MiddleCenter || anchor == TextAnchor.MiddleRight ? TextAnchor.MiddleLeft : anchor;
+		private static TMPro.TextAlignmentOptions Left(TMPro.TextAlignmentOptions anchor) =>
+			anchor == TMPro.TextAlignmentOptions.Top || anchor == TMPro.TextAlignmentOptions.TopRight ? TMPro.TextAlignmentOptions.TopLeft
+			: anchor == TMPro.TextAlignmentOptions.Bottom || anchor == TMPro.TextAlignmentOptions.BottomRight ? TMPro.TextAlignmentOptions.BottomLeft
+			: TMPro.TextAlignmentOptions.Left;
 
 		// Slides the panel out from under the left bar; the rows follow slightly later,
 		// moving in from the left while fading in. Closing reverses from the current pose.

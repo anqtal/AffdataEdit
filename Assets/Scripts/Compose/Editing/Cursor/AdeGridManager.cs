@@ -3,6 +3,7 @@ using System.IO;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using InputField = TMPro.TMP_InputField;
 using Arcade.Gameplay;
 using Arcade.Util.UnityExtension;
 using System.Linq;

@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using Text = TMPro.TMP_Text;
+using Dropdown = TMPro.TMP_Dropdown;
 using Arcade.Gameplay.Chart;
 using System.Linq;
 using Arcade.Gameplay;

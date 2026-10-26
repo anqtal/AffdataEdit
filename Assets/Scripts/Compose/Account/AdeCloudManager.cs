@@ -13,6 +13,7 @@ using UnityEngine;
 using UnityEngine.Networking;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using Text = TMPro.TMP_Text;
 
 namespace Arcade.Compose
 {
@@ -239,8 +240,8 @@ namespace Arcade.Compose
 					return $"{name} {diff?.ChartDifficulty}{(chart.RankedDiffs.Contains(d) ? " (Ranked)" : "")}";
 				}));
 				Text label = AdeUiKit.CreateLabel(row.transform, labelTemplate, $"#{chart.ArchiveId} {chart.Title} - {chart.Artist}{(chart.IsPrivate ? "（私密）" : "")}\n<size=18>{diffs}</size>", 520);
-				label.alignment = TextAnchor.MiddleLeft;
-				label.supportRichText = true;
+				label.alignment = TMPro.TextAlignmentOptions.Left;
+				label.richText = true;
 				label.transform.SetAsFirstSibling();
 				Button open = row.GetComponentInChildren<Button>(true);
 				open.GetComponentInChildren<Text>(true).text = "打开";

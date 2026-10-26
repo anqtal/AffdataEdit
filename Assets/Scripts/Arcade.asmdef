@@ -5,6 +5,7 @@
         "Affdata.Core",
         "SFB.Runtime",
         "Unity.InputSystem",
+        "Unity.TextMeshPro",
         "OBJImport",
         "Unity.RenderPipelines.Core.Runtime",
         "Unity.RenderPipelines.Universal.Runtime",

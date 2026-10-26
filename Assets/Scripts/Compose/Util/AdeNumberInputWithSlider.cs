@@ -2,6 +2,7 @@ using System.Globalization;
 using Arcade.Compose;
 using UnityEngine;
 using UnityEngine.UI;
+using InputField = TMPro.TMP_InputField;
 
 namespace Arcade.Compose.UI
 {

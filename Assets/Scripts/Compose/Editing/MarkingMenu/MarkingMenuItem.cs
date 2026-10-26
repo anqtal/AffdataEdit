@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using Text = TMPro.TMP_Text;
 using UnityEngine.EventSystems;
 using LitMotion;
 using LitMotion.Extensions;

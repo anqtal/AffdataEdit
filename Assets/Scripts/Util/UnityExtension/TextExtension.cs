@@ -1,5 +1,5 @@
 using UnityEngine;
-using UnityEngine.UI;
+using Text = TMPro.TMP_Text;
 
 namespace Arcade.Util.UnityExtension
 {
@@ -7,13 +7,11 @@ namespace Arcade.Util.UnityExtension
 	{
 		public static float CalculateHeight(this Text text, string str)
 		{
-			var generator = text.cachedTextGenerator;
-			return generator.GetPreferredHeight(str, text.GetGenerationSettings(text.rectTransform.rect.size)) / text.pixelsPerUnit;
+			return text.GetPreferredValues(str, text.rectTransform.rect.width, Mathf.Infinity).y;
 		}
 		public static float CalculateWidth(this Text text, string str)
 		{
-			var generator = text.cachedTextGenerator;
-			return generator.GetPreferredWidth(str, text.GetGenerationSettings(text.rectTransform.rect.size)) / text.pixelsPerUnit;
+			return text.GetPreferredValues(str, Mathf.Infinity, Mathf.Infinity).x;
 		}
 	}
 }

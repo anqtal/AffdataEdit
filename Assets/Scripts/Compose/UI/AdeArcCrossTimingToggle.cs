@@ -2,6 +2,7 @@ using Arcade.Gameplay;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using Text = TMPro.TMP_Text;
 
 namespace Arcade.Compose
 {

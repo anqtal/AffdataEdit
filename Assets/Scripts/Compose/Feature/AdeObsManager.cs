@@ -8,6 +8,8 @@ using Arcade.Compose.Dialog;
 using Newtonsoft.Json;
 using System.IO;
 using UnityEngine.UI;
+using Text = TMPro.TMP_Text;
+using InputField = TMPro.TMP_InputField;
 using OBSWebsocketDotNet.Communication;
 using System.Threading.Channels;
 using OBSWebsocketDotNet.Types;
