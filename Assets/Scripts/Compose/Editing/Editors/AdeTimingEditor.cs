@@ -151,6 +151,11 @@ namespace Arcade.Compose.Editing
 
 		public void SwitchStatus()
 		{
+			if (AdeChartToolsPanel.Instance)
+			{
+				AdeChartToolsPanel.Instance.Toggle(AdeChartToolsPanel.Page.Groups);
+				return;
+			}
 			View.SetActive(!View.activeSelf);
 			if (View.activeSelf)
 			{
@@ -165,6 +170,11 @@ namespace Arcade.Compose.Editing
 
 		public void Display()
 		{
+			if (AdeChartToolsPanel.Instance)
+			{
+				AdeChartToolsPanel.Instance.Show(AdeChartToolsPanel.Page.Groups);
+				return;
+			}
 			View.SetActive(true);
 			UpdateTiming();
 		}
@@ -308,6 +318,7 @@ namespace Arcade.Compose.Editing
 		private readonly List<ArcHold> holds;
 		private readonly List<ArcArc> arcs;
 		private readonly List<ArcSlide> slides;
+		private readonly List<ChartControlCommand> controls;
 		public RemoveTimingGroup(ArcTimingGroup timingGroup)
 		{
 			this.timingGroup = timingGroup;
@@ -315,6 +326,9 @@ namespace Arcade.Compose.Editing
 			this.holds = ArcHoldNoteManager.Instance.Holds.Where((hold) => hold.TimingGroup == timingGroup).ToList();
 			this.arcs = ArcArcManager.Instance.Arcs.Where((arc) => arc.TimingGroup == timingGroup).ToList();
 			this.slides = ArcSlideManager.Instance.Slides.Where(slide => slide.TimingGroup == timingGroup).ToList();
+			controls = ArcCameraManager.Instance.Cameras.Cast<ArcEvent>().Concat(ArcSceneControlManager.Instance.SceneControls)
+				.Where(e => ((IHasTimingGroup)e).TimingGroup == timingGroup)
+				.Select(e => new ChartControlCommand(e, e, null)).ToList();
 		}
 		public string Name
 		{
@@ -325,6 +339,7 @@ namespace Arcade.Compose.Editing
 		}
 		public void Do()
 		{
+			foreach (var control in controls) control.Do();
 			foreach (var slide in slides)
 			{
 				AdeSelectionManager.Instance.DeselectNote(slide);
@@ -357,6 +372,8 @@ namespace Arcade.Compose.Editing
 		}
 		public void Undo()
 		{
+			ArcTimingManager.Instance.AddTimingGroup(timingGroup);
+			foreach (var control in controls) control.Undo();
 			foreach (var slide in slides) ArcSlideManager.Instance.Add(slide);
 			foreach (var tap in taps)
 			{
@@ -370,7 +387,6 @@ namespace Arcade.Compose.Editing
 			{
 				ArcArcManager.Instance.Add(arc);
 			}
-			ArcTimingManager.Instance.AddTimingGroup(timingGroup);
 		}
 	}
 }

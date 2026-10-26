@@ -411,7 +411,24 @@ namespace Arcade.Gameplay.Chart
 
 		public override ArcEvent Clone()
 		{
-			throw new NotImplementedException();
+			var copy = new ArcSceneControl();
+			copy.Assign(this);
+			return copy;
+		}
+		public override void Assign(ArcEvent newValues)
+		{
+			base.Assign(newValues);
+			var sc = (ArcSceneControl)newValues;
+			Type = sc.Type;
+			Enable = sc.Enable;
+			Duration = sc.Duration;
+			TrackDisplayValue = sc.TrackDisplayValue;
+			EffectValue = sc.EffectValue;
+			TimingGroup = sc.TimingGroup;
+			RawType = sc.RawType;
+			RawParams = sc.RawParams?.Select(value => value is RawAffInt i ? (IRawAffValue)new RawAffInt { data = i.data }
+				: value is RawAffFloat f ? new RawAffFloat { data = f.data }
+				: (IRawAffValue)new RawAffWord { data = ((RawAffWord)value).data }).ToList();
 		}
 	}
 	public abstract class ArcNote : ArcEvent, ISelectable
@@ -1548,7 +1565,8 @@ namespace Arcade.Gameplay.Chart
 				CameraType = CameraType,
 				Move = Move,
 				Percent = Percent,
-				Rotate = Rotate
+				Rotate = Rotate,
+				TimingGroup = TimingGroup
 			};
 		}
 		public override void Assign(ArcEvent newValues)
@@ -1559,6 +1577,7 @@ namespace Arcade.Gameplay.Chart
 			Rotate = n.Rotate;
 			CameraType = n.CameraType;
 			Duration = n.Duration;
+			TimingGroup = n.TimingGroup;
 		}
 
 		public void Update(int Timing)
@@ -1609,6 +1628,9 @@ namespace Arcade.Gameplay.Chart
 		public void ApplyAttributes(string attributes)
 		{
 			Attributes = attributes;
+			NoInput = false;
+			FadingHolds = false;
+			AngleX = AngleY = 0;
 			NoClip = false;
             TraceColor = new Color32(0, 0, 0, 0);
             UseTraceColor = false;
