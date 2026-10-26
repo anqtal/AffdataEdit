@@ -17,7 +17,8 @@ namespace Arcade.Compose.MarkingMenu
 
 		private bool enable;
 		private int knobCount;
-		private int themeRevision = -1;
+		private LineRenderer outline;
+        private static readonly Color OutlineColor = new Color32(36, 41, 54, 255);
 		private List<RectTransform> knobInstances = new List<RectTransform>();
 
 		public bool Enable
@@ -32,9 +33,9 @@ namespace Arcade.Compose.MarkingMenu
 				{
 					PointerImage.enabled = value;
 					Line.enabled = value;
+                    outline.enabled = value;
 					Initialize();
 					enable = value;
-					if (enable) ApplyTheme();
 				}
 			}
 		}
@@ -42,11 +43,20 @@ namespace Arcade.Compose.MarkingMenu
 		private void Awake()
 		{
 			Instance = this;
+            // Keep the original cyan-to-purple gradient independent of UI accent colors.
+            // A wider dark stroke separates it from the white playfield in every theme.
+            Line.numCapVertices = Line.numCornerVertices = 8;
+            outline = Instantiate(Line, Line.transform.parent, false);
+            outline.name = "ContextMenuLineOutline";
+            outline.sortingOrder = Line.sortingOrder - 1;
+            outline.widthMultiplier = Line.widthMultiplier * 1.5f;
+            outline.startColor = outline.endColor = OutlineColor;
+            outline.enabled = false;
+            StyleKnob(PointerImage, Line.endColor);
 		}
 		private void Update()
 		{
 			if (!enable) return;
-			if (themeRevision != AdeUiTheme.Revision) ApplyTheme();
 			UpdatePointer();
 		}
 		public void Initialize()
@@ -54,8 +64,9 @@ namespace Arcade.Compose.MarkingMenu
 			foreach (var knob in knobInstances) Destroy(knob.gameObject);
 			knobInstances.Clear();
 			knobCount = 0;
-			Line.SetPositions(new Vector3[1]);
-			Line.positionCount = knobCount + 1;
+			outline.positionCount = Line.positionCount = 1;
+            Line.SetPosition(0, Vector3.zero);
+            outline.SetPosition(0, Vector3.zero);
 		}
 		public void AddJoint()
 		{
@@ -66,11 +77,12 @@ namespace Arcade.Compose.MarkingMenu
 			RectTransform knob = Instantiate(KnobPrefab, transform).GetComponent<RectTransform>();
 			knob.anchoredPosition = position;
 			knobInstances.Add(knob);
-			StyleKnob(knob.GetComponent<Image>());
+			StyleKnob(knob.GetComponent<Image>(), Line.startColor);
 
 			Line.SetPosition(knobCount, position);
+            outline.SetPosition(knobCount, position);
 			knobCount++;
-			Line.positionCount = knobCount + 1;
+			outline.positionCount = Line.positionCount = knobCount + 1;
 		}
 		public void RemoveLastJoint()
 		{
@@ -80,28 +92,22 @@ namespace Arcade.Compose.MarkingMenu
 			knobInstances.Remove(knob);
 
 			knobCount--;
-			Line.positionCount = knobCount + 1;
+			outline.positionCount = Line.positionCount = knobCount + 1;
 		}
 
-		private void ApplyTheme()
-		{
-			themeRevision = AdeUiTheme.Revision;
-			StyleKnob(PointerImage);
-			foreach (var knob in knobInstances) StyleKnob(knob.GetComponent<Image>());
-			Line.startColor = Line.endColor = AdeUiTheme.Current.Accent;
-		}
-
-		private static void StyleKnob(Image image)
-		{
-			image.color = AdeUiTheme.Current.Accent;
-			var outline = image.GetComponent<Shadow>();
-			if (outline) outline.effectColor = AdeUiTheme.Current.Border;
-		}
+		private static void StyleKnob(Image image, Color color)
+        {
+            image.color = color;
+            var border = image.GetComponent<Shadow>() ?? image.gameObject.AddComponent<Outline>();
+            border.effectColor = OutlineColor;
+            border.effectDistance = new Vector2(1.25f, -1.25f);
+        }
 
 		private void UpdatePointer()
 		{
 			Vector2 mousePosition = InputExtension.scaledMousePosition;
 			Line.SetPosition(knobCount, mousePosition);
+            outline.SetPosition(knobCount, mousePosition);
 			Pointer.anchoredPosition = mousePosition;
 		}
 	}
