@@ -79,3 +79,8 @@ crashlytics-build.properties
 /*.app/
 /*_BackUpThisFolder_ButDontShipItWithYourGame/
 /Captures/
+
+# Local build, chart backups, and Cloudflare account cache
+/AffdataEdit/
+/raputa/
+/.wrangler/
