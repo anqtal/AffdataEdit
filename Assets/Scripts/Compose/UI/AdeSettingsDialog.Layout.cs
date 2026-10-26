@@ -43,6 +43,7 @@ namespace Arcade.Compose
         {
             var cap = Rect("FixedKeycap", row, typeof(Image), typeof(LayoutElement));
             fixedHotkeys.Add(cap.GetComponent<Image>());
+            if (key.text == "Ctrl") key.text = AdeInputManager.PrimaryModifierLabel;
             key.transform.SetParent(cap, false);
             Fill(key.rectTransform);
             key.rectTransform.offsetMin = new Vector2(12, 0);

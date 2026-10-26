@@ -22,6 +22,15 @@ namespace Arcade.Compose
 
 		public static AdeInputManager Instance { get; private set; }
 
+		public static bool UsesCommand => Application.platform == RuntimePlatform.OSXEditor
+			|| Application.platform == RuntimePlatform.OSXPlayer;
+		public static string PrimaryModifierLabel => UsesCommand ? "Cmd" : "Ctrl";
+		private static string PrimaryModifierPath => UsesCommand ? "<Keyboard>/*Meta" : "<Keyboard>/ctrl";
+		private static string AltModifierLabel => UsesCommand ? "Option" : "Alt";
+		private static bool PrimaryModifierPressed => UsesCommand
+			? Keyboard.current.leftMetaKey.isPressed || Keyboard.current.rightMetaKey.isPressed
+			: Keyboard.current.ctrlKey.isPressed;
+
 		private bool rebindFinishedThisFrame = false;
 
 		private void Awake()
@@ -29,6 +38,12 @@ namespace Arcade.Compose
 			if (Controls == null)
 			{
 				Controls = new AdeInputControl();
+				// Change defaults, not overrides: saved rebinds and reset keep their normal behavior.
+				if (UsesCommand)
+					foreach (var map in Controls.asset.actionMaps)
+						for (int i = 0; i < map.bindings.Count; i++)
+							if (map.bindings[i].path == "<Keyboard>/ctrl")
+								map.ChangeBinding(i).WithPath(PrimaryModifierPath);
 			}
 			Instance = this;
 		}
@@ -125,6 +140,8 @@ namespace Arcade.Compose
 					.WithControlsExcluding("<Keyboard>/altKey")
 					.WithControlsExcluding("<Keyboard>/ctrlKey")
 					.WithControlsExcluding("<Keyboard>/shiftKey")
+					.WithControlsExcluding("<Keyboard>/leftMeta")
+					.WithControlsExcluding("<Keyboard>/rightMeta")
 					.WithControlsExcluding("<Keyboard>/anyKey")
 					.WithControlsExcluding("<Keyboard>/escapeKey")
 					.WithControlsExcluding("<Keyboard>/leftAlt")
@@ -166,7 +183,7 @@ namespace Arcade.Compose
 							Debug.LogError("The action for the rebinding button is not hotkey: not a hotkey binding");
 							return;
 						}
-						bool hasCtrl = Keyboard.current.ctrlKey.isPressed;
+						bool hasCtrl = PrimaryModifierPressed;
 						bool hasAlt = Keyboard.current.altKey.isPressed;
 						bool hasShift = Keyboard.current.shiftKey.isPressed;
 						bool? needModifier1 = null;
@@ -181,7 +198,7 @@ namespace Arcade.Compose
 								continue;
 							}
 							bool? needModifier = null;
-							if (binding.effectivePath == "<Keyboard>/ctrl")
+							if (binding.effectivePath == PrimaryModifierPath)
 							{
 								needModifier = hasCtrl;
 							}
@@ -268,11 +285,11 @@ namespace Arcade.Compose
 				}
 				if (Keyboard.current.altKey.isPressed)
 				{
-					text = "Alt+" + text;
+					text = AltModifierLabel + "+" + text;
 				}
-				if (Keyboard.current.ctrlKey.isPressed)
+				if (PrimaryModifierPressed)
 				{
-					text = "Ctrl+" + text;
+					text = PrimaryModifierLabel + "+" + text;
 				}
 				button.Text.text = text;
 				return;
@@ -359,7 +376,7 @@ namespace Arcade.Compose
 					Debug.LogError("The action for the rebinding button is not hotkey: unknown binding name");
 					return;
 				}
-				if (binding.effectivePath == "<Keyboard>/ctrl")
+				if (binding.effectivePath == PrimaryModifierPath)
 				{
 					hasCtrl = needModifier;
 				}
@@ -384,11 +401,11 @@ namespace Arcade.Compose
 			}
 			if (hasAlt == true)
 			{
-				result = "Alt+" + result;
+				result = AltModifierLabel + "+" + result;
 			}
 			if (hasCtrl == true)
 			{
-				result = "Ctrl+" + result;
+				result = PrimaryModifierLabel + "+" + result;
 			}
 			button.Text.text = result;
 		}
