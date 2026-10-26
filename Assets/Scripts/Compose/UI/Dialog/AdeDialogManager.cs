@@ -49,7 +49,7 @@ namespace Arcade.Compose
 
 		public Transform Opening, Closed;
 
-		private const float OpenDuration = 0.16f, CloseDuration = 0.12f, ClosedScale = 1.08f;
+		private const float OpenDuration = 0.25f, CloseDuration = 0.25f, ClosedScale = 1.08f;
 		private readonly Dictionary<AdeDialog, MotionHandle> motions = new Dictionary<AdeDialog, MotionHandle>();
 		private readonly HashSet<AdeDialog> closing = new HashSet<AdeDialog>();
 
@@ -77,7 +77,7 @@ namespace Arcade.Compose
 			}
 			group.blocksRaycasts = true;
 			AdeUiTheme.OnDialogOpened();
-			motions[dialog] = LMotion.Create(from, 1f, Mathf.Max(0.01f, OpenDuration * (1 - from))).WithEase(Ease.OutCubic)
+			motions[dialog] = LMotion.Create(from, 1f, OpenDuration).WithEase(Ease.OutSine)
 				.WithScheduler(MotionScheduler.UpdateIgnoreTimeScale)
 				.WithOnComplete(() => motions.Remove(dialog))
 				.Bind(t => Pose(group, view, t));
@@ -100,7 +100,7 @@ namespace Arcade.Compose
 			// The dialog stops taking input at once; it is deactivated when the fade ends.
 			closing.Add(dialog);
 			group.blocksRaycasts = false;
-			motions[dialog] = LMotion.Create(from, 0f, Mathf.Max(0.01f, CloseDuration * from)).WithEase(Ease.InCubic)
+			motions[dialog] = LMotion.Create(from, 0f, CloseDuration).WithEase(Ease.OutSine)
 				.WithScheduler(MotionScheduler.UpdateIgnoreTimeScale)
 				.WithOnComplete(() =>
 				{
