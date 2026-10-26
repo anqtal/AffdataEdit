@@ -1,7 +1,7 @@
 using Arcade.Audio;
 using System.Collections;
 using UnityEngine;
-using DG.Tweening;
+using LitMotion;
 
 namespace Arcade.Compose
 {
@@ -23,27 +23,41 @@ namespace Arcade.Compose
 
 		public RectTransform Left, Right;
 		[System.NonSerialized] public BassClip CloseAudio, OpenAudio;
+		private MotionHandle shutterMotion;
 
-		private static float OpenEase(float time, float duration, float amplitude, float period)
+		private void OnDestroy()
 		{
-			return Mathf.Pow(time / duration, 1.5f);
+			shutterMotion.TryCancel();
 		}
 
 		public void Open()
 		{
-			Left.DOKill();
-			Right.DOKill();
-			Left.DOPivotX(1, OpenDuration).SetEase(OpenEase);
-			Right.DOPivotX(0, OpenDuration).SetEase(OpenEase);
+			AnimateShutter(true);
 			BassAudio.PlayOneShot(OpenAudio, true);
 		}
 		public void Close()
 		{
-			Left.DOKill();
-			Right.DOKill();
-			Left.DOPivotX(0, CloseDuration).SetEase(Ease.OutCubic);
-			Right.DOPivotX(1, CloseDuration).SetEase(Ease.OutCubic);
+			AnimateShutter(false);
 			BassAudio.PlayOneShot(CloseAudio, true);
+		}
+		private void AnimateShutter(bool open)
+		{
+			shutterMotion.TryCancel();
+			float leftStart = Left.pivot.x;
+			float rightStart = Right.pivot.x;
+			shutterMotion = LMotion.Create(0f, 1f, open ? OpenDuration : CloseDuration)
+				.WithEase(open ? Ease.Linear : Ease.OutCubic)
+				.WithScheduler(MotionScheduler.Update)
+				.Bind(progress =>
+				{
+					if (open) progress = Mathf.Pow(progress, 1.5f);
+					Vector2 leftPivot = Left.pivot;
+					Vector2 rightPivot = Right.pivot;
+					leftPivot.x = Mathf.LerpUnclamped(leftStart, open ? 1 : 0, progress);
+					rightPivot.x = Mathf.LerpUnclamped(rightStart, open ? 0 : 1, progress);
+					Left.pivot = leftPivot;
+					Right.pivot = rightPivot;
+				});
 		}
 		public IEnumerator OpenCoroutine()
 		{

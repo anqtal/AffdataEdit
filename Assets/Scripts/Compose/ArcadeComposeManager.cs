@@ -3,7 +3,8 @@ using System.IO;
 using UnityEngine;
 using UnityEngine.UI;
 using Arcade.Gameplay;
-using DG.Tweening;
+using LitMotion;
+using LitMotion.Extensions;
 using Newtonsoft.Json;
 using Arcade.Compose.Dialog;
 using Arcade.Compose.Editing;
@@ -136,6 +137,7 @@ namespace Arcade.Compose
 		public TextAsset BuildTimestampText;
 
 		private bool switchingMode = false;
+		private readonly CompositeMotionHandle modeSwitchMotions = new CompositeMotionHandle(5);
 		private int playShotTiming = 0;
 		private bool previewing = false;
 		private bool advancing = false;
@@ -370,6 +372,10 @@ namespace Arcade.Compose
 		{
 			Application.logMessageReceived -= OnLog;
 		}
+		private void OnDestroy()
+		{
+			modeSwitchMotions.Cancel();
+		}
 		private void OnLog(string condition, string stackTrace, LogType type)
 		{
 			if (type != LogType.Exception) return;
@@ -412,11 +418,7 @@ namespace Arcade.Compose
 			switchingMode = true;
 
 			GameplayManager.Play();
-			TopBar.DOAnchorPosY(TopBar.sizeDelta.y, ModeSwitchDuration).SetEase(ToPlayerModeEase);
-			BottomBar.DOAnchorPosY(-BottomBar.sizeDelta.y, ModeSwitchDuration).SetEase(ToPlayerModeEase);
-			LeftBar.DOAnchorPosX(-LeftBar.sizeDelta.x, ModeSwitchDuration).SetEase(ToPlayerModeEase);
-			RightBar.DOAnchorPosX(RightBar.sizeDelta.x, ModeSwitchDuration).SetEase(ToPlayerModeEase).OnComplete(() => { switchingMode = false; });
-			GameplayCamera.DORect(new Rect(0, 0, 1, 1), ModeSwitchDuration).SetEase(ToPlayerModeEase);
+			AnimateModeSwitch(false);
 
 			PauseButtonImage.sprite = PausePause;
 			PauseButton.spriteState = new SpriteState() { pressedSprite = PausePausePressed };
@@ -436,11 +438,7 @@ namespace Arcade.Compose
 			switchingMode = true;
 
 			GameplayManager.Pause();
-			TopBar.DOAnchorPosY(0, ModeSwitchDuration).SetEase(ToEditorModeEase);
-			BottomBar.DOAnchorPosY(0, ModeSwitchDuration).SetEase(ToEditorModeEase);
-			LeftBar.DOAnchorPosX(0, ModeSwitchDuration).SetEase(ToEditorModeEase);
-			RightBar.DOAnchorPosX(0, ModeSwitchDuration).SetEase(ToEditorModeEase).OnComplete(() => { switchingMode = false; });
-			GameplayCamera.DORect(EditorModeGameplayCameraRect, ModeSwitchDuration).SetEase(ToEditorModeEase);
+			AnimateModeSwitch(true);
 
 			PauseButtonImage.sprite = PausePlay;
 			PauseButton.spriteState = new SpriteState() { pressedSprite = PausePlayPressed };
@@ -449,6 +447,28 @@ namespace Arcade.Compose
 			TimingSliderHandle.sprite = DefaultSliderSprite;
 
 			IsEditorMode = true;
+		}
+
+		private void AnimateModeSwitch(bool editorMode)
+		{
+			modeSwitchMotions.Cancel();
+			Ease ease = editorMode ? ToEditorModeEase : ToPlayerModeEase;
+			LMotion.Create(TopBar.anchoredPosition.y, editorMode ? 0 : TopBar.sizeDelta.y, ModeSwitchDuration)
+				.WithEase(ease).WithScheduler(MotionScheduler.Update)
+				.BindToAnchoredPositionY(TopBar).AddTo(modeSwitchMotions);
+			LMotion.Create(BottomBar.anchoredPosition.y, editorMode ? 0 : -BottomBar.sizeDelta.y, ModeSwitchDuration)
+				.WithEase(ease).WithScheduler(MotionScheduler.Update)
+				.BindToAnchoredPositionY(BottomBar).AddTo(modeSwitchMotions);
+			LMotion.Create(LeftBar.anchoredPosition.x, editorMode ? 0 : -LeftBar.sizeDelta.x, ModeSwitchDuration)
+				.WithEase(ease).WithScheduler(MotionScheduler.Update)
+				.BindToAnchoredPositionX(LeftBar).AddTo(modeSwitchMotions);
+			LMotion.Create(RightBar.anchoredPosition.x, editorMode ? 0 : RightBar.sizeDelta.x, ModeSwitchDuration)
+				.WithEase(ease).WithScheduler(MotionScheduler.Update)
+				.WithOnComplete(() => { switchingMode = false; })
+				.BindToAnchoredPositionX(RightBar).AddTo(modeSwitchMotions);
+			LMotion.Create(GameplayCamera.rect, editorMode ? EditorModeGameplayCameraRect : new Rect(0, 0, 1, 1), ModeSwitchDuration)
+				.WithEase(ease).WithScheduler(MotionScheduler.Update)
+				.Bind(GameplayCamera, (rect, camera) => { camera.rect = rect; }).AddTo(modeSwitchMotions);
 		}
 
 		public void OnPauseClicked()
@@ -640,11 +660,7 @@ namespace Arcade.Compose
 			var cameraManager = ArcCameraManager.Instance;
 			if (GameplayCamera && cameraManager)
 			{
-				TopBar.DOComplete();
-				BottomBar.DOComplete();
-				LeftBar.DOComplete();
-				RightBar.DOComplete();
-				GameplayCamera.DOComplete();
+				modeSwitchMotions.Complete();
 				GameplayCamera.rect = IsEditorMode ? EditorModeGameplayCameraRect : new Rect(0, 0, 1, 1);
 				cameraManager.ResetCamera();
 			}

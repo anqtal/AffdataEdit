@@ -3,14 +3,14 @@
     "rootNamespace": "",
     "references": [
         "Affdata.Core",
-        "Demigiant.DOTween",
         "SFB.Runtime",
         "Unity.InputSystem",
         "OBJImport",
         "Unity.RenderPipelines.Core.Runtime",
         "Unity.RenderPipelines.Universal.Runtime",
         "UniTask",
-        "LitMotion"
+        "LitMotion",
+        "LitMotion.Extensions"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

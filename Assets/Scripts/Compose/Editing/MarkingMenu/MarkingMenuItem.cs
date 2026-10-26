@@ -1,7 +1,8 @@
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
-using DG.Tweening;
+using LitMotion;
+using LitMotion.Extensions;
 using UnityEngine.Events;
 using UnityEngine.InputSystem;
 
@@ -60,32 +61,42 @@ namespace Arcade.Compose.MarkingMenu
 		}
 		private float pointerInItemTiming;
 		private bool active = false;
+		private MotionHandle fadeMotion;
 
 		private void Start()
 		{
 			Text = StartupText;
 		}
+		private void OnDestroy()
+		{
+			fadeMotion.TryCancel();
+		}
 		public void Show()
 		{
 			gameObject.SetActive(true);
 			active = true;
-			ItemCanvasGroup.DOComplete();
-			ItemCanvasGroup.DOFade(1, 0.15f);
+			fadeMotion.TryComplete();
+			fadeMotion = LMotion.Create(ItemCanvasGroup.alpha, 1f, 0.15f)
+				.WithEase(Ease.OutQuad).WithScheduler(MotionScheduler.Update)
+				.BindToAlpha(ItemCanvasGroup);
 		}
 		public void Hide()
 		{
 			active = false;
 			PointerInItem = false;
 			pointerInItemTiming = 0;
-			ItemCanvasGroup.DOComplete();
-			ItemCanvasGroup.DOFade(0, 0.15f).OnComplete(() =>
-			{
-				Background.color = OutColor;
-				if (!active)
+			fadeMotion.TryComplete();
+			fadeMotion = LMotion.Create(ItemCanvasGroup.alpha, 0f, 0.15f)
+				.WithEase(Ease.OutQuad).WithScheduler(MotionScheduler.Update)
+				.WithOnComplete(() =>
 				{
-					gameObject.SetActive(false);
-				}
-			});
+					Background.color = OutColor;
+					if (!active)
+					{
+						gameObject.SetActive(false);
+					}
+				})
+				.BindToAlpha(ItemCanvasGroup);
 		}
 
 		public void OnPointerEnter(PointerEventData data)

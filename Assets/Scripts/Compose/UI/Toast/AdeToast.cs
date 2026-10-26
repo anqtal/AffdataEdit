@@ -1,7 +1,8 @@
 using UnityEngine;
 using UnityEngine.UI;
 using Arcade.Util.UnityExtension;
-using DG.Tweening;
+using LitMotion;
+using LitMotion.Extensions;
 
 namespace Arcade.Compose
 {
@@ -13,20 +14,33 @@ namespace Arcade.Compose
 		public RectTransform ToastRect;
 		public RectTransform ContentRect;
 		public Text Content;
+		private MotionHandle toastMotion;
 
 		private void Awake()
 		{
 			Instance = this;
 		}
+		private void OnDestroy()
+		{
+			toastMotion.TryCancel();
+		}
 		public void Show(string text)
 		{
-			ToastRect.DOKill(true);
+			toastMotion.TryComplete();
+			// Completing the entrance can schedule an exit; replace it with this toast's exit.
+			toastMotion.TryCancel();
 			float height = Content.CalculateHeight(text);
 			Content.text = text;
-			ToastRect.DOPivotY(1, Duration).OnComplete(() =>
-			{
-				ToastRect.DOPivotY(0, Duration).SetDelay(Stay * height / 60);
-			});
+			toastMotion = LMotion.Create(ToastRect.pivot.y, 1f, Duration)
+				.WithEase(Ease.OutQuad).WithScheduler(MotionScheduler.Update)
+				.WithOnComplete(() =>
+				{
+					toastMotion = LMotion.Create(ToastRect.pivot.y, 0f, Duration)
+						.WithEase(Ease.OutQuad).WithScheduler(MotionScheduler.Update)
+						.WithDelay(Stay * height / 60)
+						.BindToPivotY(ToastRect);
+				})
+				.BindToPivotY(ToastRect);
 		}
 	}
 }

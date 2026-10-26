@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using Arcade.Gameplay;
 using Arcade.Gameplay.Chart;
 using UnityEngine;
-using DG.Tweening;
 using UnityEngine.UI;
 using System.Linq;
 using Arcade.Aff;
@@ -236,7 +235,7 @@ public class ArcSceneControlManager : MonoBehaviour
         {
             if (Duration <= 0) return Target;
             float progress = Mathf.Clamp01((timing - Timing) / Duration);
-            // DOTween's default OutQuad, evaluated in chart time for seeking and pause.
+            // OutQuad, evaluated in chart time for seeking and pause.
             return Mathf.Lerp(Start, Target, 1 - (1 - progress) * (1 - progress));
         }
         public void Apply(ArcSceneControl sc)
