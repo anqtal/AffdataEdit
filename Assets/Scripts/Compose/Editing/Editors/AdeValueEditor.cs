@@ -170,14 +170,14 @@ namespace Arcade.Compose.Editing
 				);
 				UpdateField(
 					(note) => note is ArcArc,
-					(note) => $"{(note as ArcArc).XStart.ToString("f2", CultureInfo.InvariantCulture)},{(note as ArcArc).YStart.ToString("f2", CultureInfo.InvariantCulture)}",
+					(note) => $"{(note as ArcArc).XStart.ToString("f3", CultureInfo.InvariantCulture)},{(note as ArcArc).YStart.ToString("f3", CultureInfo.InvariantCulture)}",
 					"-,-",
 					(active) => StartPos.gameObject.SetActive(active),
 					(data) => StartPos.GetComponentInChildren<InputField>().SetTextWithoutNotify(data)
 				);
 				UpdateField(
 					(note) => note is ArcArc,
-					(note) => $"{(note as ArcArc).XEnd.ToString("f2", CultureInfo.InvariantCulture)},{(note as ArcArc).YEnd.ToString("f2", CultureInfo.InvariantCulture)}",
+					(note) => $"{(note as ArcArc).XEnd.ToString("f3", CultureInfo.InvariantCulture)},{(note as ArcArc).YEnd.ToString("f3", CultureInfo.InvariantCulture)}",
 					"-,-",
 					(active) => EndPos.gameObject.SetActive(active),
 					(data) => EndPos.GetComponentInChildren<InputField>().SetTextWithoutNotify(data)
@@ -782,8 +782,8 @@ namespace Arcade.Compose.Editing
 						float t = 1f * (timing - arc.Timing) / (arc.EndTiming - arc.Timing);
 						float x = ArcAlgorithm.X(arc.XStart, arc.XEnd, t, arc.CurveType);
 						float y = ArcAlgorithm.Y(arc.YStart, arc.YEnd, t, arc.CurveType);
-						x = Mathf.RoundToInt(x * 100) / 100f;
-						y = Mathf.RoundToInt(y * 100) / 100f;
+						x = Mathf.RoundToInt(x * 1000) / 1000f;
+						y = Mathf.RoundToInt(y * 1000) / 1000f;
 						commands.Add(new RemoveArcTapCommand(arc, arcTap));
 						ArcArc newArc = new ArcArc()
 						{

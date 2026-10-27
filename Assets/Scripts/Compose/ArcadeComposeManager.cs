@@ -325,7 +325,9 @@ namespace Arcade.Compose
 				previewing = false;
 				advancing = false;
 			}
-			if (AdeInputManager.Instance.CheckHotkeyActionPressed(AdeInputManager.Instance.Hotkeys.PlayOrPause))
+			if (AdeInputManager.Instance.CheckHotkeyActionPressed(AdeInputManager.Instance.Hotkeys.PlayOrPause)
+				|| (!IsEditorMode && (AdeInputManager.Instance.CheckHotkeyActionPressed(AdeInputManager.Instance.Hotkeys.PlayWhenHolding)
+					|| AdeInputManager.Instance.CheckHotkeyActionPressed(AdeInputManager.Instance.Hotkeys.PreviewWhenHolding))))
 			{
 				if (IsEditorMode) Play();
 				else Pause();

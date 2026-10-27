@@ -44,7 +44,7 @@ namespace Arcade.Compose
 			if (cursor.WallEnabled)
 			{
 				Vector3 pos = cursor.AttachedWallPoint;
-				content += $"\n坐标: ({ArcAlgorithm.WorldXToArc(pos.x).ToString("f2", CultureInfo.InvariantCulture)},{ArcAlgorithm.WorldYToArc(pos.y).ToString("f2", CultureInfo.InvariantCulture)})";
+				content += $"\n坐标: ({ArcAlgorithm.WorldXToArc(pos.x).ToString("f3", CultureInfo.InvariantCulture)},{ArcAlgorithm.WorldYToArc(pos.y).ToString("f3", CultureInfo.InvariantCulture)})";
 			}
 			if (AdeClickToCreate.Instance.Enable && AdeClickToCreate.Instance.Mode != ClickToCreateMode.Idle)
 			{
@@ -71,7 +71,7 @@ namespace Arcade.Compose
 					{
 						float x = ArcAlgorithm.X(arc.XStart, arc.XEnd, p, arc.CurveType);
 						float y = ArcAlgorithm.Y(arc.YStart, arc.YEnd, p, arc.CurveType);
-						content += $"\nArc: {(p * 100).ToString("f2", CultureInfo.InvariantCulture)}%, {x.ToString("f2", CultureInfo.InvariantCulture)}, {y.ToString("f2", CultureInfo.InvariantCulture)}";
+						content += $"\nArc: {(p * 100).ToString("f2", CultureInfo.InvariantCulture)}%, {x.ToString("f3", CultureInfo.InvariantCulture)}, {y.ToString("f3", CultureInfo.InvariantCulture)}";
 					}
 				}
 			}

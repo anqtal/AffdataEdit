@@ -26,7 +26,7 @@ namespace Arcade.Compose.UI
         private AdeSlidePreview preview;
         private MarkingMenuItem menu;
         private bool ready;
-        private static readonly string[] CurveNames = { "直线", "缓出（sin）", "缓入（cos）", "平滑（b）" };
+        private static readonly string[] CurveNames = { "s", "si", "so", "b" };
 
         private void Start()
         {
@@ -157,7 +157,7 @@ namespace Arcade.Compose.UI
             preview.gameObject.SetActive(selected.Count == 1);
             preview.Note = (ArcSlide)note.Clone(); preview.SetVerticesDirty();
         }
-        private static string Range(float center, float width) => center.ToString("R", CultureInfo.InvariantCulture) + "," + width.ToString("R", CultureInfo.InvariantCulture);
+        private static string Range(float center, float width) => center.ToString("f3", CultureInfo.InvariantCulture) + "," + width.ToString("f3", CultureInfo.InvariantCulture);
         private void OnCommand(ICommand command, bool undo) => Refresh();
         public void OnNoteSelect(ArcNote note) => Refresh();
         public void OnNoteDeselect(ArcNote note) => Refresh();

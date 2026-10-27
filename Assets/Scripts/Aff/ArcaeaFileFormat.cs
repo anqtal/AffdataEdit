@@ -294,8 +294,8 @@ namespace Arcade.Aff
 				{
 					arc.LineType = ArcLineType.TrueIsVoid;
 				}
-				writer.WriteLine($"{intent}arc({arc.Timing.ToString(CultureInfo.InvariantCulture)},{arc.EndTiming.ToString(CultureInfo.InvariantCulture)},{arc.XStart.ToString("f2", CultureInfo.InvariantCulture)},{arc.XEnd.ToString("f2", CultureInfo.InvariantCulture)}" +
-					$",{ArcCurveTypeStrings[arc.CurveType]},{arc.YStart.ToString("f2", CultureInfo.InvariantCulture)},{arc.YEnd.ToString("f2", CultureInfo.InvariantCulture)},{arc.Color},{arc.Effect},{(arc.TraceColor.HasValue && arc.LineType == ArcLineType.TrueIsVoid ? FormatHexColor(arc.TraceColor.Value) : ArcLineTypeStrings[arc.LineType])}"
+				writer.WriteLine($"{intent}arc({arc.Timing.ToString(CultureInfo.InvariantCulture)},{arc.EndTiming.ToString(CultureInfo.InvariantCulture)},{arc.XStart.ToString("f3", CultureInfo.InvariantCulture)},{arc.XEnd.ToString("f3", CultureInfo.InvariantCulture)}" +
+					$",{ArcCurveTypeStrings[arc.CurveType]},{arc.YStart.ToString("f3", CultureInfo.InvariantCulture)},{arc.YEnd.ToString("f3", CultureInfo.InvariantCulture)},{arc.Color},{arc.Effect},{(arc.TraceColor.HasValue && arc.LineType == ArcLineType.TrueIsVoid ? FormatHexColor(arc.TraceColor.Value) : ArcLineTypeStrings[arc.LineType])}"
 					 + (arc.Smoothness == null ? "" : $",{arc.Smoothness.Value.ToString("0.0######", CultureInfo.InvariantCulture)}") + ")" +
 					(arc.ArcTaps.Count > 0 ? $"[{string.Join(",", arc.ArcTaps.Select(e => $"arctap({e.Timing.ToString(CultureInfo.InvariantCulture)})"))}]" : "") +
 					";");
@@ -339,12 +339,7 @@ namespace Arcade.Aff
 		}
 		private static string FormatSlideCoordinate(float value)
 		{
-			// Preserve the float on reload without exposing the extra digits of a double cast.
-			string text = value.ToString("R", CultureInfo.InvariantCulture);
-			if (text.IndexOf('E') < 0) return text;
-			// AFF only accepts decimal notation; expand the already rounded float text.
-			return double.Parse(text, CultureInfo.InvariantCulture)
-				.ToString("0.################################################", CultureInfo.InvariantCulture);
+			return value.ToString("f3", CultureInfo.InvariantCulture);
 		}
 		public static string FormatHexColor(Color32 color)
 		{
