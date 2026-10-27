@@ -45,6 +45,9 @@ TagManager:
   - name: Track
     uniqueID: 2829105111
     locked: 0
+  - name: Grid
+    uniqueID: 3200285757
+    locked: 0
   - name: Note
     uniqueID: 847068993
     locked: 0

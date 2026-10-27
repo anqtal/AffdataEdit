@@ -4,7 +4,6 @@ using UnityEngine;
 using UnityEngine.UI;
 using InputField = TMPro.TMP_InputField;
 using Arcade.Gameplay;
-using Arcade.Util.UnityExtension;
 using System.Linq;
 using Arcade.Compose.MarkingMenu;
 using Newtonsoft.Json;
@@ -23,6 +22,8 @@ namespace Arcade.Compose
 	{
 		public int Timing;
 		public int Importance;
+		public int TimingIndex;
+		public bool IsMeasure;
 	}
 
 	public class AdeGridManager : AdeMarkingMenuItemProvider
@@ -32,14 +33,12 @@ namespace Arcade.Compose
 		public GameObject BeatlinePrefab, VerticalPrefab;
 		public Transform VerticalPanel;
 		public float BeatlineDensity;
+		public Color MeasureBeatlineColor;
 		public Color[] BeatlineColors;
 		public Color VerticalXColor, VerticalYColor;
 		public InputField DensityInputField, VerticalXInputField, VerticalYInputField;
 		public MarkingMenuItem[] Entry;
 
-
-		private int beatlineInUse;
-		private int verticalInUse;
 
 		private List<BeatlineProperty> beatlineTimings = new List<BeatlineProperty>();
 		private List<int> beatTimings = new List<int>();
@@ -48,14 +47,14 @@ namespace Arcade.Compose
 		public IReadOnlyList<float> VerticalXPositions => verticalXPositions;
 		private List<float> verticalYPositions = new List<float>();
 
-		private class RenderingBeatlineInfo
+		private struct VisibleBeatline
 		{
-			public LineRenderer renderer;
-			public int timing;
-		};
-
-		private List<RenderingBeatlineInfo> beatlineInstances = new List<RenderingBeatlineInfo>();
-		private List<LineRenderer> verticalInstances = new List<LineRenderer>();
+			public int Timing;
+			public float Position, Width;
+			public Color Color;
+		}
+		private readonly List<VisibleBeatline> visibleBeatlines = new List<VisibleBeatline>();
+		private LineRenderer beatlineStyle, verticalStyle;
 
 		private CustomGrid customGrid;
 
@@ -66,6 +65,8 @@ namespace Arcade.Compose
 		}
 		private void Start()
 		{
+			beatlineStyle = BeatlinePrefab.GetComponent<LineRenderer>();
+			verticalStyle = VerticalPrefab.GetComponent<LineRenderer>();
 			ArcGameplayManager.Instance.OnChartLoad.AddListener(ReBuildBeatline);
 		}
 		private void Update()
@@ -76,14 +77,10 @@ namespace Arcade.Compose
 			}
 			if (!ArcGameplayManager.Instance.IsLoaded)
 			{
-				beatlineInUse = 0;
-				verticalInUse = 0;
-				HideExceededBeatlineInstance();
-				HideExceededVerticalInstance();
+				visibleBeatlines.Clear();
 				return;
 			}
 			UpdateBeatline();
-			UpdateVertical();
 		}
 		private void OnDestroy()
 		{
@@ -121,51 +118,10 @@ namespace Arcade.Compose
 			}
 		}
 
-		private void HideExceededBeatlineInstance()
-		{
-			int count = beatlineInstances.Count;
-			while (count > beatlineInUse)
-			{
-				beatlineInstances[count - 1].renderer.enabled = false;
-				count--;
-			}
-		}
-		private void HideExceededVerticalInstance()
-		{
-			int count = verticalInstances.Count;
-			while (count > verticalInUse)
-			{
-				verticalInstances[count - 1].enabled = false;
-				count--;
-			}
-		}
-
-		private LineRenderer GetBeatlineInstance(int timing)
-		{
-			while (beatlineInstances.Count < beatlineInUse + 1)
-			{
-				beatlineInstances.Add(new RenderingBeatlineInfo
-				{
-					renderer = Instantiate(BeatlinePrefab, transform).GetComponent<LineRenderer>(),
-					timing = timing,
-				});
-			}
-			beatlineInstances[beatlineInUse].timing = timing;
-			return beatlineInstances[beatlineInUse++].renderer;
-		}
-		private LineRenderer GetVerticalInstance()
-		{
-			while (verticalInstances.Count < verticalInUse + 1)
-			{
-				verticalInstances.Add(Instantiate(VerticalPrefab, VerticalPanel).GetComponent<LineRenderer>());
-			}
-			return verticalInstances[verticalInUse++];
-		}
-
 		private void CalculateBeatlineTimes()
 		{
 			beatlineTimings.Clear();
-			HideExceededBeatlineInstance();
+			visibleBeatlines.Clear();
 			var Timings = ArcTimingManager.Instance.GetTiming(AdeTimingEditor.Instance.currentTimingGroup);
 
 			for (int i = 0; i < Timings.Count; ++i)
@@ -174,6 +130,7 @@ namespace Arcade.Compose
 				float segment = Timings[i].Bpm == 0 ? (nextTiming - Timings[i].Timing) : (60000 / Mathf.Abs(Timings[i].Bpm) / BeatlineDensity);
 				if (segment < 1 || float.IsNaN(segment)) segment = Math.Max(nextTiming - Timings[i].Timing, 1);
 				int primaryCount = 0;
+				int beatCount = 0;
 				while (true)
 				{
 					float j = Timings[i].Timing + primaryCount * segment;
@@ -181,6 +138,9 @@ namespace Arcade.Compose
 					if (j + 1 >= nextTiming)
 						break;
 					int importance = CalculateImportance(primaryCount, BeatlineDensity);
+					bool isMeasure = importance == 0 && Timings[i].BeatsPerLine > 0
+						&& beatCount % Timings[i].BeatsPerLine == 0;
+					if (importance == 0) beatCount++;
 					primaryCount++;
 					if (beatlineTimings.Count > 0)
 					{
@@ -188,16 +148,20 @@ namespace Arcade.Compose
 						if (last.Timing == j)
 						{
 							last.Importance = Mathf.Min(last.Importance, importance);
+							last.IsMeasure |= isMeasure;
+							beatlineTimings[beatlineTimings.Count - 1] = last;
 							continue;
 						}
 					}
-					beatlineTimings.Add(new BeatlineProperty() { Timing = Mathf.RoundToInt(j), Importance = importance });
+					beatlineTimings.Add(new BeatlineProperty() { Timing = Mathf.RoundToInt(j), Importance = importance,
+						TimingIndex = i, IsMeasure = isMeasure });
 				}
 			}
 			if (Timings.Count > 0)
 			{
 				var firstTiming = Timings[0];
 				int primaryCount = 1;
+				int beatCount = 0;
 				float segment = firstTiming.Bpm == 0 ? (firstTiming.Timing) : (60000 / Mathf.Abs(firstTiming.Bpm) / BeatlineDensity);
 				if (segment < 1 || float.IsNaN(segment)) segment = Math.Max(firstTiming.Timing, 1);
 				while (true)
@@ -206,6 +170,9 @@ namespace Arcade.Compose
 					if (j < 0)
 						break;
 					int importance = CalculateImportance(primaryCount, BeatlineDensity);
+					if (importance == 0) beatCount++;
+					bool isMeasure = importance == 0 && firstTiming.BeatsPerLine > 0
+						&& beatCount % firstTiming.BeatsPerLine == 0;
 					primaryCount++;
 					if (beatlineTimings.Count > 0)
 					{
@@ -213,10 +180,13 @@ namespace Arcade.Compose
 						if (first.Timing == j)
 						{
 							first.Importance = Mathf.Min(first.Importance, importance);
+							first.IsMeasure |= isMeasure;
+							beatlineTimings[0] = first;
 							continue;
 						}
 					}
-					beatlineTimings.Insert(0, new BeatlineProperty() { Timing = Mathf.RoundToInt(j), Importance = importance });
+					beatlineTimings.Insert(0, new BeatlineProperty() { Timing = Mathf.RoundToInt(j), Importance = importance,
+						TimingIndex = 0, IsMeasure = isMeasure });
 				}
 			}
 		}
@@ -344,15 +314,7 @@ namespace Arcade.Compose
 			{
 				return 2;
 			}
-			if (Mathf.Approximately(primaryCount % (BeatlineDensity / 6), 0))
-			{
-				return 3;
-			}
-			if (Mathf.Approximately(primaryCount % (BeatlineDensity / 8), 0))
-			{
-				return 4;
-			}
-			return 5;
+			return 3;
 		}
 
 		private void ParseVerticals()
@@ -397,10 +359,11 @@ namespace Arcade.Compose
 		{
 
 			var timingGroup = AdeTimingEditor.Instance.currentTimingGroup;
-			float xEdgePos = 8.5f * (1 + ArcTimingManager.Instance.BeatlineEnwidenRatio * 0.5f);
-			beatlineInUse = 0;
+			visibleBeatlines.Clear();
 			if (EnableBeatline)
 			{
+				int currentTimingIndex = Mathf.Max(0, ArcTimingManager.FindTimingIndex(
+					ArcTimingManager.Instance.GetTiming(timingGroup), ArcGameplayManager.Instance.ChartTiming));
 				foreach (var t in beatlineTimings)
 				{
 					if (!ArcTimingManager.Instance.ShouldTryRender(((int)t.Timing), timingGroup, 0, false))
@@ -413,38 +376,46 @@ namespace Arcade.Compose
 						continue;
 					}
 					float z = pos / 1000f;
-					LineRenderer l = GetBeatlineInstance(t.Timing);
-					l.enabled = true;
-					l.DrawLine(new Vector3(-xEdgePos, -z), new Vector3(xEdgePos, -z));
-					l.endColor = l.startColor = BeatlineColors[t.Importance];
-					l.endWidth = l.startWidth = 0.2f - 0.021f * t.Importance;
+					Color color = t.IsMeasure ? MeasureBeatlineColor : BeatlineColors[t.Importance];
+					if (t.TimingIndex != currentTimingIndex) color.a *= 0.5f;
+					visibleBeatlines.Add(new VisibleBeatline { Timing = t.Timing, Position = -z,
+						Color = color, Width = 0.2f - 0.021f * t.Importance });
 				}
 			}
-			HideExceededBeatlineInstance();
 		}
-		private void UpdateVertical()
+		internal void SubmitGrid(ArcNoteRenderer renderer, Camera camera)
 		{
-			verticalInUse = 0;
+			if (!isActiveAndEnabled) return;
 			float xEdgePos = 8.5f * (1 + ArcTimingManager.Instance.BeatlineEnwidenRatio * 0.5f);
-			float yEdgePos = 5.5f + ArcCameraManager.Instance.EnwidenRatio * 2.745f;
-			if (EnableVertical && AdeCursorManager.Instance.WallPanelEnabled)
+			if (EnableBeatline && (camera.cullingMask & (1 << BeatlinePrefab.layer)) != 0)
 			{
+				Matrix4x4 matrix = transform.localToWorldMatrix * BeatlinePrefab.transform.localToWorldMatrix;
+				foreach (var line in visibleBeatlines)
+					renderer.SubmitLine(matrix.MultiplyPoint3x4(new Vector3(-xEdgePos, line.Position)),
+						matrix.MultiplyPoint3x4(new Vector3(xEdgePos, line.Position)), line.Width, line.Color,
+						beatlineStyle.sortingLayerName, beatlineStyle.sortingOrder);
+			}
+			float yEdgePos = 5.5f + ArcCameraManager.Instance.EnwidenRatio * 2.745f;
+			if (EnableVertical && AdeCursorManager.Instance.WallPanelEnabled
+				&& (camera.cullingMask & (1 << VerticalPrefab.layer)) != 0)
+			{
+				Matrix4x4 matrix = VerticalPanel.localToWorldMatrix * VerticalPrefab.transform.localToWorldMatrix;
+				Vector3 normal = matrix.MultiplyVector(Vector3.forward);
 				foreach (var t in verticalXPositions)
 				{
-					LineRenderer l = GetVerticalInstance();
-					l.DrawLine(new Vector3(ArcAlgorithm.ArcXToWorld(t), 0), new Vector3(ArcAlgorithm.ArcXToWorld(t), yEdgePos));
-					l.endColor = l.startColor = VerticalXColor;
-					l.enabled = true;
+					float x = ArcAlgorithm.ArcXToWorld(t);
+					renderer.SubmitLine(matrix.MultiplyPoint3x4(new Vector3(x, 0)),
+						matrix.MultiplyPoint3x4(new Vector3(x, yEdgePos)), verticalStyle.startWidth, VerticalXColor,
+						verticalStyle.sortingLayerName, verticalStyle.sortingOrder, normal);
 				}
 				foreach (var t in verticalYPositions)
 				{
-					LineRenderer l = GetVerticalInstance();
-					l.DrawLine(new Vector3(-xEdgePos, ArcAlgorithm.ArcYToWorld(t)), new Vector3(xEdgePos, ArcAlgorithm.ArcYToWorld(t)));
-					l.endColor = l.startColor = VerticalYColor;
-					l.enabled = true;
+					float y = ArcAlgorithm.ArcYToWorld(t);
+					renderer.SubmitLine(matrix.MultiplyPoint3x4(new Vector3(-xEdgePos, y)),
+						matrix.MultiplyPoint3x4(new Vector3(xEdgePos, y)), verticalStyle.startWidth, VerticalYColor,
+						verticalStyle.sortingLayerName, verticalStyle.sortingOrder, normal);
 				}
 			}
-			HideExceededVerticalInstance();
 		}
 
 		public int AttachBeatlineTimingFromPos(float z)
@@ -457,16 +428,16 @@ namespace Arcade.Compose
 		internal int AttachBeatlineTimingFromPos(float z, int defaultTiming)
 		{
 			if (!EnableBeatline) return defaultTiming;
-			if (beatlineInUse == 0) return defaultTiming;
+			if (visibleBeatlines.Count == 0) return defaultTiming;
 			int index = -1;
 			float closest = 5;
-			for (int i = 0; i < beatlineInUse; ++i)
+			for (int i = 0; i < visibleBeatlines.Count; ++i)
 			{
-				float lz = beatlineInstances[i].renderer.GetPosition(0).y;
+				float lz = visibleBeatlines[i].Position;
 				float distance = Mathf.Abs(lz - z);
 				if (distance < closest) { closest = distance; index = i; }
 			}
-			return index < 0 ? defaultTiming : beatlineInstances[index].timing;
+			return index < 0 ? defaultTiming : visibleBeatlines[index].Timing;
 		}
 		internal Vector2 AttachDragCoordinate(Vector2 coordinate)
 		{
@@ -492,7 +463,7 @@ namespace Arcade.Compose
 
 		public float AttachVerticalX(float x)
 		{
-			if (verticalInUse == 0) return x;
+			if (!EnableVertical || !AdeCursorManager.Instance.WallPanelEnabled || !ArcGameplayManager.Instance.IsLoaded) return x;
 			if (verticalXPositions.Count == 0) return x;
 			List<float> deltas = new List<float>();
 			for (int i = 0; i < verticalXPositions.Count; ++i)
@@ -505,7 +476,7 @@ namespace Arcade.Compose
 		}
 		public float AttachVerticalY(float y)
 		{
-			if (verticalInUse == 0) return y;
+			if (!EnableVertical || !AdeCursorManager.Instance.WallPanelEnabled || !ArcGameplayManager.Instance.IsLoaded) return y;
 			if (verticalYPositions.Count == 0) return y;
 			List<float> deltas = new List<float>();
 			for (int i = 0; i < verticalYPositions.Count; ++i)

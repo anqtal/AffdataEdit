@@ -43160,15 +43160,14 @@ MonoBehaviour:
   VerticalPrefab: {fileID: 1577616464879250, guid: 3c68bbed901db7e43b76fc0803ef853d, type: 3}
   VerticalPanel: {fileID: 231278415}
   BeatlineDensity: 4
+  MeasureBeatlineColor: {r: 0, g: 0.48235297, b: 1, a: 1}
   BeatlineColors:
   - {r: 0.047058824, g: 0.83137256, b: 0.83137256, a: 1}
-  - {r: 0.24951048, g: 0.8396226, b: 0.33943233, a: 0.9411765}
-  - {r: 1, g: 0.49019608, b: 0.49019608, a: 0.88235295}
-  - {r: 0.6666667, g: 0.32941177, b: 0.627451, a: 0.8235294}
-  - {r: 1, g: 0.62448287, b: 0, a: 0.8235294}
-  - {r: 0.59349555, g: 0.56189924, b: 0.6509434, a: 0.7647059}
-  VerticalXColor: {r: 1, g: 0.8187932, b: 0, a: 0.69803923}
-  VerticalYColor: {r: 1, g: 0.69943273, b: 0, a: 0.69803923}
+  - {r: 0.24951048, g: 0.8396226, b: 0.33943233, a: 0.9019608}
+  - {r: 1, g: 0.49019608, b: 0.49019608, a: 0.84313726}
+  - {r: 0.6666667, g: 0.32941177, b: 0.627451, a: 0.78431374}
+  VerticalXColor: {r: 1, g: 0.48571634, b: 0, a: 0.69803923}
+  VerticalYColor: {r: 1, g: 0.63962233, b: 0, a: 0.69803923}
   DensityInputField: {fileID: 582783353}
   VerticalXInputField: {fileID: 1178422988}
   VerticalYInputField: {fileID: 2004166942}

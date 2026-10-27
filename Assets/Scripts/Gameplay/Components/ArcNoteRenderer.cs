@@ -90,6 +90,8 @@ namespace Arcade.Gameplay
             cameraPosition = cameraForFrame.transform.position;
             cameraForward = cameraForFrame.transform.forward;
             orthographic = cameraForFrame.orthographic;
+            ArcTimingManager.Instance.SubmitBeatlines(this, cameraForFrame);
+            Arcade.Compose.AdeGridManager.Instance?.SubmitGrid(this, cameraForFrame);
             foreach (var tap in ArcTapNoteManager.Instance.Taps)
             {
                 if (!tap.Enable) continue;

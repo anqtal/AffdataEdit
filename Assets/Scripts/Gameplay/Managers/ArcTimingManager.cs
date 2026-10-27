@@ -37,7 +37,7 @@ namespace Arcade.Gameplay
 		public List<ArcTimingGroup> timingGroups = new List<ArcTimingGroup>();
 		public SpriteRenderer[] TrackComponentRenderers;
 		private List<int> beatlineTimings = new List<int>();
-		private List<SpriteRenderer> beatLineInstances = new List<SpriteRenderer>();
+		private SpriteRenderer beatlineStyle;
 		private float earliestRenderTime = 0;
 		private float latestRenderTime = 0;
 		private int phaseShaderId = 0;
@@ -72,7 +72,6 @@ namespace Arcade.Gameplay
 			{
 				UpdateRenderRange(timingGroup);
 			}
-			UpdateBeatline();
 			UpdateTrackSpeed();
 		}
 
@@ -83,7 +82,6 @@ namespace Arcade.Gameplay
 			timingGroups.Clear();
 			AdeTimingEditor.Instance.SetCurrentTimingGroup(null);
 			SetTrackPhase(0);
-			HideExceededBeatlineInstance(0);
 		}
 		public void Load(List<ArcTiming> arcTimings, List<ArcTimingGroup> arcTimingGroups)
 		{
@@ -122,27 +120,9 @@ namespace Arcade.Gameplay
 			}
 			return low - 1;
 		}
-		private void HideExceededBeatlineInstance(int quantity)
-		{
-			int count = beatLineInstances.Count;
-			while (count > quantity)
-			{
-				beatLineInstances[count - 1].enabled = false;
-				count--;
-			}
-		}
-		private SpriteRenderer GetBeatlineInstance(int index)
-		{
-			while (beatLineInstances.Count < index + 1)
-			{
-				beatLineInstances.Add(Instantiate(BeatlinePrefab, BeatlineLayer).GetComponent<SpriteRenderer>());
-			}
-			return beatLineInstances[index];
-		}
 		public void CalculateBeatlineTimes()
 		{
 			beatlineTimings.Clear();
-			HideExceededBeatlineInstance(0);
 			var sharedTimings = new BeatLineTiming[Timings.Count];
 			for (int i = 0; i < Timings.Count; i++)
 			{
@@ -480,9 +460,15 @@ namespace Arcade.Gameplay
 				timingGroup.latestRenderTime = latestRenderTime;
 			}
 		}
-		private void UpdateBeatline()
+		internal void SubmitBeatlines(ArcNoteRenderer renderer, Camera camera)
 		{
-			int index = 0;
+			if (!isActiveAndEnabled || !BeatlineLayer.gameObject.activeInHierarchy
+				|| (camera.cullingMask & (1 << BeatlinePrefab.layer)) == 0) return;
+			if (!beatlineStyle) beatlineStyle = BeatlinePrefab.GetComponent<SpriteRenderer>();
+			if (!beatlineStyle.sprite) return;
+			Matrix4x4 parent = BeatlineLayer.localToWorldMatrix;
+			Quaternion rotation = BeatlinePrefab.transform.localRotation;
+			Matrix4x4 flip = Matrix4x4.Scale(new Vector3(beatlineStyle.flipX ? -1 : 1, beatlineStyle.flipY ? -1 : 1, 1));
 			foreach (int t in beatlineTimings)
 			{
 				if (!ShouldTryRender(t, null, 0, false))
@@ -494,14 +480,12 @@ namespace Arcade.Gameplay
 				{
 					continue;
 				}
-				SpriteRenderer s = GetBeatlineInstance(index);
-				s.enabled = true;
 				float z = pos / 1000f;
-				s.transform.localPosition = new Vector3(0, 0, -z);
-				s.transform.localScale = new Vector3(1700 * (1 + BeatlineEnwidenRatio * 0.5f), 20 + z);
-				index++;
+				Matrix4x4 matrix = parent * Matrix4x4.TRS(new Vector3(0, 0, -z), rotation,
+					new Vector3(1700 * (1 + BeatlineEnwidenRatio * 0.5f), 20 + z, 1)) * flip;
+				renderer.SubmitSprite(beatlineStyle.sprite, matrix, beatlineStyle.color,
+					beatlineStyle.sortingLayerName, beatlineStyle.sortingOrder, beatlineStyle.sharedMaterial.renderQueue);
 			}
-			HideExceededBeatlineInstance(index);
 		}
 		private void UpdateTrackSpeed()
 		{
