@@ -82,7 +82,7 @@ namespace Arcade.Compose.Editing
 			ArcTimingGroup timingGroup = new ArcTimingGroup
 			{
 				Id = ArcTimingManager.Instance.timingGroups.Count + 1,
-				Timings = ArcTimingManager.Instance.GetTiming(currentTimingGroup).Select((timing) => timing.Clone() as ArcTiming).ToList(),
+				Timings = new List<ArcTiming> { new ArcTiming { Timing = 0, Bpm = ArcTimingManager.Instance.BaseBpm, BeatsPerLine = 4 } },
 			};
 			AdeCommandManager.Instance.Add(new AddTimingGroup(timingGroup));
 			SetCurrentTimingGroup(timingGroup);

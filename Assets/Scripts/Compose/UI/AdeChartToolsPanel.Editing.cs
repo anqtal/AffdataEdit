@@ -35,7 +35,7 @@ namespace Arcade.Compose
             if (!Loaded()) return;
             AdeTimingEditor.Instance.AddTimingGroup();
             dirty = true;
-            Message("已添加时间组，继承当前组的 Timing。可撤销。");
+            Message("已添加时间组，使用 base BPM 初始化一条 Timing。可撤销。");
         }
 
         private int GroupEventCount(ArcTimingGroup group)
@@ -57,21 +57,10 @@ namespace Arcade.Compose
                 Timings = ArcTimingManager.Instance.GetTiming(source).Select(t => (ArcTiming)t.Clone()).ToList()
             };
             copy.ApplyAttributes(source?.Attributes ?? "");
-            var commands = new List<ICommand> { new AddTimingGroup(copy) };
-            var chart = ArcGameplayManager.Instance.Chart;
-            var events = chart.Taps.Cast<ArcEvent>().Concat(chart.Holds).Concat(chart.Arcs)
-                .Concat(chart.Slides).Concat(chart.Cameras).Concat(chart.SceneControl);
-            foreach (var item in events.Where(e => ((IHasTimingGroup)e).TimingGroup == source))
-            {
-                var clone = item.Clone();
-                ((ISetableTimingGroup)clone).TimingGroup = copy;
-                commands.Add(clone is ArcNote ? (ICommand)new AddArcEventCommand(clone)
-                    : new ChartControlCommand(clone, null, clone));
-            }
-            AdeCommandManager.Instance.Add(new BatchCommand(commands.ToArray(), "复制时间组"));
+            AdeCommandManager.Instance.Add(new AddTimingGroup(copy));
             AdeTimingEditor.Instance.SetCurrentTimingGroup(copy);
             dirty = true;
-            Message("已复制时间组及组内内容。可撤销。");
+            Message("已复制时间组的 Timing，未复制组内音符及其他事件。可撤销。");
         }
 
         private void DeleteGroup(int index)
