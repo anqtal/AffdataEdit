@@ -63,7 +63,7 @@ namespace Arcade.Compose.Editing
 		}
 		private string GetTimingString(ArcTiming timing)
 		{
-			return $"{timing.Timing.ToString(CultureInfo.InvariantCulture)},{timing.Bpm.ToString("f2", CultureInfo.InvariantCulture)},{timing.BeatsPerLine.ToString("f2", CultureInfo.InvariantCulture)}";
+			return $"{timing.Timing.ToString(CultureInfo.InvariantCulture)},{timing.Bpm.ToString("f3", CultureInfo.InvariantCulture)},{timing.BeatsPerLine.ToString("f2", CultureInfo.InvariantCulture)}";
 		}
 
 		public void AddTiming(ArcTiming caller)
