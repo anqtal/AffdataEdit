@@ -73,8 +73,12 @@ namespace Arcade.Compose
 				handle.preserveAspect = true;
 			if (selectable is Scrollbar || !(selectable.targetGraphic is Image image) || !image.sprite) return;
 			string name = image.sprite.name;
-			if (name == "ToolBackground" && selectable is Button && !selectable.GetComponent<AdeToolbarPointerFocus>())
-				selectable.gameObject.AddComponent<AdeToolbarPointerFocus>();
+			if (name == "ToolBackground" && selectable is Button)
+			{
+				if (!selectable.GetComponent<AdeToolbarPointerFocus>())
+					selectable.gameObject.AddComponent<AdeToolbarPointerFocus>();
+				SetStates(selectable, ToolbarEntry);
+			}
 			// Serialized asset names replace the control path separator with an underscore.
 			if (name.StartsWith(ControlShapePrefix) || name.StartsWith("ThemeControl_"))
 				name = name.Substring(ControlShapePrefix.Length);
