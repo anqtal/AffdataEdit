@@ -34,6 +34,8 @@ namespace Arcade.Gameplay
 
 		public bool Auto { get; set; }
 		public bool IsPlaying { get; set; }
+		// Explicit seeks invalidate click cycling; normal playback advances without changing this.
+		public uint SeekVersion { get; private set; }
 		private float audioTiming;
 		public int AudioTiming
 		{
@@ -43,6 +45,7 @@ namespace Arcade.Gameplay
 			}
 			set
 			{
+				SeekVersion++;
 				audioTiming = value / 1000f;
 				ArcAudioManager.Instance.Timing = Mathf.Max(0, audioTiming);
 			}
@@ -202,6 +205,7 @@ namespace Arcade.Gameplay
 		}
 		public void PlayDelayed()
 		{
+			SeekVersion++;
 			AudioTimingWithoutGlobalOffset = -3f;
 			ResetJudge();
 			ArcAudioManager.Instance.Stop();
@@ -239,6 +243,7 @@ namespace Arcade.Gameplay
 		}
 		public void Stop()
 		{
+			SeekVersion++;
 			audioTiming = 0;
 			ArcAudioManager.Instance.Pause();
 			ArcAudioManager.Instance.Timing = 0;

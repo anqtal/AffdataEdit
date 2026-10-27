@@ -1,8 +1,8 @@
-using System.Collections;
 using System.Collections.Generic;
 using Arcade.Compose.Editing;
 using Arcade.Gameplay;
 using Arcade.Gameplay.Chart;
+using UnityEngine;
 using UnityEngine.InputSystem;
 
 namespace Arcade.Compose.Operation
@@ -18,6 +18,16 @@ namespace Arcade.Compose.Operation
 
 		private float? rangeSelectPosition = null;
 		public float? RangeSelectPosition { get => rangeSelectPosition; }
+		private const float CyclePositionTolerance = 4;
+		private readonly List<ArcNote> hits = new List<ArcNote>();
+		private readonly List<ArcNote> cycleNotes = new List<ArcNote>();
+		private int cycleIndex;
+		private Vector2 cyclePosition;
+		private ArcChart cycleChart;
+		private uint cycleSeekVersion;
+		private Camera cycleCamera;
+		private Matrix4x4 cycleView, cycleProjection;
+		private Rect cycleCameraRect;
 
 		public override AdeOperationResult TryExecuteOperation()
 		{
@@ -28,8 +38,14 @@ namespace Arcade.Compose.Operation
 
 			if (!AdeGameplayContentInputHandler.InputActive)
 			{
+				ResetCycle();
 				return false;
 			}
+			bool multiple = AdeInputManager.Instance.Inputs.MultipleSelection.IsPressed();
+			bool range = AdeInputManager.Instance.Inputs.RangeSelection.IsPressed();
+			var camera = AdeCursorManager.Instance.GameplayCamera;
+			Vector2 position = Mouse.current.position.ReadValue();
+			if (multiple || range || !CanContinueCycle(camera, position)) ResetCycle();
 
 			if (Mouse.current.leftButton.wasPressedThisFrame)
 			{
@@ -52,7 +68,7 @@ namespace Arcade.Compose.Operation
 					}
 				}
 
-				ArcNote n = ArcNoteRenderer.PickNote(AdeCursorManager.Instance.GameplayCamera, Mouse.current.position.ReadValue());
+				ArcNote n = multiple || range ? ArcNoteRenderer.PickNote(camera, position) : PickCyclingNote(camera, position);
 				if (n != null)
 				{
 					if (!AdeInputManager.Instance.Inputs.MultipleSelection.IsPressed())
@@ -81,6 +97,51 @@ namespace Arcade.Compose.Operation
 		public override void Reset()
 		{
 			rangeSelectPosition = null;
+			ResetCycle();
+		}
+
+		private bool CanContinueCycle(Camera camera, Vector2 position)
+		{
+			var game = ArcGameplayManager.Instance;
+			var selected = AdeSelectionManager.Instance.SelectedNotes;
+			return cycleNotes.Count > 0 && cycleCamera == camera && camera
+				&& cycleChart == game.Chart && cycleSeekVersion == game.SeekVersion
+				&& (position - cyclePosition).sqrMagnitude <= CyclePositionTolerance * CyclePositionTolerance
+				&& cycleView.Equals(camera.worldToCameraMatrix) && cycleProjection.Equals(camera.projectionMatrix)
+				&& cycleCameraRect.Equals(camera.pixelRect)
+				&& selected.Count == 1 && selected[0] == cycleNotes[cycleIndex];
+		}
+
+		private ArcNote PickCyclingNote(Camera camera, Vector2 position)
+		{
+			bool same = CanContinueCycle(camera, position);
+			ArcNoteRenderer.PickNotes(camera, position, hits);
+			if (hits.Count == 0) { ResetCycle(); return null; }
+			same &= hits.Count == cycleNotes.Count;
+			for (int i = 0; same && i < hits.Count; i++) same = hits[i] == cycleNotes[i];
+			if (same) cycleIndex = (cycleIndex + 1) % cycleNotes.Count;
+			else
+			{
+				cycleNotes.Clear();
+				cycleNotes.AddRange(hits);
+				cycleIndex = 0;
+				cyclePosition = position;
+				cycleChart = ArcGameplayManager.Instance.Chart;
+				cycleSeekVersion = ArcGameplayManager.Instance.SeekVersion;
+				cycleCamera = camera;
+				cycleView = camera.worldToCameraMatrix;
+				cycleProjection = camera.projectionMatrix;
+				cycleCameraRect = camera.pixelRect;
+			}
+			return cycleNotes[cycleIndex];
+		}
+
+		private void ResetCycle()
+		{
+			hits.Clear();
+			cycleNotes.Clear();
+			cycleChart = null;
+			cycleCamera = null;
 		}
 	}
 }

@@ -18,6 +18,12 @@ namespace Arcade.Gameplay
         private readonly List<Mesh> stalePickingMeshes = new List<Mesh>();
         private int pickingQuery;
         private ArcChart pickingChart;
+        private struct PickingHit
+        {
+            public float Distance;
+            public int Order;
+        }
+        private readonly Dictionary<ArcNote, PickingHit> pickingHits = new Dictionary<ArcNote, PickingHit>();
         private static readonly Vector2[] TracePickOffsets =
         {
             new Vector2(-2, 0), new Vector2(2, 0), new Vector2(0, -2), new Vector2(0, 2)
@@ -25,14 +31,8 @@ namespace Arcade.Gameplay
 
         public static ArcNote PickNote(Camera camera, Vector2 screenPosition, float maxDistance = 120)
         {
-            var owner = Instance;
-            if (!owner || owner.cameraForFrame != camera || !ArcGameplayManager.Instance.IsLoaded
-                || owner.pickingChart != ArcGameplayManager.Instance.Chart) return null;
-            owner.stalePickingMeshes.Clear();
-            foreach (var mesh in owner.pickingMeshes.Keys)
-                if (!mesh) owner.stalePickingMeshes.Add(mesh);
-            foreach (var mesh in owner.stalePickingMeshes) owner.pickingMeshes.Remove(mesh);
-            owner.pickingQuery++;
+            var owner = BeginPicking(camera);
+            if (!owner) return null;
 
             float distance = maxDistance;
             ArcNote note = owner.RaycastNote(camera.ScreenPointToRay(screenPosition), ref distance, false);
@@ -46,15 +46,54 @@ namespace Arcade.Gameplay
             return note;
         }
 
-        private ArcNote RaycastNote(Ray ray, ref float closest, bool tracesOnly)
+        public static void PickNotes(Camera camera, Vector2 screenPosition, List<ArcNote> results, float maxDistance = 120)
+        {
+            results.Clear();
+            var owner = BeginPicking(camera);
+            if (!owner) return;
+            owner.pickingHits.Clear();
+            float distance = maxDistance;
+            owner.RaycastNote(camera.ScreenPointToRay(screenPosition), ref distance, false, true);
+            if (owner.pickingHits.Count == 0)
+                foreach (var offset in TracePickOffsets)
+                    owner.RaycastNote(camera.ScreenPointToRay(screenPosition + offset), ref distance, true, true);
+            results.AddRange(owner.pickingHits.Keys);
+            results.Sort(owner.ComparePickingHits);
+            owner.pickingHits.Clear();
+        }
+
+        private int ComparePickingHits(ArcNote a, ArcNote b)
+        {
+            var first = pickingHits[a];
+            var second = pickingHits[b];
+            int depth = first.Distance.CompareTo(second.Distance);
+            return depth != 0 ? depth : first.Order.CompareTo(second.Order);
+        }
+
+        private static ArcNoteRenderer BeginPicking(Camera camera)
+        {
+            var owner = Instance;
+            if (!owner || !camera || owner.cameraForFrame != camera || !ArcGameplayManager.Instance.IsLoaded
+                || owner.pickingChart != ArcGameplayManager.Instance.Chart) return null;
+            owner.stalePickingMeshes.Clear();
+            foreach (var mesh in owner.pickingMeshes.Keys)
+                if (!mesh) owner.stalePickingMeshes.Add(mesh);
+            foreach (var mesh in owner.stalePickingMeshes) owner.pickingMeshes.Remove(mesh);
+            owner.pickingQuery++;
+            return owner;
+        }
+
+        private ArcNote RaycastNote(Ray ray, ref float closest, bool tracesOnly, bool collectAll = false)
         {
             ArcNote result = null;
             foreach (var item in items)
             {
                 if (item.Note == null || (!item.Note.Enable && !(item.Note is ArcSlide)) || item.Data.Options.y <= 0) continue;
                 if (tracesOnly && !(item.Note is ArcArc arc && arc.IsVoid)) continue;
+                bool alreadyHit = pickingHits.TryGetValue(item.Note, out var previous);
+                float itemDistance = collectAll && alreadyHit ? previous.Distance : closest;
                 if (!item.Bounds.IntersectRay(ray, out float entry)
-                    || (!item.Bounds.Contains(ray.origin) && entry > closest)) continue;
+                    || (!item.Bounds.Contains(ray.origin) && entry > itemDistance)) continue;
                 var geometry = GetPickingMesh(item.Mesh);
                 var triangles = geometry.Triangles[item.Submesh];
                 Matrix4x4 inverse = item.Data.Transform.inverse;
@@ -62,11 +101,12 @@ namespace Arcade.Gameplay
                 // Do not normalize: the intersection parameter must stay in world units under scaling.
                 Vector3 direction = inverse.MultiplyVector(ray.direction);
                 int mode = (int)item.Data.Options.x;
+                bool hitItem = false;
                 for (int i = 0; i < triangles.Count; i += 3)
                 {
                     int a = triangles[i], b = triangles[i + 1], c = triangles[i + 2];
                     if (!IntersectTriangle(origin, direction, geometry.Vertices[a], geometry.Vertices[b],
-                        geometry.Vertices[c], out float distance, out Vector2 barycentric) || distance >= closest) continue;
+                        geometry.Vertices[c], out float distance, out Vector2 barycentric) || distance >= itemDistance) continue;
                     if (mode == 1 || mode == 2)
                     {
                         float v = geometry.Uv[a].y * (1 - barycentric.x - barycentric.y)
@@ -74,9 +114,13 @@ namespace Arcade.Gameplay
                         if (v < item.Data.ClipHeight.x || v > item.Data.ClipHeight.y) continue;
                     }
                     if (item.Note is ArcSlide && !ArcSlideVisual.IsWithinRenderDistance(ray.GetPoint(distance).z)) continue;
-                    closest = distance;
+                    itemDistance = distance;
+                    hitItem = true;
+                    if (!collectAll) closest = distance;
                     result = item.Note;
                 }
+                if (collectAll && hitItem)
+                    pickingHits[item.Note] = new PickingHit { Distance = itemDistance, Order = alreadyHit ? previous.Order : pickingHits.Count };
             }
             return result;
         }
