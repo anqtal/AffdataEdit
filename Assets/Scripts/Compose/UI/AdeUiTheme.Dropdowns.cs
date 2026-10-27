@@ -20,8 +20,9 @@ namespace Arcade.Compose
             var arrow = dropdown.transform.Find("Arrow") as RectTransform;
             if (arrow)
             {
-                arrow.anchorMin = arrow.anchorMax = arrow.pivot = new Vector2(1, .5f);
-                arrow.anchoredPosition = new Vector2(-12, 0);
+                arrow.anchorMin = arrow.anchorMax = new Vector2(1, .5f);
+                arrow.pivot = new Vector2(.5f, .5f);
+                arrow.anchoredPosition = new Vector2(-20, 0);
                 arrow.sizeDelta = new Vector2(16, 16);
                 var image = arrow.GetComponent<Image>();
                 if (image) image.color = Current.Muted;
@@ -36,6 +37,7 @@ namespace Arcade.Compose
             }
             template.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, 228);
             var scroll = template.GetComponent<ScrollRect>();
+            if (scroll) scroll.scrollSensitivity = 28;
             if (scroll && scroll.verticalScrollbar)
             {
                 var bar = scroll.verticalScrollbar;
@@ -59,6 +61,9 @@ namespace Arcade.Compose
             }
             var item = dropdown.itemText.GetComponentInParent<Toggle>(true);
             if (!item) return;
+            if (dropdown.itemImage == item.targetGraphic) dropdown.itemImage = null;
+            if (!item.GetComponent<AdeDropdownPointerFocus>())
+                item.gameObject.AddComponent<AdeDropdownPointerFocus>();
             var itemRect = (RectTransform)item.transform;
             itemRect.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, 44);
             var content = (RectTransform)itemRect.parent;
