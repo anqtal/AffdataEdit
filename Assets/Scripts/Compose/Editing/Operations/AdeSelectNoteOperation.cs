@@ -79,6 +79,19 @@ namespace Arcade.Compose.Operation
 					}
 					else
 					{
+						var selection = AdeSelectionManager.Instance;
+						// As in Arcade Alpha, Ctrl-clicking a selected arc selects its whole arc group,
+						// or deselects the group once all of it is selected.
+						if (n is ArcArc arc && arc.ArcGroup != null && arc.ArcGroup.Count > 1 && selection.SelectedNotes.Contains(arc))
+						{
+							bool groupSelected = arc.ArcGroup.TrueForAll(a => selection.SelectedNotes.Contains(a));
+							foreach (var a in arc.ArcGroup)
+							{
+								if (groupSelected) selection.DeselectNote(a);
+								else selection.SelectNote(a);
+							}
+							return true;
+						}
 						if (AdeSelectionManager.Instance.SelectedNotes.Contains(n)) AdeSelectionManager.Instance.DeselectNote(n);
 						else AdeSelectionManager.Instance.SelectNote(n);
 						return true;
