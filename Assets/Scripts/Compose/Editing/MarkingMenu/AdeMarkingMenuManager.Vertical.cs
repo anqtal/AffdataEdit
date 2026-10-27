@@ -12,9 +12,10 @@ namespace Arcade.Compose
 	{
 		private const float VerticalButtonWidth = 48;
 		private MarkingMenuItem arcMoreItem;
+		private MarkingMenuItem[] arcTapItems;
 
 		// The vertical menu regroups click-to-create items: Arc applies its last settings while a
-		// square button beside it opens the Arc options, and 不创建/退出 share a row.
+		// square button beside it opens the Arc options. ArcTap modes and 不创建/退出 share rows.
 		private MarkingMenuItem[] ArrangeVerticalItems(MarkingMenuItem[] items)
 		{
 			var create = AdeClickToCreate.Instance;
@@ -28,6 +29,33 @@ namespace Arcade.Compose
 				arc.VerticalColumn = 1;
 				arcMoreItem.VerticalColumn = 2;
 				list.Insert(index + 1, arcMoreItem);
+			}
+			var arcTap = create.ClickToCreateItems[4];
+			index = list.IndexOf(arcTap);
+			if (index >= 0)
+			{
+				if (arcTapItems == null)
+				{
+					arcTapItems = new[]
+					{
+						CloneVerticalItem(arcTap, "ContextMenuArcTap", "ArcTap"),
+						CloneVerticalItem(arcTap, "ContextMenuSingleArcTap", "单 ArcTap")
+					};
+					for (int i = 0; i < arcTapItems.Length; i++)
+					{
+						var mode = (ClickToCreateArctapMode)i;
+						arcTapItems[i].IconKind = () => "create-arctap";
+						arcTapItems[i].OnConfirmed.AddListener(() =>
+						{
+							create.SetClickToCreateMode(ClickToCreateMode.ArcTap);
+							create.SetClickToCreateArctapMode(mode);
+						});
+					}
+				}
+				arcTapItems[0].VerticalColumn = 1;
+				arcTapItems[1].VerticalColumn = 2;
+				list.RemoveAt(index);
+				list.InsertRange(index, arcTapItems);
 			}
 			var none = create.ClickToCreateItems[0];
 			var exit = create.ClickToCreateItems[5];

@@ -89,7 +89,7 @@ namespace Arcade.Compose
 		private void LayoutVerticalMenu(int depth, Vector2 origin, MarkingMenuItem[] items, MarkingMenuItem parent)
 		{
 			if (items.Length == 0) return;
-			const float padding = 4;
+			const float padding = 4, rowSpacing = 4;
 			// A row holds one item, or a left/right pair; a right item with VerticalWidth is a fixed-width button.
 			var rows = new List<(MarkingMenuItem Left, MarkingMenuItem Right)>();
 			for (int i = 0; i < items.Length; i++)
@@ -98,7 +98,7 @@ namespace Arcade.Compose
 					rows.Add((items[i], items[++i]));
 				else rows.Add((items[i], null));
 			}
-			float width = 260, height = 48;
+			float width = 260, height = 60;
 			foreach (var (left, right) in rows)
 			{
 				float rowWidth = left.ItemRectTransform.rect.width;
@@ -112,7 +112,7 @@ namespace Arcade.Compose
 				height = Mathf.Max(height, left.ItemRectTransform.rect.height);
 			}
 			int count = rows.Count;
-			Vector2 size = new Vector2(width + padding * 2, height * count + padding * 2);
+			Vector2 size = new Vector2(width + padding * 2, height * count + rowSpacing * (count - 1) + padding * 2);
 			Vector2 available = ArcadeComposeManager.Instance.EditorCanvas.rect.size;
 			Vector2 topLeft = origin + new Vector2(8, -8);
 			if (parent)
@@ -129,7 +129,7 @@ namespace Arcade.Compose
 			{
 				var (left, right) = rows[row];
 				float leftWidth = !right ? width : right.VerticalWidth > 0 ? width - right.VerticalWidth : width / 2;
-				float y = -padding - height * (row + .5f);
+				float y = -padding - height * (row + .5f) - rowSpacing * row;
 				left.SetRowSize(leftWidth, height, row < count - 1);
 				left.Position = topLeft + new Vector2(padding + leftWidth / 2, y);
 				if (!right) continue;
