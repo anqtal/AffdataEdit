@@ -90,7 +90,7 @@ namespace Arcade.Compose
                     : row.name == "KeepContextMenuOpen" || row.name == "VerticalContextMenu" ? Page.ContextMenu
                     : row.name == "PlaybackSync" || row.name == "GlobalAudioOffset" || row.name.StartsWith("WindowsAudio") ? Page.Audio : Page.General);
             foreach (Transform row in settings)
-                if (row.name != "Wraper") Register(row, Page.About);
+                if (row.name != "Wraper" && row.name != "Text" && row.name != "Version") Register(row, Page.About);
             foreach (Page page in SourcePages)
             {
                 int i = (int)page;
@@ -228,6 +228,7 @@ namespace Arcade.Compose
             }
             BuildAppearance();
             BuildStorage();
+            BuildAbout();
             BuildHotkeyGroups();
             BuildContextMenuEditor();
             var accountActions = Rect("AccountActions", pages[(int)Page.Account], typeof(HorizontalLayoutGroup));
@@ -344,6 +345,7 @@ namespace Arcade.Compose
             dragModeDropdown?.SetValueWithoutNotify((int)Editing.AdeDragEdit.Instance.Mode);
             StyleAppearance();
             StyleStorage();
+            StyleAbout();
             StyleHotkeyGroups();
             StyleContextMenu();
             sidebar.color = AdeUiTheme.Current.Chrome;
