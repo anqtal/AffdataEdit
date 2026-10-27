@@ -110,16 +110,26 @@ namespace Arcade.Gameplay
                 var geometry = GetPickingMesh(item.Mesh);
                 var triangles = geometry.Triangles[item.Submesh];
                 Matrix4x4 inverse = item.Data.Transform.inverse;
-                Vector3 origin = inverse.MultiplyPoint3x4(ray.origin);
+                // Zero-duration Arc bodies flatten into XY, so their transform has no inverse.
+                // Intersect their rendered triangles in world space instead.
+                bool worldSpace = inverse == Matrix4x4.zero;
+                Vector3 origin = worldSpace ? ray.origin : inverse.MultiplyPoint3x4(ray.origin);
                 // Do not normalize: the intersection parameter must stay in world units under scaling.
-                Vector3 direction = inverse.MultiplyVector(ray.direction);
+                Vector3 direction = worldSpace ? ray.direction : inverse.MultiplyVector(ray.direction);
                 int mode = (int)item.Data.Options.x;
                 bool hitItem = false;
                 for (int i = 0; i < triangles.Count; i += 3)
                 {
                     int a = triangles[i], b = triangles[i + 1], c = triangles[i + 2];
-                    if (!IntersectTriangle(origin, direction, geometry.Vertices[a], geometry.Vertices[b],
-                        geometry.Vertices[c], out float distance, out Vector2 barycentric) || distance >= itemDistance) continue;
+                    Vector3 va = geometry.Vertices[a], vb = geometry.Vertices[b], vc = geometry.Vertices[c];
+                    if (worldSpace)
+                    {
+                        va = item.Data.Transform.MultiplyPoint3x4(va);
+                        vb = item.Data.Transform.MultiplyPoint3x4(vb);
+                        vc = item.Data.Transform.MultiplyPoint3x4(vc);
+                    }
+                    if (!IntersectTriangle(origin, direction, va, vb, vc,
+                        out float distance, out Vector2 barycentric) || distance >= itemDistance) continue;
                     if (mode == 1 || mode == 2)
                     {
                         float v = geometry.Uv[a].y * (1 - barycentric.x - barycentric.y)
