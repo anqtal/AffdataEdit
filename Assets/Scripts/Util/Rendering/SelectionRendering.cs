@@ -150,7 +150,10 @@ namespace Arcade.Util.Rendering
 
 		public override void AddRenderPasses(ScriptableRenderer renderer, ref RenderingData renderingData)
 		{
-			if (renderingData.cameraData.cameraType == CameraType.Game)
+			// Only the gameplay camera draws notes. Without a selected note there is nothing to
+			// outline, and skipping the pass lets the render graph free its two screen-sized targets.
+			if (renderingData.cameraData.cameraType == CameraType.Game
+				&& Arcade.Gameplay.ArcNoteRenderer.HasSelection(renderingData.cameraData.camera))
 			{
 				renderer.EnqueuePass(selectionPass);
 			}

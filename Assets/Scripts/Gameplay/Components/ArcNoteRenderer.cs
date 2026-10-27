@@ -262,10 +262,22 @@ namespace Arcade.Gameplay
             if (materials.TryGetValue(key, out var material)) return material;
             material = new Material(Resources.Load<Shader>("NoteIndirect")) { name = "Indirect notes", enableInstancing = true, renderQueue = item.Queue };
             material.SetInt("_ZWrite", item.DepthWrite); material.SetInt("_ZTest", item.DepthTest);
-            material.SetTexture("_ArchTexture", Resources.Load<Texture2D>("SlideOriginalReference/architect_lines"));
-            material.SetTexture("_DotTexture", Resources.Load<Texture2D>("SlideOriginalReference/dot_grid"));
+            if (slideLines) material.SetTexture("_ArchTexture", slideLines);
+            if (slideDots) material.SetTexture("_DotTexture", slideDots);
             materials.Add(key, material);
             return material;
+        }
+        // ArcSlideManager loads these with the first Slide.
+        private Texture2D slideLines, slideDots;
+        internal void SetSlideTextures(Texture2D lines, Texture2D dots)
+        {
+            slideLines = lines;
+            slideDots = dots;
+            foreach (var material in materials.Values)
+            {
+                material.SetTexture("_ArchTexture", lines);
+                material.SetTexture("_DotTexture", dots);
+            }
         }
         private void Upload()
         {
@@ -315,6 +327,15 @@ namespace Arcade.Gameplay
             if (buffer != null && buffer.count >= count) return;
             buffer?.Dispose();
             buffer = new GraphicsBuffer(target, Mathf.NextPowerOfTwo(Mathf.Max(16,count)), stride);
+        }
+        // Whether this frame's notes for the camera include a selected one.
+        internal static bool HasSelection(Camera camera)
+        {
+            var owner = Instance;
+            if (!owner || owner.frame != Time.frameCount || owner.cameraForFrame != camera) return false;
+            for (int i = 0; i < owner.commands.Count; i++)
+                if (owner.draws[i].Selected) return true;
+            return false;
         }
         internal static void DrawSelection(RasterCommandBuffer command, Camera camera)
         {

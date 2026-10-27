@@ -35,30 +35,38 @@ namespace Arcade.Gameplay
         {
             Instance = this;
             BodyMaterial = Make("SpcSkyArea");
-            BodyMaterial.SetTexture("_ArchTexture", Resources.Load<Texture2D>("SlideOriginalReference/architect_lines"));
-            BodyMaterial.SetTexture("_DotTexture", Resources.Load<Texture2D>("SlideOriginalReference/dot_grid"));
             ShadowMaterial = Make("SlideShadow");
             BracketMaterial = Make("SlideBracket");
-            BracketMaterial.SetTexture("_MainTex", Resources.Load<Texture2D>("SlideOriginalReference/square_bracket"));
             BracketMesh = ArcNoteMeshes.Bracket;
             glowMaterial = Make("SpcSkyLineGlow");
+            floorGlowMaterial = Make("SpcSkyLineGlow");
+            highGlowMaterial = Make("SpcSkyLineGlow");
             gridMaterial = Make("SpcJudgementGrid");
             blurMaterial = Make("SpcBlur");
+            gameObject.AddComponent<Arcade.Compose.UI.AdeSlideEditor>();
+        }
+        // Slide textures and judgement grids load with the first Slide; most charts have none.
+        private void EnsureResources()
+        {
+            if (grid != null) return;
+            var lines = Resources.Load<Texture2D>("SlideOriginalReference/architect_lines");
+            var dots = Resources.Load<Texture2D>("SlideOriginalReference/dot_grid");
+            BodyMaterial.SetTexture("_ArchTexture", lines);
+            BodyMaterial.SetTexture("_DotTexture", dots);
+            BracketMaterial.SetTexture("_MainTex", Resources.Load<Texture2D>("SlideOriginalReference/square_bracket"));
+            ArcNoteRenderer.Instance?.SetSlideTextures(lines, dots);
             grid = new ArcSlideJudgementGrid();
             grid.Build(gridMaterial, blurMaterial, 1024, 576);
             glowMaterial.SetTexture("_DownscaledGrid", grid.SharpTexture);
             glowMaterial.SetTexture("_DownscaledBlurredGrid", grid.BlurredTexture);
             floorGrid = new ArcSlideJudgementGrid();
             floorGrid.Build(gridMaterial, blurMaterial, 1024, 576);
-            floorGlowMaterial = Make("SpcSkyLineGlow");
             floorGlowMaterial.SetTexture("_DownscaledGrid", floorGrid.SharpTexture);
             floorGlowMaterial.SetTexture("_DownscaledBlurredGrid", floorGrid.BlurredTexture);
             highGrid = new ArcSlideJudgementGrid();
             highGrid.Build(gridMaterial, blurMaterial, 1024, 576);
-            highGlowMaterial = Make("SpcSkyLineGlow");
             highGlowMaterial.SetTexture("_DownscaledGrid", highGrid.SharpTexture);
             highGlowMaterial.SetTexture("_DownscaledBlurredGrid", highGrid.BlurredTexture);
-            gameObject.AddComponent<Arcade.Compose.UI.AdeSlideEditor>();
         }
         private static Material Make(string name)
         {
@@ -106,6 +114,7 @@ namespace Arcade.Gameplay
         {
             var game = ArcGameplayManager.Instance;
             if (!game || !game.IsLoaded) return;
+            if (Slides.Count > 0) EnsureResources();
             int now = game.ChartTiming;
             bool discontinuity = previousTime == int.MinValue || now < previousTime || (long)now - previousTime > 250;
             if (discontinuity) ResetFeedback();
@@ -163,15 +172,18 @@ namespace Arcade.Gameplay
                 effect.Properties.SetFloat("_Width", effect.Range.y - effect.Range.x);
                 effect.Renderer.SetPropertyBlock(effect.Properties);
             }
-            grid.SetSkyRanges(activeRanges);
-            grid.SetPresentationClock(Mathf.Max(0, now / 1000f));
-            grid.UpdateFrame(game.IsPlaying && !discontinuity ? Mathf.Max(0, now - previousTime) / 1000f : 0);
-            floorGrid.SetSkyRanges(floorRanges);
-            floorGrid.SetPresentationClock(Mathf.Max(0, now / 1000f));
-            floorGrid.UpdateFrame(game.IsPlaying && !discontinuity ? Mathf.Max(0, now - previousTime) / 1000f : 0);
-            highGrid.SetSkyRanges(highRanges);
-            highGrid.SetPresentationClock(Mathf.Max(0, now / 1000f));
-            highGrid.UpdateFrame(game.IsPlaying && !discontinuity ? Mathf.Max(0, now - previousTime) / 1000f : 0);
+            if (grid != null)
+            {
+                grid.SetSkyRanges(activeRanges);
+                grid.SetPresentationClock(Mathf.Max(0, now / 1000f));
+                grid.UpdateFrame(game.IsPlaying && !discontinuity ? Mathf.Max(0, now - previousTime) / 1000f : 0);
+                floorGrid.SetSkyRanges(floorRanges);
+                floorGrid.SetPresentationClock(Mathf.Max(0, now / 1000f));
+                floorGrid.UpdateFrame(game.IsPlaying && !discontinuity ? Mathf.Max(0, now - previousTime) / 1000f : 0);
+                highGrid.SetSkyRanges(highRanges);
+                highGrid.SetPresentationClock(Mathf.Max(0, now / 1000f));
+                highGrid.UpdateFrame(game.IsPlaying && !discontinuity ? Mathf.Max(0, now - previousTime) / 1000f : 0);
+            }
             previousTime = now;
             previousPlaying = game.IsPlaying;
         }

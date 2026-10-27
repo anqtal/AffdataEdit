@@ -24,8 +24,8 @@ TextureImporter:
   - serializedVersion: 4
     buildTarget: DefaultTexturePlatform
     maxTextureSize: 1024
-    textureFormat: 4
-    textureCompression: 0
+    textureFormat: -1
+    textureCompression: 2
     crunchedCompression: 0
     overridden: 0
   userData: 
