@@ -53,7 +53,7 @@ namespace Arcade.Compose
         private static Preset darkPreset = Presets[0], lightPreset = Presets[6];
         public static Preset Current => Dark ? darkPreset : lightPreset;
         public static int Revision { get; private set; }
-        public static Color IconColor => Current.Text;
+        public static Color IconColor => Dark ? C(0xC5C5C5) : C(0x7F7F7F);
 
         private static void LoadPresets()
         {
@@ -91,6 +91,7 @@ namespace Arcade.Compose
         private static Color Resolve(Entry entry)
         {
             if (entry.Text) return Current.Text;
+            if (entry.Sprite == null && Same(entry.Light, C(0x7F7F7F))) return IconColor;
             switch (entry.Sprite)
             {
                 case "Top": case "Left": case "Right": case "Bottom": return Current.Chrome;

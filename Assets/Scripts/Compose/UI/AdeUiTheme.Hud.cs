@@ -26,6 +26,10 @@ namespace Arcade.Compose
             panel.color = Color.white;
             compose.PauseButtonImage.material = hudMaterial;
             compose.PauseButtonImage.color = Color.white;
+            compose.TimingSliderHandle.color = Current.Text;
+            var timingSlider = compose.TimingSliderHandle.GetComponentInParent<Slider>();
+            if (timingSlider && timingSlider.fillRect && timingSlider.fillRect.TryGetComponent<Image>(out var timingFill))
+                timingFill.color = Current.Text;
             compose.SetPlaySprite(darkSprites[12]);
             compose.SetPlayPressedSprite(darkSprites[13]);
             compose.SetPauseSprite(darkSprites[14]);

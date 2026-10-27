@@ -32,6 +32,8 @@ namespace Arcade.Compose
         {
             var button = icon.GetComponentInParent<Button>();
             if (!button || !button.image) return;
+            // Older scene bindings point at the button background rather than its icon.
+            if (icon == button.image) icon = button.transform.Find("Image").GetComponent<Image>();
             if (!button.GetComponent<AdeToolbarPointerFocus>())
                 button.gameObject.AddComponent<AdeToolbarPointerFocus>();
 
@@ -40,7 +42,7 @@ namespace Arcade.Compose
             button.transition = Selectable.Transition.ColorTint;
             if (active) button.colors = ColorBlock.defaultColorBlock;
             else SetStates(button, ToolbarEntry);
-            Color foreground = active ? Color.Lerp(Current.Text, Dark ? Color.white : Color.black, .25f) : Current.Text;
+            Color foreground = active ? Color.Lerp(IconColor, Dark ? Color.white : Color.black, .25f) : IconColor;
             icon.color = button.IsInteractable() ? foreground : Current.Muted;
         }
     }
