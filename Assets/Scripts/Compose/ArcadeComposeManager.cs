@@ -635,6 +635,13 @@ namespace Arcade.Compose
 
 		public void UpdateResolution()
 		{
+			if (ResolutionDropdown && ResolutionDropdown.captionText)
+			{
+				float scale = AdeScreenResolution.ScaleFactor;
+				int width = Mathf.RoundToInt(Screen.width / scale);
+				int height = Mathf.RoundToInt(Screen.height / scale);
+				ResolutionDropdown.captionText.text = $"{width}x{height}";
+			}
 			var cameraManager = ArcCameraManager.Instance;
 			if (GameplayCamera && cameraManager)
 			{
