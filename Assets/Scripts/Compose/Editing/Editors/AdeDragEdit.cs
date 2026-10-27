@@ -107,7 +107,9 @@ namespace Arcade.Compose.Editing
                 {
                     await UniTask.NextFrame(cancellation.Token);
                     if (!Application.isFocused || Mouse.current == null || ArcGameplayManager.Instance.Chart != chart) return;
-                    if (AdeGameplayContentInputHandler.InputActive) ApplyPointer(Mouse.current.position.ReadValue());
+                    bool constrainedPosition = activeMode == DragMode.Position && (note is ArcArc || note is ArcSlide)
+                        && AdeGridManager.Instance.EnableVertical;
+                    if (AdeGameplayContentInputHandler.InputActive || constrainedPosition) ApplyPointer(Mouse.current.position.ReadValue());
                     else UpdateCursor();
                     if (!Mouse.current.middleButton.isPressed) { Finish(true); return; }
                 }
@@ -155,8 +157,8 @@ namespace Arcade.Compose.Editing
                 if (!new Plane(Vector3.forward, new Vector3(0, 0, z)).Raycast(ray, out float distance)) return;
                 Vector3 point = ray.GetPoint(distance);
                 var grid = AdeGridManager.Instance;
-                Vector2 coordinate = new Vector2(grid.AttachVerticalX(ArcAlgorithm.WorldXToArc(point.x)),
-                    grid.AttachVerticalY(ArcAlgorithm.WorldYToArc(point.y)));
+                Vector2 coordinate = grid.AttachDragCoordinate(new Vector2(ArcAlgorithm.WorldXToArc(point.x),
+                    ArcAlgorithm.WorldYToArc(point.y)));
                 ApplyCoordinate(coordinate);
             }
             ApplyDraft();

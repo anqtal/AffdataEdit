@@ -468,6 +468,28 @@ namespace Arcade.Compose
 			}
 			return index < 0 ? defaultTiming : beatlineInstances[index].timing;
 		}
+		internal Vector2 AttachDragCoordinate(Vector2 coordinate)
+		{
+			if (EnableVertical)
+			{
+				coordinate.x = ClampToGrid(coordinate.x, verticalXPositions);
+				coordinate.y = ClampToGrid(coordinate.y, verticalYPositions);
+			}
+			return new Vector2(AttachVerticalX(coordinate.x), AttachVerticalY(coordinate.y));
+		}
+
+		private static float ClampToGrid(float value, List<float> lines)
+		{
+			if (lines.Count == 0) return value;
+			float min = lines[0], max = lines[0];
+			foreach (float line in lines)
+			{
+				min = Mathf.Min(min, line);
+				max = Mathf.Max(max, line);
+			}
+			return Mathf.Clamp(value, min, max);
+		}
+
 		public float AttachVerticalX(float x)
 		{
 			if (verticalInUse == 0) return x;
