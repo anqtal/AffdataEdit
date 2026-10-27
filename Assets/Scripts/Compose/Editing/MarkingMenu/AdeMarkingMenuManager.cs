@@ -85,13 +85,14 @@ namespace Arcade.Compose
 			if (keepOpen)
 			{
 				if (keyboard != null && keyboard.backspaceKey.wasPressedThisFrame) ReturnParentMenu();
+				else if (verticalStyle) CheckVertical();
 				return;
 			}
 			if (!mouse.rightButton.isPressed)
 			{
 				var target = PointerTarget();
 				var selected = target ? target.GetComponentInParent<MarkingMenuItem>() : null;
-				if (System.Array.IndexOf(shownItems.Peek().Items, selected) < 0) selected = null;
+				if (verticalStyle ? VerticalPageDepth(selected) < 0 : System.Array.IndexOf(shownItems.Peek().Items, selected) < 0) selected = null;
 				Exit();
 				if (selected) selected.OnConfirmed.Invoke();
 			}
@@ -120,7 +121,7 @@ namespace Arcade.Compose
 		private void OnDestroy()
 		{
 			if (inputBlocker) Destroy(inputBlocker);
-			if (menuPanel) Destroy(menuPanel);
+			foreach (var panel in menuPanels) if (panel) Destroy(panel);
 			if (backItem) Destroy(backItem.gameObject);
 			if (Instance == this) Instance = null;
 		}
@@ -130,13 +131,14 @@ namespace Arcade.Compose
 			if (isOn) return;
 			var items = GetCurrentMenuItems();
 			if (items.Length == 0) return;
+			verticalStyle = ArcadeComposeManager.Instance.ArcadePreference.VerticalContextMenu;
+			if (verticalStyle) items = ArrangeVerticalItems(items);
 			keepOpen = ArcadeComposeManager.Instance.ArcadePreference.KeepContextMenuOpen;
 			openedChart = ArcGameplayManager.Instance.Chart;
 			CreateInputBlocker();
 			inputBlocker.SetActive(true);
 			EventSystem.current.SetSelectedGameObject(null);
 			isOn = true;
-			verticalStyle = ArcadeComposeManager.Instance.ArcadePreference.VerticalContextMenu;
 			Line.Enable = !verticalStyle;
 			if (!verticalStyle) Line.AddJoint();
 			ShowAt(InputExtension.scaledMousePosition, items);
@@ -168,23 +170,51 @@ namespace Arcade.Compose
 				foreach (var item in page.Items)
 					item.Hide();
 			shownItems.Clear();
+			foreach (var parent in parentItems) parent.Expanded = false;
 			parentItems.Clear();
 			if (backItem) backItem.Hide();
 			openedChart = null;
-			if (menuPanel) menuPanel.SetActive(false);
+			foreach (var panel in menuPanels) if (panel) panel.SetActive(false);
 		}
 
 		public void ClickItem(MarkingMenuItem item)
 		{
 			if (!isOn || !keepOpen) return;
-			if (item == backItem) { ReturnParentMenu(); return; }
-			if (System.Array.IndexOf(shownItems.Peek().Items, item) < 0) return;
-			if (item.HasSubMenu && item.SubItems.Length > 0)
+			if (verticalStyle)
 			{
-				parentItems.Add(item);
-				ShowSubMenu(item.SubItems);
-				ShowBackItem(item);
-				return;
+				int depth = VerticalPageDepth(item);
+				if (depth < 0) return;
+				if (item.KeepsMenuOpen)
+				{
+					CloseVerticalSubMenus(depth);
+					item.OnConfirmed.Invoke();
+					foreach (var page in shownItems)
+						foreach (var shown in page.Items) shown.RefreshVerticalState();
+					return;
+				}
+				if (item.HasVerticalSubMenu && !item.ClickConfirms)
+				{
+					// Hover usually opened it already; a click only makes sure it is open.
+					if (depth >= parentItems.Count || parentItems[depth] != item)
+					{
+						CloseVerticalSubMenus(depth);
+						ShowVerticalSubMenu(item);
+					}
+					return;
+				}
+				CloseVerticalSubMenus(depth);
+			}
+			else
+			{
+				if (item == backItem) { ReturnParentMenu(); return; }
+				if (System.Array.IndexOf(shownItems.Peek().Items, item) < 0) return;
+				if (item.HasSubMenu && item.SubItems.Length > 0)
+				{
+					parentItems.Add(item);
+					ShowSubMenu(item.SubItems);
+					ShowBackItem(item);
+					return;
+				}
 			}
 			// Arc/ArcTap parents select a creation mode. Defer that until a leaf is chosen,
 			// so browsing a submenu and cancelling cannot change the current tool.
@@ -234,11 +264,15 @@ namespace Arcade.Compose
 			backItem.Position = template.Position;
 			backItem.SetIcon("back");
 			backItem.Show(verticalStyle);
-			if (verticalStyle) LayoutVerticalMenu(shownItems.Peek().Origin, shownItems.Peek().Items, backItem);
 		}
 
 		public void Check()
 		{
+			if (verticalStyle)
+			{
+				CheckVertical();
+				return;
+			}
 			foreach (var item in shownItems.Peek().Items)
 			{
 				if (item.PointerHangOver)
@@ -253,6 +287,59 @@ namespace Arcade.Compose
 				};
 			}
 		}
+		private void CheckVertical()
+		{
+			int depth = shownItems.Count - 1;
+			foreach (var page in shownItems)
+			{
+				foreach (var item in page.Items)
+				{
+					if (!item.PointerHangOver) continue;
+					if (depth < parentItems.Count && parentItems[depth] == item) return;
+					CloseVerticalSubMenus(depth);
+					if (item.HasVerticalSubMenu)
+					{
+						// Click mode defers parent confirmation until a leaf is chosen (see ClickItem).
+						if (!keepOpen)
+						{
+							item.OnHangOver.Invoke();
+							item.OnConfirmed.Invoke();
+						}
+						ShowVerticalSubMenu(item);
+					}
+					return;
+				}
+				depth--;
+			}
+		}
+		private int VerticalPageDepth(MarkingMenuItem item)
+		{
+			int depth = shownItems.Count - 1;
+			foreach (var page in shownItems)
+			{
+				if (System.Array.IndexOf(page.Items, item) >= 0) return depth;
+				depth--;
+			}
+			return -1;
+		}
+		private void ShowVerticalSubMenu(MarkingMenuItem parent)
+		{
+			parentItems.Add(parent);
+			parent.Expanded = true;
+			ShowVerticalPage(Vector2.zero, parent.VerticalSubItems ?? parent.SubItems, parent);
+		}
+		// Closes the cascaded submenus opened from the page at this depth.
+		private void CloseVerticalSubMenus(int depth)
+		{
+			while (shownItems.Count > depth + 1)
+			{
+				foreach (var item in shownItems.Pop().Items) item.Hide();
+				menuPanels[shownItems.Count].SetActive(false);
+				var parent = parentItems[parentItems.Count - 1];
+				parent.Expanded = false;
+				parentItems.RemoveAt(parentItems.Count - 1);
+			}
+		}
 		public void ShowSubMenu(MarkingMenuItem[] items, float from = 0, float to = 360)
 		{
 			if (!verticalStyle) Line.AddJoint();
@@ -265,6 +352,11 @@ namespace Arcade.Compose
 		{
 			if (!isOn || shownItems.Count <= 1) return;
 			consumedFrame = Time.frameCount;
+			if (verticalStyle)
+			{
+				CloseVerticalSubMenus(shownItems.Count - 2);
+				return;
+			}
 			foreach (var item in shownItems.Pop().Items) item.Hide();
 			var page = shownItems.Peek();
 			for (int i = 0; i < page.Items.Length; i++)
@@ -276,11 +368,7 @@ namespace Arcade.Compose
 			if (!verticalStyle) Line.RemoveLastJoint();
 			if (parentItems.Count > 0) parentItems.RemoveAt(parentItems.Count - 1);
 			if (parentItems.Count > 0) ShowBackItem(parentItems[parentItems.Count - 1]);
-			else
-			{
-				if (backItem) backItem.Hide();
-				if (verticalStyle) LayoutVerticalMenu(page.Origin, page.Items);
-			}
+			else if (backItem) backItem.Hide();
 		}
 	}
 }

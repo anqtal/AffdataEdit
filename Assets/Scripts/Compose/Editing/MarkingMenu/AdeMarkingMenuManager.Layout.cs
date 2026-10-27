@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Arcade.Compose.MarkingMenu;
 using Arcade.Util.UnityExtension;
 using UnityEngine;
@@ -7,7 +8,7 @@ namespace Arcade.Compose
 {
 	public partial class AdeMarkingMenuManager
 	{
-		private GameObject menuPanel;
+		private readonly List<GameObject> menuPanels = new List<GameObject>();
 
 		private float GetOptimizedDegree(float degree)
 		{
@@ -43,9 +44,7 @@ namespace Arcade.Compose
 		{
 			if (verticalStyle)
 			{
-				foreach (var item in items) item.Show(true);
-				LayoutVerticalMenu(position, items);
-				shownItems.Push(new MenuPage(items, position));
+				ShowVerticalPage(position, items, null);
 				return;
 			}
 			int itemCount = items.Length;
@@ -65,9 +64,7 @@ namespace Arcade.Compose
 		{
 			if (verticalStyle)
 			{
-				foreach (var item in items) item.Show(true);
-				LayoutVerticalMenu(position, items);
-				shownItems.Push(new MenuPage(items, position));
+				ShowVerticalPage(position, items, null);
 				return;
 			}
 			int itemCount = items.Length;
@@ -82,45 +79,76 @@ namespace Arcade.Compose
 			}
 			shownItems.Push(new MenuPage(items, position));
 		}
-		private void LayoutVerticalMenu(Vector2 origin, MarkingMenuItem[] items, MarkingMenuItem back = null)
+		private void ShowVerticalPage(Vector2 origin, MarkingMenuItem[] items, MarkingMenuItem parent)
+		{
+			int depth = shownItems.Count;
+			foreach (var item in items) item.Show(true, depth);
+			LayoutVerticalMenu(depth, origin, items, parent);
+			shownItems.Push(new MenuPage(items, origin));
+		}
+		private void LayoutVerticalMenu(int depth, Vector2 origin, MarkingMenuItem[] items, MarkingMenuItem parent)
 		{
 			if (items.Length == 0) return;
 			const float padding = 4;
-			float width = 200, height = 40;
-			foreach (var item in items)
+			// A row holds one item, or a left/right pair; a right item with VerticalWidth is a fixed-width button.
+			var rows = new List<(MarkingMenuItem Left, MarkingMenuItem Right)>();
+			for (int i = 0; i < items.Length; i++)
 			{
-				width = Mathf.Max(width, item.ItemRectTransform.rect.width);
-				height = Mathf.Max(height, item.ItemRectTransform.rect.height);
+				if (items[i].VerticalColumn == 1 && i + 1 < items.Length && items[i + 1].VerticalColumn == 2)
+					rows.Add((items[i], items[++i]));
+				else rows.Add((items[i], null));
 			}
-			if (back) width = Mathf.Max(width, back.ItemRectTransform.rect.width);
-			int count = items.Length + (back ? 1 : 0);
+			float width = 260, height = 48;
+			foreach (var (left, right) in rows)
+			{
+				float rowWidth = left.ItemRectTransform.rect.width;
+				if (right)
+				{
+					rowWidth = right.VerticalWidth > 0 ? rowWidth + right.VerticalWidth
+						: Mathf.Max(rowWidth, right.ItemRectTransform.rect.width) * 2;
+					height = Mathf.Max(height, right.ItemRectTransform.rect.height);
+				}
+				width = Mathf.Max(width, rowWidth);
+				height = Mathf.Max(height, left.ItemRectTransform.rect.height);
+			}
+			int count = rows.Count;
 			Vector2 size = new Vector2(width + padding * 2, height * count + padding * 2);
 			Vector2 available = ArcadeComposeManager.Instance.EditorCanvas.rect.size;
 			Vector2 topLeft = origin + new Vector2(8, -8);
+			if (parent)
+			{
+				// Cascade beside the parent row: to the right when it fits, otherwise to the left.
+				var parentPanel = (RectTransform)menuPanels[depth - 1].transform;
+				float left = parentPanel.anchoredPosition.x, right = left + parentPanel.sizeDelta.x;
+				topLeft.x = right + size.x <= available.x - padding ? right : left - size.x;
+				topLeft.y = parent.Position.y + parent.ItemRectTransform.rect.height / 2 + padding;
+			}
 			topLeft.x = Mathf.Clamp(topLeft.x, padding, Mathf.Max(padding, available.x - size.x - padding));
 			topLeft.y = Mathf.Clamp(topLeft.y, Mathf.Min(size.y + padding, available.y - padding), available.y - padding);
-			int row = 0;
-			if (back)
+			for (int row = 0; row < count; row++)
 			{
-				back.SetRowSize(width, height);
-				back.Position = topLeft + new Vector2(padding + width / 2, -padding - height * (++row - .5f));
+				var (left, right) = rows[row];
+				float leftWidth = !right ? width : right.VerticalWidth > 0 ? width - right.VerticalWidth : width / 2;
+				float y = -padding - height * (row + .5f);
+				left.SetRowSize(leftWidth, height, row < count - 1);
+				left.Position = topLeft + new Vector2(padding + leftWidth / 2, y);
+				if (!right) continue;
+				right.SetRowSize(width - leftWidth, height, row < count - 1);
+				right.Position = topLeft + new Vector2(padding + (leftWidth + width) / 2, y);
 			}
-			foreach (var item in items)
+			var root = ArcadeComposeManager.Instance.EditorCanvas;
+			while (menuPanels.Count <= depth)
 			{
-				item.SetRowSize(width, height, row < count - 1);
-				item.Position = topLeft + new Vector2(padding + width / 2, -padding - height * (++row - .5f));
-			}
-			if (!menuPanel)
-			{
-				var root = ArcadeComposeManager.Instance.EditorCanvas;
-				menuPanel = new GameObject("VerticalContextMenuPanel", typeof(RectTransform), typeof(Canvas), typeof(GraphicRaycaster), typeof(Image), typeof(Shadow));
-				menuPanel.layer = root.gameObject.layer;
-				menuPanel.transform.SetParent(root, false);
-				var canvas = menuPanel.GetComponent<Canvas>();
+				var panel = new GameObject("VerticalContextMenuPanel", typeof(RectTransform), typeof(Canvas), typeof(GraphicRaycaster), typeof(Image), typeof(Shadow));
+				panel.layer = root.gameObject.layer;
+				panel.transform.SetParent(root, false);
+				var canvas = panel.GetComponent<Canvas>();
 				canvas.overrideSorting = true;
 				canvas.sortingLayerID = items[0].GetComponent<Canvas>().sortingLayerID;
-				canvas.sortingOrder = MenuSortingOrder;
+				canvas.sortingOrder = MenuSortingOrder + menuPanels.Count * 2;
+				menuPanels.Add(panel);
 			}
+			var menuPanel = menuPanels[depth];
 			var rect = (RectTransform)menuPanel.transform;
 			rect.anchorMin = rect.anchorMax = Vector2.zero;
 			rect.pivot = new Vector2(0, 1);

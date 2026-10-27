@@ -59,6 +59,7 @@ namespace Arcade.Compose.MarkingMenu
                 case "create-exit":
                     Path(mesh, 11, 3, 4, 3, 4, 21, 11, 21);
                     Path(mesh, 10, 12, 21, 12, 17, 8); Path(mesh, 21, 12, 17, 16); break;
+                case "check": Path(mesh, 5, 12, 10, 17, 19, 7); break;
                 case "back":
                     Path(mesh, 10, 5, 3, 12, 10, 19); Path(mesh, 3, 12, 21, 12); break;
             }

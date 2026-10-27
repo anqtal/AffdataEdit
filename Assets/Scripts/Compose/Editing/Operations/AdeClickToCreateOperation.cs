@@ -129,6 +129,10 @@ namespace Arcade.Compose.Operation
 				return currentArcIsVoid ? "虚" : "实";
 			}
 		}
+		public bool ArcIsVoid => currentArcIsVoid;
+		public ArcCurveType ArcCurveType => currentArcCurveType;
+		public int ArcColor => currentArcColor;
+		public static string ArcColorName(int color) => ArcColorNames[color];
 		public string CurrentArcCurveType
 		{
 			get
@@ -251,6 +255,13 @@ namespace Arcade.Compose.Operation
 			if (!AdeOperationManager.Instance.HasOngoingOperation)
 			{
 				currentArcColor = currentArcColor == ArcColors.BlackId ? ArcColors.BlueId : currentArcColor + 1;
+			}
+		}
+		public void SetArcColor(int color)
+		{
+			if (!AdeOperationManager.Instance.HasOngoingOperation)
+			{
+				currentArcColor = color;
 			}
 		}
 		public void SwitchIsVoid()

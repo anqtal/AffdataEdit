@@ -24,8 +24,21 @@ namespace Arcade.Compose.MarkingMenu
 		[Header("Sub Menu")]
 		public bool HasSubMenu;
 		public float EnterTimeThreshold = 0.4f;
+		// Vertical menus cascade on hover, so the delay only absorbs rows crossed in passing.
+		private const float VerticalHoverDelay = 0.2f;
 		public MarkingMenuItem[] SubItems;
 		public UnityEvent OnHangOver = new UnityEvent();
+
+		// Vertical-only runtime overrides; the ring menu keeps the serialized structure.
+		internal MarkingMenuItem[] VerticalSubItems;
+		internal bool VerticalLeaf;
+		internal bool KeepsMenuOpen;
+		internal bool ClickConfirms;
+		internal int VerticalColumn;
+		internal float VerticalWidth;
+		internal string VerticalCaption;
+		internal System.Func<string> IconKind;
+		internal bool HasVerticalSubMenu => !VerticalLeaf && (VerticalSubItems ?? (HasSubMenu ? SubItems : null))?.Length > 0;
 
 		public float Degree { get; set; }
 		public string Text
@@ -53,17 +66,24 @@ namespace Arcade.Compose.MarkingMenu
 		}
 
 		public bool PointerInItem { get; private set; }
+		// Keeps a vertical row highlighted while its cascaded submenu is open.
+		internal bool Expanded
+		{
+			get => expanded;
+			set { expanded = value; ApplyTheme(); }
+		}
 		public bool PointerHangOver
 		{
 			get
 			{
-				return PointerInItem && pointerInItemTiming > EnterTimeThreshold;
+				return PointerInItem && pointerInItemTiming > (verticalStyle ? VerticalHoverDelay : EnterTimeThreshold);
 			}
 		}
 		private float pointerInItemTiming;
 		private bool active = false;
 		private bool initialized;
 		private bool verticalStyle;
+		private bool expanded;
 		private string caption;
 		private Image separator;
 		private ContextMenuIcon icon;
@@ -86,21 +106,24 @@ namespace Arcade.Compose.MarkingMenu
 		{
 			fadeMotion.TryCancel();
 		}
-		public void Show(bool vertical = false)
+		public void Show(bool vertical = false, int depth = 0)
 		{
 			gameObject.SetActive(true);
 			verticalStyle = vertical;
 			InitializeText();
 			Text = caption;
+			if (vertical && VerticalCaption != null) ItemText.text = VerticalCaption;
+			if (vertical && IconKind != null) SetIcon(IconKind());
 			var layout = GetComponent<VerticalLayoutGroup>();
 			layout.childAlignment = vertical ? TextAnchor.MiddleLeft : TextAnchor.MiddleCenter;
 			layout.childForceExpandWidth = vertical;
 			var padding = layout.padding;
 			padding.top = padding.bottom = vertical ? 4 : 12;
-			padding.left = vertical ? 40 : 12;
+			padding.left = vertical ? 48 : 12;
 			padding.right = vertical ? 28 : 12;
 			if (icon) icon.gameObject.SetActive(vertical);
-			if (vertical && HasSubMenu && !chevron)
+			bool showChevron = vertical && HasVerticalSubMenu;
+			if (showChevron && !chevron)
 			{
 				var go = new GameObject("SubmenuArrow", typeof(RectTransform), typeof(TMPro.TextMeshProUGUI), typeof(LayoutElement));
 				go.layer = gameObject.layer;
@@ -108,20 +131,22 @@ namespace Arcade.Compose.MarkingMenu
 				go.GetComponent<LayoutElement>().ignoreLayout = true;
 				chevron = go.GetComponent<Text>();
 				AdeEditorText.Configure(chevron, AdeEditorText.CaptionSize);
-				chevron.text = ">";
 				chevron.alignment = TMPro.TextAlignmentOptions.Center;
+				chevron.raycastTarget = false;
+				AdeUiIcons.SetText(chevron, AdeUiIcons.Expand);
+				// 24px from the right edge, which also centres it in a 48px submenu button.
 				var rect = chevron.rectTransform;
 				rect.anchorMin = rect.anchorMax = new Vector2(1, .5f);
-				rect.anchoredPosition = new Vector2(-14, 0);
-				rect.sizeDelta = new Vector2(12, 24);
+				rect.anchoredPosition = new Vector2(-24, 0);
+				rect.sizeDelta = new Vector2(24, 24);
 			}
-			if (chevron) chevron.gameObject.SetActive(vertical && HasSubMenu);
+			if (chevron) chevron.gameObject.SetActive(showChevron);
 			if (separator) separator.gameObject.SetActive(false);
 			var fitter = GetComponent<ContentSizeFitter>();
 			fitter.horizontalFit = fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 			active = true;
 			ItemCanvasGroup.blocksRaycasts = true;
-			GetComponent<Canvas>().sortingOrder = AdeMarkingMenuManager.MenuSortingOrder + (vertical ? 1 : 0);
+			GetComponent<Canvas>().sortingOrder = AdeMarkingMenuManager.MenuSortingOrder + (vertical ? 1 + depth * 2 : 0);
 			fadeMotion.TryComplete();
 			ApplyTheme();
 			LayoutRebuilder.ForceRebuildLayoutImmediate(ItemRectTransform);
@@ -141,12 +166,17 @@ namespace Arcade.Compose.MarkingMenu
 				icon.raycastTarget = false;
 				var rect = icon.rectTransform;
 				rect.anchorMin = rect.anchorMax = new Vector2(0, .5f);
-				rect.anchoredPosition = new Vector2(20, 0);
-				rect.sizeDelta = new Vector2(20, 20);
+				rect.anchoredPosition = new Vector2(24, 0);
+				rect.sizeDelta = new Vector2(24, 24);
 			}
 			icon.Kind = kind;
 			icon.SetVerticesDirty();
 			icon.gameObject.SetActive(verticalStyle);
+		}
+		internal void RefreshVerticalState()
+		{
+			if (IconKind != null) SetIcon(IconKind());
+			ApplyTheme();
 		}
 		internal void SetRowSize(float width, float height, bool dividerAfter = true)
 		{
@@ -175,6 +205,7 @@ namespace Arcade.Compose.MarkingMenu
 		public void Hide()
 		{
 			active = false;
+			expanded = false;
 			ItemCanvasGroup.blocksRaycasts = false;
 			PointerInItem = false;
 			pointerInItemTiming = 0;
@@ -231,9 +262,9 @@ namespace Arcade.Compose.MarkingMenu
 			themeRevision = AdeUiTheme.Revision;
 			Background.sprite = verticalStyle ? null : AdeUiTheme.ContextMenuSurface(PointerInItem);
 			Background.type = verticalStyle ? Image.Type.Simple : Image.Type.Sliced;
-			Background.color = verticalStyle ? (PointerInItem ? AdeUiTheme.Current.Selection : Color.clear) : Color.white;
+			Background.color = verticalStyle ? (PointerInItem || expanded ? AdeUiTheme.Current.Selection : Color.clear) : Color.white;
 			Background.rectTransform.sizeDelta = Vector2.zero;
-			AdeEditorText.Configure(ItemText, verticalStyle ? 22 : AdeEditorText.BodySize);
+			AdeEditorText.Configure(ItemText, verticalStyle ? 26 : AdeEditorText.BodySize);
 			ItemText.alignment = verticalStyle ? TMPro.TextAlignmentOptions.Left : TMPro.TextAlignmentOptions.Center;
 			ItemText.color = AdeUiTheme.Current.Text;
 			if (icon) icon.color = AdeUiTheme.Current.Muted;
@@ -249,7 +280,7 @@ namespace Arcade.Compose.MarkingMenu
 		private void Update()
 		{
 			if (themeRevision != AdeUiTheme.Revision) ApplyTheme();
-			if (Mouse.current.rightButton.isPressed && PointerInItem)
+			if ((verticalStyle || Mouse.current.rightButton.isPressed) && PointerInItem)
 			{
 				pointerInItemTiming += Time.deltaTime;
 			}
