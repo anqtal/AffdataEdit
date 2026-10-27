@@ -45,6 +45,7 @@ namespace Arcade.Compose
             new Entry("AdeOBSDialog", "obs", typeof(OBSPreferences), "OBS.json"),
             new Entry("hotkeyRebinding", "hotkeys", typeof(JObject)),
             new Entry("AffdataEdit.DarkUi", "darkMode", typeof(int)),
+            new Entry("AffdataEdit.DragMode", "dragMode", typeof(int)),
             new Entry("AffdataEdit.EditorTheme.Dark", "darkTheme", typeof(string)),
             new Entry("AffdataEdit.EditorTheme.Light", "lightTheme", typeof(string)),
             new Entry("AffdataEdit.WindowsAudioOutput", "windowsAudioOutput", typeof(int)),

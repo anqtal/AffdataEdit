@@ -463,6 +463,36 @@ namespace Arcade.Compose
                     ""interactions"": """",
                     ""initialStateCheck"": true,
                     ""priority"": 0
+                },
+                {
+                    ""name"": ""Drag Edit Time"",
+                    ""type"": ""Value"",
+                    ""id"": ""e0a7db09-98ba-4d64-a9ef-115631a78a1e"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": true,
+                    ""priority"": 0
+                },
+                {
+                    ""name"": ""Drag Edit Position"",
+                    ""type"": ""Value"",
+                    ""id"": ""16dabda3-f35f-4089-9656-95941e75b0b5"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": true,
+                    ""priority"": 0
+                },
+                {
+                    ""name"": ""Drag Edit Off"",
+                    ""type"": ""Value"",
+                    ""id"": ""130de3a5-440f-4c68-a298-40029d8a95f9"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": true,
+                    ""priority"": 0
                 }
             ],
             ""bindings"": [
@@ -1965,7 +1995,7 @@ namespace Arcade.Compose
                 {
                     ""name"": ""key"",
                     ""id"": ""e28e28d9-620b-4bdc-9271-80a2ec9c3745"",
-                    ""path"": ""<Keyboard>/f5"",
+                    ""path"": ""<Keyboard>/f7"",
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": """",
@@ -2500,6 +2530,171 @@ namespace Arcade.Compose
                     ""action"": ""VerticalMirror"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": true
+                },
+                {
+                    ""name"": ""Key With Modifiers"",
+                    ""id"": ""86881395-b867-49b6-bdd5-92915449b2ef"",
+                    ""path"": ""KeyWithModifiers"",
+                    ""interactions"": ""HotKey"",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Drag Edit Time"",
+                    ""isComposite"": true,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": ""key"",
+                    ""id"": ""231107ed-7253-4a48-b237-c6a98761e204"",
+                    ""path"": ""<Keyboard>/f5"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Drag Edit Time"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": true
+                },
+                {
+                    ""name"": ""modifier1"",
+                    ""id"": ""b9a7a33c-9607-46dc-8c30-2945b7d6b6aa"",
+                    ""path"": ""<Keyboard>/ctrl"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Drag Edit Time"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": true
+                },
+                {
+                    ""name"": ""modifier2"",
+                    ""id"": ""7f7fe9f9-6fa2-4359-a651-b65a07ed9949"",
+                    ""path"": ""<Keyboard>/alt"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Drag Edit Time"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": true
+                },
+                {
+                    ""name"": ""modifier3"",
+                    ""id"": ""3957032a-965b-4ba2-b8ba-9b859e26dfee"",
+                    ""path"": ""<Keyboard>/shift"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Drag Edit Time"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": true
+                },
+                {
+                    ""name"": ""Key With Modifiers"",
+                    ""id"": ""b50d8308-e7ea-480d-9fdf-80448db43529"",
+                    ""path"": ""KeyWithModifiers"",
+                    ""interactions"": ""HotKey"",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Drag Edit Position"",
+                    ""isComposite"": true,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": ""key"",
+                    ""id"": ""0e572d8e-ffec-4600-8047-038a2dd3c16d"",
+                    ""path"": ""<Keyboard>/f6"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Drag Edit Position"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": true
+                },
+                {
+                    ""name"": ""modifier1"",
+                    ""id"": ""f0c134d3-fbce-4814-a344-526eb5df2e85"",
+                    ""path"": ""<Keyboard>/ctrl"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Drag Edit Position"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": true
+                },
+                {
+                    ""name"": ""modifier2"",
+                    ""id"": ""1502dc35-0a49-404c-ac1b-b8db31c1ce6c"",
+                    ""path"": ""<Keyboard>/alt"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Drag Edit Position"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": true
+                },
+                {
+                    ""name"": ""modifier3"",
+                    ""id"": ""ca4d2d08-19bc-4c4c-b06b-d047817e7f70"",
+                    ""path"": ""<Keyboard>/shift"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Drag Edit Position"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": true
+                },
+                {
+                    ""name"": ""Key With Modifiers"",
+                    ""id"": ""44b65f00-a483-4874-8c8b-a70325279d4c"",
+                    ""path"": ""KeyWithModifiers"",
+                    ""interactions"": ""HotKey"",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Drag Edit Off"",
+                    ""isComposite"": true,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": ""key"",
+                    ""id"": ""8754f4db-b323-4bb0-a8b0-b76facaab3ae"",
+                    ""path"": ""<Keyboard>/escape"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Drag Edit Off"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": true
+                },
+                {
+                    ""name"": ""modifier1"",
+                    ""id"": ""231af266-6c7f-4411-b7e4-e20aa5151d95"",
+                    ""path"": ""<Keyboard>/ctrl"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Drag Edit Off"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": true
+                },
+                {
+                    ""name"": ""modifier2"",
+                    ""id"": ""37fc8957-d78a-4f7e-a970-a3d2b75e7f58"",
+                    ""path"": ""<Keyboard>/alt"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Drag Edit Off"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": true
+                },
+                {
+                    ""name"": ""modifier3"",
+                    ""id"": ""71276b40-52f4-4262-b301-5cb95e8ea8db"",
+                    ""path"": ""<Keyboard>/shift"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Drag Edit Off"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": true
                 }
             ]
         },
@@ -2616,6 +2811,9 @@ namespace Arcade.Compose
             m_ArcadeHotkey_ScrollToStart = m_ArcadeHotkey.FindAction("Scroll To Start", throwIfNotFound: true);
             m_ArcadeHotkey_ScrollToEnd = m_ArcadeHotkey.FindAction("Scroll To End", throwIfNotFound: true);
             m_ArcadeHotkey_VerticalMirror = m_ArcadeHotkey.FindAction("VerticalMirror", throwIfNotFound: true);
+            m_ArcadeHotkey_DragEditTime = m_ArcadeHotkey.FindAction("Drag Edit Time", throwIfNotFound: true);
+            m_ArcadeHotkey_DragEditPosition = m_ArcadeHotkey.FindAction("Drag Edit Position", throwIfNotFound: true);
+            m_ArcadeHotkey_DragEditOff = m_ArcadeHotkey.FindAction("Drag Edit Off", throwIfNotFound: true);
             // Arcade Input
             m_ArcadeInput = asset.FindActionMap("Arcade Input", throwIfNotFound: true);
             m_ArcadeInput_MultipleSelection = m_ArcadeInput.FindAction("Multiple Selection", throwIfNotFound: true);
@@ -2739,6 +2937,9 @@ namespace Arcade.Compose
         private readonly InputAction m_ArcadeHotkey_ScrollToStart;
         private readonly InputAction m_ArcadeHotkey_ScrollToEnd;
         private readonly InputAction m_ArcadeHotkey_VerticalMirror;
+        private readonly InputAction m_ArcadeHotkey_DragEditTime;
+        private readonly InputAction m_ArcadeHotkey_DragEditPosition;
+        private readonly InputAction m_ArcadeHotkey_DragEditOff;
         /// <summary>
         /// Provides access to input actions defined in input action map "Arcade Hotkey".
         /// </summary>
@@ -2899,6 +3100,18 @@ namespace Arcade.Compose
             /// </summary>
             public InputAction @VerticalMirror => m_Wrapper.m_ArcadeHotkey_VerticalMirror;
             /// <summary>
+            /// Provides access to the underlying input action "ArcadeHotkey/DragEditTime".
+            /// </summary>
+            public InputAction @DragEditTime => m_Wrapper.m_ArcadeHotkey_DragEditTime;
+            /// <summary>
+            /// Provides access to the underlying input action "ArcadeHotkey/DragEditPosition".
+            /// </summary>
+            public InputAction @DragEditPosition => m_Wrapper.m_ArcadeHotkey_DragEditPosition;
+            /// <summary>
+            /// Provides access to the underlying input action "ArcadeHotkey/DragEditOff".
+            /// </summary>
+            public InputAction @DragEditOff => m_Wrapper.m_ArcadeHotkey_DragEditOff;
+            /// <summary>
             /// Provides access to the underlying input action map instance.
             /// </summary>
             public InputActionMap Get() { return m_Wrapper.m_ArcadeHotkey; }
@@ -3035,6 +3248,15 @@ namespace Arcade.Compose
                 @VerticalMirror.started += instance.OnVerticalMirror;
                 @VerticalMirror.performed += instance.OnVerticalMirror;
                 @VerticalMirror.canceled += instance.OnVerticalMirror;
+                @DragEditTime.started += instance.OnDragEditTime;
+                @DragEditTime.performed += instance.OnDragEditTime;
+                @DragEditTime.canceled += instance.OnDragEditTime;
+                @DragEditPosition.started += instance.OnDragEditPosition;
+                @DragEditPosition.performed += instance.OnDragEditPosition;
+                @DragEditPosition.canceled += instance.OnDragEditPosition;
+                @DragEditOff.started += instance.OnDragEditOff;
+                @DragEditOff.performed += instance.OnDragEditOff;
+                @DragEditOff.canceled += instance.OnDragEditOff;
             }
 
             /// <summary>
@@ -3157,6 +3379,15 @@ namespace Arcade.Compose
                 @VerticalMirror.started -= instance.OnVerticalMirror;
                 @VerticalMirror.performed -= instance.OnVerticalMirror;
                 @VerticalMirror.canceled -= instance.OnVerticalMirror;
+                @DragEditTime.started -= instance.OnDragEditTime;
+                @DragEditTime.performed -= instance.OnDragEditTime;
+                @DragEditTime.canceled -= instance.OnDragEditTime;
+                @DragEditPosition.started -= instance.OnDragEditPosition;
+                @DragEditPosition.performed -= instance.OnDragEditPosition;
+                @DragEditPosition.canceled -= instance.OnDragEditPosition;
+                @DragEditOff.started -= instance.OnDragEditOff;
+                @DragEditOff.performed -= instance.OnDragEditOff;
+                @DragEditOff.canceled -= instance.OnDragEditOff;
             }
 
             /// <summary>
@@ -3574,6 +3805,27 @@ namespace Arcade.Compose
             /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
             /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
             void OnVerticalMirror(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "Drag Edit Time" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnDragEditTime(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "Drag Edit Position" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnDragEditPosition(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "Drag Edit Off" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnDragEditOff(InputAction.CallbackContext context);
         }
         /// <summary>
         /// Interface to implement callback methods for all input action callbacks associated with input actions defined by "Arcade Input" which allows adding and removing callbacks.

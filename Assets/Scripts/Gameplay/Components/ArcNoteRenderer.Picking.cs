@@ -70,6 +70,18 @@ namespace Arcade.Gameplay
             return depth != 0 ? depth : first.Order.CompareTo(second.Order);
         }
 
+        internal static bool TryPickPoint(Camera camera, Vector2 position, ArcNote note, out Vector3 point)
+        {
+            point = default;
+            var owner = BeginPicking(camera);
+            if (!owner) return false;
+            Ray ray = camera.ScreenPointToRay(position);
+            float distance = 120;
+            if (owner.RaycastNote(ray, ref distance, false, false, note) == null) return false;
+            point = ray.GetPoint(distance);
+            return true;
+        }
+
         private static ArcNoteRenderer BeginPicking(Camera camera)
         {
             var owner = Instance;
@@ -83,11 +95,12 @@ namespace Arcade.Gameplay
             return owner;
         }
 
-        private ArcNote RaycastNote(Ray ray, ref float closest, bool tracesOnly, bool collectAll = false)
+        private ArcNote RaycastNote(Ray ray, ref float closest, bool tracesOnly, bool collectAll = false, ArcNote onlyNote = null)
         {
             ArcNote result = null;
             foreach (var item in items)
             {
+                if (onlyNote != null && item.Note != onlyNote) continue;
                 if (item.Note == null || (!item.Note.Enable && !(item.Note is ArcSlide)) || item.Data.Options.y <= 0) continue;
                 if (tracesOnly && !(item.Note is ArcArc arc && arc.IsVoid)) continue;
                 bool alreadyHit = pickingHits.TryGetValue(item.Note, out var previous);

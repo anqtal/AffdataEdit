@@ -283,6 +283,11 @@ namespace Arcade.Compose
 		private void Update()
 		{
 			CheckScroll();
+			if (AdeDragEdit.Instance && AdeDragEdit.Instance.IsDragging)
+			{
+				previewing = advancing = false;
+				return;
+			}
 			if (IsEditorMode)
 			{
 				// Space previews with rollback; Shift+Space advances in place; Q toggles playback.

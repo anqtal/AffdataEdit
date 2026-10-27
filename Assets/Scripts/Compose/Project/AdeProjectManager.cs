@@ -137,6 +137,7 @@ namespace Arcade.Compose
 		public void CleanProject()
 		{
 			if (CurrentProjectMetadata == null) return;
+			AdeOperationManager.Instance.CancelOngoingOperation();
 			if (chartAudio != null)
 			{
 				Destroy(chartAudio);

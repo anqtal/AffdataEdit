@@ -11,6 +11,8 @@ namespace Arcade.Compose
 	{
 		public UniTask task;
 		public CancellationTokenSource cancellation;
+		public System.Action cancel;
+		public bool keepSelection;
 	}
 	public struct AdeOperationResult
 	{
@@ -30,6 +32,7 @@ namespace Arcade.Compose
 		private AdeOngoingOperation? ongoingOperation = null;
 		public bool HasOngoingOperation { get => ongoingOperation != null; }
 		public AdeOperation[] operations;
+		private Editing.AdeDragEdit dragEdit;
 
 
 		public MarkingMenuItem CancelMenuEntry;
@@ -53,6 +56,7 @@ namespace Arcade.Compose
 		private void Awake()
 		{
 			Instance = this;
+			dragEdit = gameObject.AddComponent<Editing.AdeDragEdit>();
 		}
 		void Update()
 		{
@@ -71,6 +75,12 @@ namespace Arcade.Compose
 			if (!ArcadeComposeManager.Instance.IsEditorMode)
 			{
 				Operation.AdeSelectNoteOperation.Instance.TryExecuteOperation();
+				return;
+			}
+			var drag = dragEdit.TryExecuteOperation();
+			if (drag.operationExecuted)
+			{
+				SetOngoingOperation(drag.startedOperation);
 				return;
 			}
 			foreach (var operation in operations)
@@ -92,7 +102,7 @@ namespace Arcade.Compose
 				{
 					operation.Reset();
 				}
-				AdeSelectionManager.Instance.DeselectAllNotes();
+				if (!ongoingOperation.Value.keepSelection) AdeSelectionManager.Instance.DeselectAllNotes();
 			}
 			this.ongoingOperation = ongoingOperation;
 		}
@@ -114,6 +124,7 @@ namespace Arcade.Compose
 		{
 			if (ongoingOperation != null)
 			{
+				ongoingOperation.Value.cancel?.Invoke();
 				if (ongoingOperation.Value.task.Status == UniTaskStatus.Pending)
 				{
 					ongoingOperation.Value.cancellation.Cancel();

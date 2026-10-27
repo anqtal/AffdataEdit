@@ -235,6 +235,36 @@ namespace Arcade.Gameplay
 			return allEndTime;
 		}
 
+        // Keep the inverse near the edited endpoint when reversed tempo segments share a position.
+        internal bool TryCalculateChartTimingByPosition(float position, ArcTimingGroup group, int referenceTiming, out int result)
+        {
+            result = referenceTiming;
+            var events = GetTiming(group);
+            if (events.Count == 0 || BaseBpm == 0 || float.IsNaN(position) || float.IsInfinity(position)) return false;
+            double startPosition = CalculatePositionByTiming(events[0].Timing, group);
+            double best = double.PositiveInfinity;
+            for (int i = 0; i < events.Count; i++)
+            {
+                int start = events[i].Timing;
+                int lower = i == 0 ? int.MinValue : start;
+                int upper = i + 1 < events.Count ? events[i + 1].Timing : int.MaxValue;
+                double velocity = (double)events[i].Bpm / BaseBpm * settingVelocity;
+                double candidate = velocity == 0 ? System.Math.Max(lower, System.Math.Min(upper, referenceTiming))
+                    : start + (position - startPosition) / velocity;
+                // At a stop, use the same float integration as rendering; accumulated
+                // segment rounding can otherwise hide an exactly matching plane.
+                bool matchesStop = velocity == 0 && System.Math.Abs(position - CalculatePositionByTiming((int)candidate, group)) < .001;
+                if ((velocity != 0 || matchesStop)
+                    && !double.IsNaN(candidate) && !double.IsInfinity(candidate) && candidate >= lower && candidate <= upper)
+                {
+                    double distance = System.Math.Abs(candidate - referenceTiming);
+                    if (distance < best) { best = distance; result = (int)System.Math.Round(candidate); }
+                }
+                if (i + 1 < events.Count) startPosition += ((long)upper - start) * velocity;
+            }
+            return !double.IsPositiveInfinity(best);
+        }
+
 		public int CalculateZeroLengthVoidArcDisappearTime(int ChartTiming, ArcTimingGroup timingGroup)
 		{
 			var Timings = GetTiming(timingGroup);

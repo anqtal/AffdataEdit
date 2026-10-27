@@ -137,6 +137,31 @@ namespace Arcade.Compose
 		public bool VisibleWhenIdle = false;
 
 		private int? overriddenCursorTiming = null;
+		private Vector3? dragCursorPoint;
+
+		internal bool BeginDragCursor(bool coordinate, bool sky)
+		{
+			if (currentSelectTaskType != null) return false;
+			currentSelectTaskType = coordinate ? SelectTaskType.Coordinate : sky ? SelectTaskType.TimingForArc : SelectTaskType.Timing;
+			return true;
+		}
+
+		internal void UpdateDragCursor(int timing, Vector3 point)
+		{
+			overriddenCursorTiming = timing;
+			dragCursorPoint = point;
+			UpdateTrackCursor();
+			UpdateWallCursor();
+		}
+
+		internal void EndDragCursor()
+		{
+			dragCursorPoint = null;
+			overriddenCursorTiming = null;
+			currentSelectTaskType = null;
+			UpdateTrackCursor();
+			UpdateWallCursor();
+		}
 
 		private enum SelectTaskType
 		{
@@ -261,6 +286,19 @@ namespace Arcade.Compose
 		private void UpdateTrackCursor()
 		{
 			float xEdgePos = 8.5f * (1 + ArcTimingManager.Instance.BeatlineEnwidenRatio * 0.5f);
+			if (dragCursorPoint.HasValue)
+			{
+				Vector3 point = dragCursorPoint.Value;
+				TrackEnabled = shouldRenderTrack;
+				if (TrackEnabled)
+				{
+					xEdgePos = Mathf.Max(xEdgePos, Mathf.Abs(point.x));
+					TrackX.DrawLine(new Vector3(-xEdgePos, point.z), new Vector3(xEdgePos, point.z));
+					TrackY.DrawLine(new Vector3(point.x, Mathf.Max(0, point.z)), new Vector3(point.x, Mathf.Min(-100, point.z)));
+				}
+				WallPanel.transform.localPosition = new Vector3(0, 0, point.z);
+				return;
+			}
 			TrackCollider.gameObject.transform.localScale = new Vector3(xEdgePos * 2f, 100f, 1);
 			Ray ray = GameplayCamera.MousePositionToRay();
 			IsTrackHit = TrackCollider.Raycast(ray, out trackHit, 120);
@@ -294,6 +332,19 @@ namespace Arcade.Compose
 		{
 			float xEdgePos = 8.5f * (1 + ArcTimingManager.Instance.BeatlineEnwidenRatio * 0.5f);
 			float yEdgePos = 5.5f + ArcCameraManager.Instance.EnwidenRatio * 2.745f;
+			if (dragCursorPoint.HasValue)
+			{
+				Vector3 point = dragCursorPoint.Value;
+				WallEnabled = shouldRenderWall;
+				if (WallEnabled)
+				{
+					xEdgePos = Mathf.Max(xEdgePos, Mathf.Abs(point.x));
+					WallX.DrawLine(new Vector3(-xEdgePos, point.y), new Vector3(xEdgePos, point.y));
+					WallY.DrawLine(new Vector3(point.x, Mathf.Min(0, point.y)), new Vector3(point.x, Mathf.Max(yEdgePos, point.y)));
+				}
+				WallPanelEnabled = shouldRenderWallPanel;
+				return;
+			}
 			WallCollider.gameObject.transform.localScale = new Vector3(xEdgePos * 2f, yEdgePos, 1);
 			WallCollider.gameObject.transform.localPosition = new Vector3(0, yEdgePos / 2f, 0);
 			Ray ray = GameplayCamera.MousePositionToRay();

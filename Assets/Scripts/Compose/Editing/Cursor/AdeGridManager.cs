@@ -451,23 +451,22 @@ namespace Arcade.Compose
 		{
 			var timingGroup = AdeTimingEditor.Instance.currentTimingGroup;
 			int defaultTiming = ArcTimingManager.Instance.CalculateChartTimingByPosition(-z * 1000, timingGroup);
+			return AttachBeatlineTimingFromPos(z, defaultTiming);
+		}
+
+		internal int AttachBeatlineTimingFromPos(float z, int defaultTiming)
+		{
 			if (!EnableBeatline) return defaultTiming;
 			if (beatlineInUse == 0) return defaultTiming;
-			List<float> deltas = new List<float>();
+			int index = -1;
+			float closest = 5;
 			for (int i = 0; i < beatlineInUse; ++i)
 			{
 				float lz = beatlineInstances[i].renderer.GetPosition(0).y;
-				deltas.Add(Mathf.Abs(lz - z));
+				float distance = Mathf.Abs(lz - z);
+				if (distance < closest) { closest = distance; index = i; }
 			}
-			int index = deltas.IndexOf(deltas.Min());
-			if (index < 0)
-			{
-				return defaultTiming;
-			}
-			float tz = beatlineInstances[index].renderer.GetPosition(0).y;
-			int t = beatlineInstances[index].timing;
-			if (Mathf.Abs(tz - z) < 5f) return t;
-			return defaultTiming;
+			return index < 0 ? defaultTiming : beatlineInstances[index].timing;
 		}
 		public float AttachVerticalX(float x)
 		{

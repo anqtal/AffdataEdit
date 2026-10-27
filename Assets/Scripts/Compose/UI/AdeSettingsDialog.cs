@@ -70,6 +70,7 @@ namespace Arcade.Compose
             checkmark = Resources.Load<Sprite>("AffdataEdit/Icons/Checkmark");
             BuildContextMenuSetting(settings.Find("Wraper"));
             BuildChartSortSetting(settings.Find("Wraper"));
+            BuildDragEditingSettings(settings.Find("Wraper"));
             foreach (Transform row in settings.Find("Wraper"))
                 Register(row, row.name == "DarkUi" ? Page.Appearance : row.name == "Log" ? Page.About
                     : row.name == "PlaybackSync" || row.name == "GlobalAudioOffset" || row.name.StartsWith("WindowsAudio") ? Page.Audio : Page.General);
@@ -300,6 +301,7 @@ namespace Arcade.Compose
         {
             bool dark = AdeUiTheme.Dark;
             darkToggle?.SetIsOnWithoutNotify(dark);
+            dragModeDropdown?.SetValueWithoutNotify((int)Editing.AdeDragEdit.Instance.Mode);
             StyleAppearance();
             StyleStorage();
             StyleHotkeyGroups();
