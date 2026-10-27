@@ -9,7 +9,7 @@ namespace Arcade.Gameplay
 	// Render state of one visible Arc, without a GameObject, as in AffdataPlay. ArcNoteRenderer
 	// draws its segments, head, height indicator and cap from these values, and the shared judge
 	// effect follows JudgePosition. Skin assets come from the Arc prefab's ArcArcRenderer.
-	internal sealed class ArcArcVisual
+	internal sealed partial class ArcArcVisual
 	{
 		private static ArcArcRenderer Skin => ArcArcManager.Instance.ArcSkin;
 
@@ -227,6 +227,7 @@ namespace Arcade.Gameplay
 		public void Build()
 		{
 			heightIndicatorClip = default;
+			ResetTraceState();
 			BuildHeightIndicator();
 			BuildSegments();
 		}
@@ -303,6 +304,11 @@ namespace Arcade.Gameplay
 		public void UpdateArc()
 		{
 			if (!enable) return;
+            if (arc.IsVoid)
+            {
+                UpdateTrace();
+                return;
+            }
 			UpdateHead();
 			UpdateSegments();
 			UpdateHeightIndicator();

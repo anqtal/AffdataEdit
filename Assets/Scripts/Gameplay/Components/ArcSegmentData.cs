@@ -11,6 +11,8 @@ namespace Arcade.Gameplay
         public float From, To = 1, FromHeight, ToHeight, Width;
         public bool Enable, Highlight, Selected, IsTrace, UseGoldTrace;
         public Color HighColor, LowColor;
+        public bool TraceHidden, DrawShadow = true;
+        public Vector3? TraceClippedStart;
         public float Alpha
         {
             get => HighColor.a;
@@ -21,16 +23,18 @@ namespace Arcade.Gameplay
             From = 0; To = 1;
             FromPos = from; ToPos = to; Width = width; FromTiming = start; ToTiming = end;
             FromHeight = startHeight; ToHeight = endHeight;
+            TraceHidden = false; TraceClippedStart = null; DrawShadow = true;
         }
         public void Submit(ArcNoteRenderer renderer, Matrix4x4 parent, Texture normal, Texture highlight, Texture gold,
             int colorId, int sortKey, Arcade.Gameplay.Chart.ArcNote note)
         {
-            if (!Enable || FromPos == ToPos) return;
+            Vector3 start = IsTrace ? TraceClippedStart ?? FromPos : FromPos;
+            if (!Enable || start == ToPos) return;
             var local = Matrix4x4.identity;
             local.SetColumn(0, new Vector4(Width,0,0,0));
             local.SetColumn(1, new Vector4(0,Width,0,0));
-            local.SetColumn(2, (Vector4)(ToPos - FromPos));
-            local.SetColumn(3, new Vector4(FromPos.x,FromPos.y,FromPos.z,1));
+            local.SetColumn(2, (Vector4)(ToPos - start));
+            local.SetColumn(3, new Vector4(start.x,start.y,start.z,1));
             var data = ArcNoteRenderer.NoteInstance.Create(parent * local, 2, Selected);
             data.HighColor = HighColor; data.LowColor = LowColor;
             data.Options.y = IsTrace ? 1 : ArcNoteRenderer.ArcOpacityMultiplier;
@@ -44,6 +48,7 @@ namespace Arcade.Gameplay
                 submesh: 1, arcSortKey: sortKey, note: note);
             renderer.Submit(ArcNoteMeshes.Segment, texture, data, "Arc", order + ArcRenderOrder.RightHalfOffset,
                 submesh: 2, arcSortKey: sortKey, note: note);
+            if (!DrawShadow) return;
             local.m13 = 0; local.m12 = 0;
             // Core supplies the .05 floor offset; Arc width must not scale that height.
             local.m11 = 1;

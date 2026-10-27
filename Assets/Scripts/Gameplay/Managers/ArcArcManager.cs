@@ -263,6 +263,11 @@ namespace Arcade.Gameplay
 				}
 				t.Position = timingManager.CalculatePositionByTiming(t.Timing, t.TimingGroup);
 				t.EndPosition = timingManager.CalculatePositionByTiming(t.EndTiming, t.TimingGroup);
+                // Trace geometry keeps the start timing's speed unless cross-timing is enabled.
+                // Cull against that geometry, including the extension to its successor.
+                if (t.IsVoid && !ArcArcRenderer.AllowCrossTiming)
+                    t.EndPosition = t.Position + timingManager.CalculateVelocityAtTiming(t.Timing, t.TimingGroup)
+                        * (Mathf.Max(t.EndTiming, t.RenderEndTiming) - t.Timing);
 				if (Mathf.Min(t.Position, t.EndPosition) > 100000 || Mathf.Max(t.Position, t.EndPosition) < -100000)
 				{
 					t.Enable = false;
