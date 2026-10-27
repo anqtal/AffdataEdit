@@ -24,7 +24,7 @@ namespace Arcade.Compose
             layout.childForceExpandWidth = true;
             layout.childForceExpandHeight = false;
             contextVertical = ArcadeComposeManager.Instance.ArcadePreference.VerticalContextMenu;
-            ContextDropdown("配置样式", new List<string> { "环形", "纵向" }, contextVertical ? 1 : 0, value =>
+            ContextDropdown("配置样式", new List<string> { "Legacy", "NEW" }, contextVertical ? 1 : 0, value =>
             {
                 contextVertical = value == 1;
                 RebuildContextMenuRows();
@@ -37,7 +37,7 @@ namespace Arcade.Compose
             var hint = Rect("Hint", contextEditorRoot, typeof(TextMeshProUGUI));
             var text = hint.GetComponent<TMP_Text>();
             AdeEditorText.Configure(text, AdeEditorText.CaptionSize);
-            text.text = "勾选显示项目，用上移／下移调整顺序。显示开关共用，环形与纵向分别保存顺序。";
+            text.text = "勾选显示项目，用上移／下移调整顺序。显示开关共用，Legacy 与 NEW 分别保存顺序。";
             text.textWrappingMode = TextWrappingModes.Normal;
             text.raycastTarget = false;
             contextItemRows = Rect("Items", contextEditorRoot, typeof(VerticalLayoutGroup));

@@ -125,7 +125,7 @@ namespace Arcade.Compose
             var compose = ArcadeComposeManager.Instance;
             var template = compose.PlaybackSyncToggle.GetComponentInParent<HorizontalLayoutGroup>(true).transform;
             var row = AdeUiKit.CloneRow(template, parent, "KeepContextMenuOpen");
-            row.GetComponentInChildren<TMP_Text>(true).text = "右键菜单保持展开";
+            row.GetComponentInChildren<TMP_Text>(true).text = "点击选取";
             var toggle = row.GetComponentInChildren<Toggle>(true);
             toggle.SetIsOnWithoutNotify(compose.ArcadePreference.KeepContextMenuOpen);
             toggle.onValueChanged.AddListener(value =>
@@ -135,7 +135,7 @@ namespace Arcade.Compose
             });
 
             var styleRow = AdeUiKit.CloneRow(template, parent, "VerticalContextMenu");
-            styleRow.GetComponentInChildren<TMP_Text>(true).text = "纵向右键菜单";
+            styleRow.GetComponentInChildren<TMP_Text>(true).text = "使用全新的右键菜单";
             var styleToggle = styleRow.GetComponentInChildren<Toggle>(true);
             styleToggle.SetIsOnWithoutNotify(compose.ArcadePreference.VerticalContextMenu);
             styleToggle.onValueChanged.AddListener(value =>
