@@ -32,6 +32,7 @@ namespace Arcade.Compose
 			: Keyboard.current.ctrlKey.isPressed;
 
 		private bool rebindFinishedThisFrame = false;
+		private int textInputFrame = -2;
 
 		private void Awake()
 		{
@@ -63,19 +64,14 @@ namespace Arcade.Compose
 		private bool IsFocusingOnTextField()
 		{
 			GameObject selected = EventSystem.currentSelectedGameObject;
-			if (selected == null)
+			if (selected && (selected.GetComponentInParent<InputField>()
+				|| selected.GetComponentInParent<UnityEngine.UI.InputField>()))
 			{
-				return false;
+				textInputFrame = Time.frameCount;
+				return true;
 			}
-			InputField inputField = selected.GetComponent<InputField>();
-			if (inputField != null)
-			{
-				if (inputField.isFocused)
-				{
-					return true;
-				}
-			}
-			return false;
+			// Submission can release TMP focus before playback reads the same Enter press.
+			return Time.frameCount <= textInputFrame + 1;
 		}
 
 		public bool CheckHotkeyActionPressed(InputAction action)
