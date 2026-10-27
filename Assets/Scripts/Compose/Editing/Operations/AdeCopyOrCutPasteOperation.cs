@@ -124,7 +124,7 @@ namespace Arcade.Compose.Operation
 
 		private async UniTask ExecuteCopyOrCut(bool isCut, CancellationToken cancellationToken)
 		{
-			var oldNotes = AdeSelectionManager.Instance.SelectedNotes.ToArray();
+			var oldNotes = AdeSelectionManager.Instance.SelectedNotesWithSingleArcTapHosts();
 			AdeSelectionManager.Instance.DeselectAllNotes();
 			if (oldNotes.Length == 0) return;
 			List<ICommand> commands = new List<ICommand>();

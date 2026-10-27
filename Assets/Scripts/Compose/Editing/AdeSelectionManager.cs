@@ -107,13 +107,28 @@ namespace Arcade.Compose
 		public void DeleteSelectedNotes()
 		{
 			List<ICommand> deleteCommands = new List<ICommand>();
-			foreach (var s in SelectedNotes)
+			foreach (var s in SelectedNotesWithSingleArcTapHosts())
 			{
 				if (s is ArcArcTap arcTap) deleteCommands.Add(new RemoveArcTapCommand(arcTap.Arc, arcTap));
 				else deleteCommands.Add(new RemoveArcEventCommand(s));
 			}
 			if (deleteCommands.Count != 0) AdeCommandManager.Instance.Add(new BatchCommand(deleteCommands.ToArray(), "删除"));
 			SelectedNotes.Clear();
+		}
+		// A single ArcTap's 1ms void arc only exists to hold it, so it follows once all its ArcTaps are selected.
+		internal ArcNote[] SelectedNotesWithSingleArcTapHosts()
+		{
+			var notes = new List<ArcNote>(SelectedNotes);
+			foreach (var note in SelectedNotes)
+				if (note is ArcArcTap arcTap && IsSingleArcTapHost(arcTap.Arc) && !notes.Contains(arcTap.Arc)
+					&& arcTap.Arc.ArcTaps.TrueForAll(tap => SelectedNotes.Contains(tap)))
+					notes.Add(arcTap.Arc);
+			return notes.ToArray();
+		}
+		private static bool IsSingleArcTapHost(ArcArc arc)
+		{
+			return arc != null && arc.IsVoid && arc.EndTiming - arc.Timing == 1
+				&& arc.XStart == arc.XEnd && arc.YStart == arc.YEnd;
 		}
 	}
 }
