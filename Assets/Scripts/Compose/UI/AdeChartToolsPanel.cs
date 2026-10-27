@@ -70,7 +70,11 @@ namespace Arcade.Compose
             public readonly List<Button> Rows = new List<Button>();
             public readonly List<TMP_Text> Descriptions = new List<TMP_Text>();
             public readonly List<TMP_Text> Groups = new List<TMP_Text>();
-            [NonSerialized] public List<ArcEvent> Events = new List<ArcEvent>();
+            [NonSerialized] public readonly List<ArcEvent> Events = new List<ArcEvent>();
+            [NonSerialized] public int EventsRevision = -1, EventsScope = -1, First = -1;
+            [NonSerialized] public ArcChart EventsChart;
+            [NonSerialized] public ArcTimingGroup EventsGroup;
+            [NonSerialized] public RectTransform TopSpacer, BottomSpacer;
             [NonSerialized] public ArcEvent Selected;
             public TMP_Dropdown Scope, Group, Type;
             public TMP_InputField Time, Duration, CustomType, Parameters, Statement;

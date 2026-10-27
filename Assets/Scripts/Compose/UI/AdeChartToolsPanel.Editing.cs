@@ -303,16 +303,36 @@ namespace Arcade.Compose
 
         private void RefreshControls(ControlPage page)
         {
-            IEnumerable<ArcEvent> events = page.Camera ? ArcCameraManager.Instance.Cameras.Cast<ArcEvent>() : ArcSceneControlManager.Instance.SceneControls;
-            page.Events = lastChart == null ? new List<ArcEvent>() : events
-                .Where(x => page.Scope.value == 1 || ((IHasTimingGroup)x).TimingGroup == lastGroup).OrderBy(x => x.Timing).ToList();
-            if (!page.Events.Contains(page.Selected)) page.Selected = page.Events.FirstOrDefault();
-            while (page.Rows.Count < page.Events.Count)
+            int revision = page.Camera ? ArcCameraManager.Instance.Revision : ArcSceneControlManager.Instance.Revision;
+            if (page.EventsRevision != revision || page.EventsChart != lastChart
+                || page.EventsGroup != lastGroup || page.EventsScope != page.Scope.value)
+            {
+                page.Events.Clear();
+                if (lastChart != null)
+                {
+                    IEnumerable<ArcEvent> events = page.Camera ? ArcCameraManager.Instance.Cameras.Cast<ArcEvent>()
+                        : ArcSceneControlManager.Instance.OrderedSceneControls;
+                    foreach (var e in events)
+                        if (page.Scope.value == 1 || ((IHasTimingGroup)e).TimingGroup == lastGroup) page.Events.Add(e);
+                }
+                page.EventsRevision = revision;
+                page.EventsChart = lastChart;
+                page.EventsGroup = lastGroup;
+                page.EventsScope = page.Scope.value;
+                if (!page.Events.Contains(page.Selected)) page.Selected = page.Events.FirstOrDefault();
+            }
+            if (!page.TopSpacer)
+            {
+                page.TopSpacer = Rect("Top spacer", page.List);
+                page.TopSpacer.SetAsFirstSibling();
+                page.BottomSpacer = Rect("Bottom spacer", page.List);
+            }
+            while (page.Rows.Count < Mathf.Min(page.Events.Count, 6))
             {
                 int index = page.Rows.Count;
                 var button = Quiet(Button(page.List, "", () =>
                 {
-                    page.Selected = page.Events[index];
+                    page.Selected = page.Events[page.First + index];
                     FillControl(page); HighlightControlRows(page); ClearMessage();
                 }));
                 button.GetComponentInChildren<TMP_Text>().alignment = TextAlignmentOptions.Left;
@@ -333,46 +353,65 @@ namespace Arcade.Compose
                 Size(group.transform, 72, ControlHeight);
                 page.Groups.Add(group);
                 page.Rows.Add(button);
+                page.BottomSpacer.SetAsLastSibling();
             }
+            page.Scroll.gameObject.SetActive(page.Events.Count > 0);
+            Size(page.Scroll.transform, -1, Mathf.Clamp(page.Events.Count, 1, 4) * (ControlHeight + 4) - 4);
+            page.Summary.text = page.Events.Count == 0 ? "当前范围暂无事件，点击「+ 当前时间」添加。" : $"{page.Events.Count} 个事件";
+            page.First = -1;
+            ScrollControls(page);
+            FillControl(page);
+        }
+
+        private void ScrollControls(ControlPage page)
+        {
+            if (!page.TopSpacer) return;
+            const float pitch = ControlHeight + 4;
+            int first = Mathf.Clamp(Mathf.FloorToInt(page.List.anchoredPosition.y / pitch),
+                0, Mathf.Max(0, page.Events.Count - page.Rows.Count));
+            if (first == page.First) return;
+            page.First = first;
+            SetSpacer(page.TopSpacer, first * pitch - 4);
+            SetSpacer(page.BottomSpacer, (page.Events.Count - first - page.Rows.Count) * pitch - 4);
             for (int i = 0; i < page.Rows.Count; i++)
             {
-                page.Rows[i].gameObject.SetActive(i < page.Events.Count);
-                if (i >= page.Events.Count) continue;
-                var e = page.Events[i];
+                int index = first + i;
+                page.Rows[i].gameObject.SetActive(index < page.Events.Count);
+                if (index >= page.Events.Count) continue;
+                var e = page.Events[index];
                 string name = e is ArcCamera c ? $"{c.CameraType.ToString().ToLowerInvariant()} · {c.Duration} ms" : ((RawAffSceneControl)((ArcSceneControl)e).IntoRawItem()).Type;
                 page.Rows[i].GetComponentInChildren<TMP_Text>().text = $"{e.Timing} ms";
                 page.Descriptions[i].text = name;
                 page.Groups[i].text = GroupName(((IHasTimingGroup)e).TimingGroup);
             }
-            page.Scroll.gameObject.SetActive(page.Events.Count > 0);
-            Size(page.Scroll.transform, -1, Mathf.Clamp(page.Events.Count, 1, 4) * (ControlHeight + 4) - 4);
-            page.Summary.text = page.Events.Count == 0 ? "当前范围暂无事件，点击「+ 当前时间」添加。" : $"{page.Events.Count} 个事件";
-            FillControl(page); HighlightControlRows(page);
+            HighlightControlRows(page);
         }
 
         private void HighlightControlRows(ControlPage page)
         {
-            for (int i = 0; i < page.Events.Count; i++) Highlight(page.Rows[i], page.Selected == page.Events[i]);
+            for (int i = 0; i < page.Rows.Count; i++)
+                if (page.Rows[i].gameObject.activeSelf)
+                    Highlight(page.Rows[i], page.Selected == page.Events[page.First + i]);
         }
 
-        private void FillControl(ControlPage page)
+        private void FillControl(ControlPage page, bool preserveInput = true)
         {
             bool selected = page.Selected != null;
             page.Form.gameObject.SetActive(selected);
             page.Delete.interactable = page.Duplicate.interactable = selected;
             if (!selected) { page.Statement.SetTextWithoutNotify(""); return; }
-            page.Time.SetTextWithoutNotify(page.Selected.Timing.ToString());
+            if (!preserveInput || !page.Time.isFocused) page.Time.SetTextWithoutNotify(page.Selected.Timing.ToString());
             page.Group.SetValueWithoutNotify(Mathf.Max(0, groups.IndexOf(((IHasTimingGroup)page.Selected).TimingGroup)));
             page.Group.RefreshShownValue();
             if (page.Selected is ArcCamera camera)
             {
                 for (int i = 0; i < 3; i++)
                 {
-                    page.Vectors[i].SetTextWithoutNotify(ChartControlText.Number(camera.Move[i]));
-                    page.Vectors[3 + i].SetTextWithoutNotify(ChartControlText.Number(camera.Rotate[i]));
+                    if (!preserveInput || !page.Vectors[i].isFocused) page.Vectors[i].SetTextWithoutNotify(ChartControlText.Number(camera.Move[i]));
+                    if (!preserveInput || !page.Vectors[3 + i].isFocused) page.Vectors[3 + i].SetTextWithoutNotify(ChartControlText.Number(camera.Rotate[i]));
                 }
                 page.Type.SetValueWithoutNotify((int)camera.CameraType); page.Type.RefreshShownValue();
-                page.Duration.SetTextWithoutNotify(camera.Duration.ToString());
+                if (!preserveInput || !page.Duration.isFocused) page.Duration.SetTextWithoutNotify(camera.Duration.ToString());
             }
             else
             {
@@ -412,7 +451,7 @@ namespace Arcade.Compose
                 : new ArcSceneControl(new RawAffSceneControl { Timing = time, Type = "trackhide", Params = new List<IRawAffValue>() }, lastGroup);
             AdeCommandManager.Instance.Add(new ChartControlCommand(value, null, value));
             page.Selected = value; dirty = true;
-            Message("事件已添加。修改参数后点击应用。");
+            Message(page.Camera ? "事件已添加。参数修改会自动应用。" : "事件已添加。修改参数后点击应用。");
         }
 
         private void DuplicateControl(ControlPage page)

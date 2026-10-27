@@ -23,6 +23,7 @@ namespace Arcade.Gameplay
 		[HideInInspector]
 		[System.NonSerialized]
 		public List<ArcCamera> Cameras = new List<ArcCamera>();
+        public int Revision { get; private set; }
 
 		[HideInInspector]
 		public bool IsReset = true;
@@ -74,6 +75,7 @@ namespace Arcade.Gameplay
 		public void Clean()
 		{
 			Cameras.Clear();
+            Revision++;
 		}
 		public void Load(List<ArcCamera> cameras)
 		{
@@ -81,6 +83,7 @@ namespace Arcade.Gameplay
 			// just because we do not have stable inplace sort now in dot net
 			Cameras = cameras.OrderBy(camera => camera.Timing).ToList();
 			ArcGameplayManager.Instance.Chart.Cameras = Cameras;
+            Revision++;
 		}
 
 		public void ResetCamera()

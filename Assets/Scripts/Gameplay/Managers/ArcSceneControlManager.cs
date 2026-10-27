@@ -29,6 +29,9 @@ public class ArcSceneControlManager : MonoBehaviour
 	[HideInInspector]
 	[System.NonSerialized]
 	public List<ArcSceneControl> SceneControls = new List<ArcSceneControl>();
+    private readonly List<ArcSceneControl> orderedSceneControls = new List<ArcSceneControl>();
+    public IReadOnlyList<ArcSceneControl> OrderedSceneControls => orderedSceneControls;
+    public int Revision { get; private set; }
 	private const float trackAnimationDefaultDuration = 1f;
 	// Background darken mirrors AffdataPlay's TrackDisplay darken: alpha, timings and the
 	// scale animation of the 1024px radial sprite (shown width = 96% of the background).
@@ -42,6 +45,10 @@ public class ArcSceneControlManager : MonoBehaviour
 	{
 		ClearArcahvEffects();
 		SceneControls = sceneControls;
+        // Stable ordering preserves precedence for events at the same timestamp.
+        orderedSceneControls.Clear();
+        orderedSceneControls.AddRange(sceneControls.OrderBy(sc => sc.Timing));
+        Revision++;
         LoadArcahvEffects();
 		ResetScene();
 	}
@@ -49,6 +56,8 @@ public class ArcSceneControlManager : MonoBehaviour
 	{
 		ClearArcahvEffects();
 		SceneControls.Clear();
+        orderedSceneControls.Clear();
+        Revision++;
 	}
 	public void ResetScene()
 	{
@@ -74,7 +83,7 @@ public class ArcSceneControlManager : MonoBehaviour
 			tg.GroupHide = false;
 		}
 
-		foreach (ArcSceneControl sc in SceneControls.OrderBy(sc => sc.Timing))
+		foreach (ArcSceneControl sc in orderedSceneControls)
 		{
 			if (sc.Timing > ArcGameplayManager.Instance.ChartTiming)
 			{
@@ -256,7 +265,7 @@ public class ArcSceneControlManager : MonoBehaviour
         int timing = ArcGameplayManager.Instance.ChartTiming;
         var distort = new ArcahvFade();
         var debris = new ArcahvFade();
-        foreach (var sc in SceneControls.OrderBy(sc => sc.Timing))
+        foreach (var sc in orderedSceneControls)
         {
             if (sc.Timing > timing) break;
             if (sc.Type == SceneControlType.ArcahvDistort) distort.Apply(sc);

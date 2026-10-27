@@ -111,7 +111,8 @@ namespace Arcade.Compose
             colors.disabledColor = Color.clear;
             control.colors = colors;
             control.targetGraphic.color = Color.white;
-            button.GetComponentInChildren<TMP_Text>().color = button.interactable ? Foreground : Muted;
+            var label = button.GetComponentInChildren<TMP_Text>(true);
+            if (label) label.color = button.interactable ? Foreground : Muted;
             var icon = button.transform.Find("Icon")?.GetComponent<Image>();
             if (icon)
                 icon.color = button.interactable ? AdeUiTheme.IconColor : new Color(Muted.r, Muted.g, Muted.b, .35f);
@@ -121,7 +122,8 @@ namespace Arcade.Compose
             Style(button); var colors = button.colors;
             if (selected) colors.normalColor = colors.selectedColor = AdeUiTheme.Current.Selection;
             button.colors = colors;
-            button.GetComponentInChildren<TMP_Text>().color = button.interactable ? Foreground : Muted;
+            var label = button.GetComponentInChildren<TMP_Text>(true);
+            if (label) label.color = button.interactable ? Foreground : Muted;
         }
         private void ApplyTheme()
         {
@@ -145,7 +147,7 @@ namespace Arcade.Compose
             UpdateHighlights();
             for (int i = 0; i < groupRows.Count; i++) if (groupRows[i].gameObject.activeSelf) Highlight(groupRows[i], groupFirst + i == groups.IndexOf(lastGroup));
             foreach (var page in controlPages)
-                for (int i = 0; i < page.Events.Count; i++) Highlight(page.Rows[i], page.Events[i] == page.Selected);
+                HighlightControlRows(page);
         }
     }
 }

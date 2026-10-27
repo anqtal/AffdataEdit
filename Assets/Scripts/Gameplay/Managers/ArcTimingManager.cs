@@ -51,6 +51,65 @@ namespace Arcade.Gameplay
 		private int renderRangeVersion;
 		private (int timing, float velocity, float baseBpm, int begin, int end, int version) renderRangeInputs = (int.MinValue, 0, 0, 0, 0, -1);
 		private float[] timingPositions = new float[0];
+        private sealed class RenderCurve
+        {
+            public List<ArcTiming> Timings;
+            public float[] Steps;
+            public float Earliest, Latest;
+            public bool Updated;
+        }
+
+        // Only Timing/Bpm affect render ranges. Share work between identical curves,
+        // without changing their float integration order or merging tempo segments.
+        private sealed class RenderCurveComparer : IEqualityComparer<List<ArcTiming>>
+        {
+            public bool Equals(List<ArcTiming> a, List<ArcTiming> b)
+            {
+                if (ReferenceEquals(a, b)) return true;
+                if (a == null || b == null || a.Count != b.Count) return false;
+                for (int i = 0; i < a.Count; i++)
+                    if (a[i].Timing != b[i].Timing || !a[i].Bpm.Equals(b[i].Bpm)) return false;
+                return true;
+            }
+            public int GetHashCode(List<ArcTiming> events)
+            {
+                unchecked
+                {
+                    int hash = events.Count;
+                    foreach (var item in events) hash = (hash * 31 + item.Timing) * 31 + item.Bpm.GetHashCode();
+                    return hash;
+                }
+            }
+        }
+        private readonly Dictionary<List<ArcTiming>, RenderCurve> renderCurves =
+            new Dictionary<List<ArcTiming>, RenderCurve>(new RenderCurveComparer());
+        private RenderCurve[] groupRenderCurves = new RenderCurve[0];
+        private (int version, float velocity, float baseBpm) renderCurveInputs = (-1, 0, 0);
+
+        private void PrepareRenderCurves()
+        {
+            var inputs = (renderRangeVersion, Velocity, BaseBpm);
+            if (inputs != renderCurveInputs)
+            {
+                renderCurveInputs = inputs;
+                renderCurves.Clear();
+                groupRenderCurves = new RenderCurve[timingGroups.Count + 1];
+                for (int group = 0; group < groupRenderCurves.Length; group++)
+                {
+                    var events = GetTiming(group == 0 ? null : timingGroups[group - 1]);
+                    if (!renderCurves.TryGetValue(events, out var curve))
+                    {
+                        curve = new RenderCurve { Timings = events, Steps = new float[System.Math.Max(0, events.Count - 1)] };
+                        for (int i = 0; i < curve.Steps.Length; i++)
+                            curve.Steps[i] = (events[i + 1].Timing - events[i].Timing) * events[i].Bpm / BaseBpm * Velocity;
+                        renderCurves.Add(events, curve);
+                    }
+                    groupRenderCurves[group] = curve;
+                }
+            }
+            foreach (var curve in renderCurves.Values) curve.Updated = false;
+        }
+
 		public float CurrentSpeed { get; set; }
 		public List<ArcTiming> Timings { get => timings; }
 		private float Velocity
@@ -80,11 +139,10 @@ namespace Arcade.Gameplay
 			if (inputs != renderRangeInputs)
 			{
 				renderRangeInputs = inputs;
-				UpdateRenderRange(null);
-				foreach (var timingGroup in timingGroups)
-				{
-					UpdateRenderRange(timingGroup);
-				}
+                PrepareRenderCurves();
+                UpdateRenderRange(null, groupRenderCurves[0]);
+                for (int i = 0; i < timingGroups.Count; i++)
+                    UpdateRenderRange(timingGroups[i], groupRenderCurves[i + 1]);
 			}
 			UpdateTrackSpeed();
 		}
@@ -94,6 +152,8 @@ namespace Arcade.Gameplay
 			CurrentSpeed = 0;
 			Timings.Clear();
 			timingGroups.Clear();
+            renderCurves.Clear();
+            groupRenderCurves = new RenderCurve[0];
 			renderRangeVersion++;
 			AdeTimingEditor.Instance.SetCurrentTimingGroup(null);
 			SetTrackPhase(0);
@@ -351,9 +411,14 @@ namespace Arcade.Gameplay
 			}
 			CurrentSpeed = Timings[currentTimingId].Bpm / BaseBpm;
 		}
-		private void UpdateRenderRange(ArcTimingGroup timingGroup)
+		private void UpdateRenderRange(ArcTimingGroup timingGroup, RenderCurve curve)
 		{
-			var Timings = GetTiming(timingGroup);
+            if (curve.Updated)
+            {
+                StoreRenderRange(timingGroup, curve.Earliest, curve.Latest);
+                return;
+            }
+            var Timings = curve.Timings;
 			int nearPosition = -100000;
 			int farPosition = 100000;
 			float earliestRenderTime, latestRenderTime;
@@ -375,14 +440,18 @@ namespace Arcade.Gameplay
 					int endTiming = Timings[i + 1].Timing;
 					float startPosition = i == currentTimingId ? 0 : TimingPosition[i];
 					float bpm = i == -1 ? Timings[0].Bpm : Timings[i].Bpm;
-					TimingPosition[i + 1] = startPosition + (endTiming - startTiming) * bpm / BaseBpm * Velocity;
+					TimingPosition[i + 1] = startPosition + (i == currentTimingId
+                        ? (endTiming - startTiming) * bpm / BaseBpm * Velocity : curve.Steps[i]);
 				}
 				for (int i = currentTimingId; i >= 0; i--)
 				{
 					int startTiming = i == currentTimingId ? currentTiming : Timings[i + 1].Timing;
 					int endTiming = Timings[i].Timing;
 					float startPosition = i == currentTimingId ? 0 : TimingPosition[i + 1];
-					TimingPosition[i] = startPosition + (endTiming - startTiming) * Timings[i].Bpm / BaseBpm * Velocity;
+                    // Preserve the legacy unchecked subtraction even for a 2^31 ms span.
+					TimingPosition[i] = startPosition + (i == currentTimingId
+                        ? (endTiming - startTiming) * Timings[i].Bpm / BaseBpm * Velocity
+                        : endTiming - startTiming == int.MinValue ? curve.Steps[i] : -curve.Steps[i]);
 				}
 				earliestRenderTime = float.PositiveInfinity;
 				latestRenderTime = float.NegativeInfinity;
@@ -411,7 +480,9 @@ namespace Arcade.Gameplay
 					}
 					float nearTime;
 					float farTime;
-					if (Mathf.Approximately(startPosition, finishPosition))
+                    if ((startPosition >= nearPosition && startPosition <= farPosition
+                        && finishPosition >= nearPosition && finishPosition <= farPosition)
+                        || Mathf.Approximately(startPosition, finishPosition))
 					{
 						nearTime = startTime;
 						farTime = finishTime;
@@ -466,9 +537,17 @@ namespace Arcade.Gameplay
 				earliestRenderTime = Mathf.Min(earliestRenderTime, currentTiming);
 				latestRenderTime = Mathf.Max(latestRenderTime, currentTiming);
 			}
-			if (timingGroup == null)
-			{
-				this.earliestRenderTime = earliestRenderTime;
+            curve.Earliest = earliestRenderTime;
+            curve.Latest = latestRenderTime;
+            curve.Updated = true;
+            StoreRenderRange(timingGroup, earliestRenderTime, latestRenderTime);
+        }
+
+        private void StoreRenderRange(ArcTimingGroup timingGroup, float earliestRenderTime, float latestRenderTime)
+        {
+            if (timingGroup == null)
+            {
+                this.earliestRenderTime = earliestRenderTime;
 				this.latestRenderTime = latestRenderTime;
 			}
 			else
