@@ -1,7 +1,7 @@
 using UnityEngine;
 using Arcade.Gameplay;
 using System;
-
+using UnityEngine.EventSystems;
 
 namespace Arcade.Compose
 {
@@ -13,29 +13,47 @@ namespace Arcade.Compose
 		public Vector3 Position;
 		public Vector3 Rotation;
 	}
-	public class AdeCameraManager : MonoBehaviour
+	public partial class AdeCameraManager : MonoBehaviour, IPointerClickHandler
 	{
 		public AdeCameraProperty[] Properties;
+		public static AdeCameraManager Instance { get; private set; }
+		public static bool FreeCameraEnabled => Instance && Instance.currentCameraStatus == Instance.Properties.Length;
+		private int currentCameraStatus;
 
-		private int currentCameraStatus = 0;
+		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+		private static void ResetStaticState() => Instance = null;
+
+		private void Awake() => Instance = this;
 
 		public void SwitchCameraStatus()
 		{
-			currentCameraStatus = currentCameraStatus + 1;
-			if (currentCameraStatus >= Properties.Length) currentCameraStatus = 0;
-			if (currentCameraStatus != 0)
+			currentCameraStatus = (currentCameraStatus + 1) % (Properties.Length + 1);
+			var manager = ArcCameraManager.Instance;
+			manager.EditorCamera = !FreeCameraEnabled && currentCameraStatus != 0;
+			if (FreeCameraEnabled)
 			{
-				ArcCameraManager.Instance.EditorCamera = true;
-				ArcCameraManager.Instance.EditorCameraPosition = Properties[currentCameraStatus].Position;
-				ArcCameraManager.Instance.EditorCameraRotation = Properties[currentCameraStatus].Rotation;
-				ArcCameraManager.Instance.GameplayCamera.orthographic = Properties[currentCameraStatus].Orthographic;
-				ArcCameraManager.Instance.GameplayCamera.orthographicSize = Properties[currentCameraStatus].OrthographicSize;
+				ResetFreeCamera();
+				AdeToast.Instance.Show("自由相机：WASD 移动，Shift 加速，中键转向，中键＋滚轮调速；右键视角按钮打开设置");
+			}
+			else if (currentCameraStatus != 0)
+			{
+				var properties = Properties[currentCameraStatus];
+				manager.EditorCameraPosition = properties.Position;
+				manager.EditorCameraRotation = properties.Rotation;
+				manager.GameplayCamera.orthographic = properties.Orthographic;
+				manager.GameplayCamera.orthographicSize = properties.OrthographicSize;
 			}
 			else
 			{
-				ArcCameraManager.Instance.EditorCamera = false;
-				ArcCameraManager.Instance.GameplayCamera.orthographic = false;
+				manager.GameplayCamera.orthographic = false;
+				manager.ResetCamera();
 			}
+			pressedTime = 0;
+		}
+
+		public void OnPointerClick(PointerEventData data)
+		{
+			if (data.button == PointerEventData.InputButton.Right) OpenFreeCameraSettings();
 		}
 	}
 }

@@ -96,6 +96,7 @@ namespace Arcade.Gameplay
 			// Arcade Alpha's label position and scale.
 			SkyInputLabel.localPosition = new Vector3(-(DesignResolution.x * 0.5f / 100f + Aspect(0.7f, -0.1f)), 0.13f, 0);
 			SkyInputLabel.localScale = new Vector3(0.6667f, 0.6667f, 1);
+			if (Arcade.Compose.AdeCameraManager.FreeCameraEnabled) return;
 			GameplayCamera.transform.position = new Vector3(0, 9, Aspect(9, 8));
 			GameplayCamera.transform.LookAt(new Vector3(0, -5.5f, -20), new Vector3(0, 1, 0));
 			IsReset = true;
@@ -103,6 +104,7 @@ namespace Arcade.Gameplay
 
 		private void Update()
 		{
+			if (Arcade.Compose.AdeCameraManager.FreeCameraEnabled) return;
 			if (UpdateEditorCamera()) return;
 			UpdateCameraPosition();
 			UpdateCameraTilt();

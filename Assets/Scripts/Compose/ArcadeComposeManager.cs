@@ -210,6 +210,11 @@ namespace Arcade.Compose
 
 		private void CheckScroll()
 		{
+			if (AdeCameraManager.FreeCameraPressing)
+			{
+				CheckScrollingOperation(null, 0f, 0f);
+				return;
+			}
 			int timing = GameplayManager.ChartTiming;
 
 			if (AdeInputManager.Instance.Hotkeys.ScrollToStart.WasPressedThisFrame())

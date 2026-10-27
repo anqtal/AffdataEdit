@@ -72,6 +72,8 @@ namespace Arcade.Compose
 			Controls = null;
 		}
 
+		public bool IsTextInputFocused => IsFocusingOnTextField();
+
 		private bool IsFocusingOnTextField()
 		{
 			GameObject selected = EventSystem.currentSelectedGameObject;
@@ -87,7 +89,7 @@ namespace Arcade.Compose
 
 		public bool CheckHotkeyActionPressed(InputAction action)
 		{
-			if (AdeMarkingMenuManager.BlocksEditorInput || IsFocusingOnTextField() || rebindFinishedThisFrame)
+			if (AdeMarkingMenuManager.BlocksEditorInput || IsFocusingOnTextField() || rebindFinishedThisFrame || AdeCameraManager.ConsumesHotkey(action))
 			{
 				return false;
 			}
@@ -96,7 +98,7 @@ namespace Arcade.Compose
 
 		public bool CheckHotkeyActionPressing(InputAction action)
 		{
-			if (AdeMarkingMenuManager.BlocksEditorInput || IsFocusingOnTextField() || rebindFinishedThisFrame)
+			if (AdeMarkingMenuManager.BlocksEditorInput || IsFocusingOnTextField() || rebindFinishedThisFrame || AdeCameraManager.ConsumesHotkey(action))
 			{
 				return false;
 			}

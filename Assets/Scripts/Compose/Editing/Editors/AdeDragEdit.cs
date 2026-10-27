@@ -64,7 +64,7 @@ namespace Arcade.Compose.Editing
         {
             var mouse = Mouse.current;
             var selected = AdeSelectionManager.Instance.SelectedNotes;
-            if (Mode == DragMode.Off || mouse == null || !mouse.middleButton.wasPressedThisFrame
+            if (AdeCameraManager.FreeCameraEnabled || Mode == DragMode.Off || mouse == null || !mouse.middleButton.wasPressedThisFrame
                 || !AdeGameplayContentInputHandler.InputActive || !ArcGameplayManager.Instance.IsLoaded || selected.Count != 1) return false;
             if (!BeginDrag(selected[0], Mode, mouse.position.ReadValue())) return false;
             var cancellation = new CancellationTokenSource();
