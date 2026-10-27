@@ -18,6 +18,7 @@ namespace Arcade.Compose
             Bind(panel, "工具页签/Close", Collapse);
             Bind(emptyState, "打开谱面/打开谱面", () => AdeProjectManager.Instance.OpenProject());
             bottomGroup.onValueChanged.AddListener(SelectGroup);
+            groupScroll.onValueChanged.AddListener(_ => ScrollGroups());
             Bind(groupCount.transform.parent, "+ 新建", AddGroup);
             Bind(deleteConfirmation, "确认操作/取消", () => deleteConfirmation.gameObject.SetActive(false));
             Bind(deleteConfirmation, "确认操作/删除组及内容", ConfirmDeleteGroup);

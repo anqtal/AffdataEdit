@@ -95,11 +95,16 @@ namespace Arcade.Compose
 
         private void RefreshGroups()
         {
-            bool loaded = lastChart != null;
-            while (groupRows.Count < groups.Count)
+            if (!groupTopSpacer)
             {
-                int index = groupRows.Count;
-                var button = Quiet(Button(groupList, "", () => SelectGroup(index)));
+                groupTopSpacer = Rect("Top spacer", groupList);
+                groupTopSpacer.SetAsFirstSibling();
+                groupBottomSpacer = Rect("Bottom spacer", groupList);
+            }
+            while (groupRows.Count < Mathf.Min(groups.Count, GroupRowCount))
+            {
+                int slot = groupRows.Count;
+                var button = Quiet(Button(groupList, "", () => SelectGroup(groupFirst + slot)));
                 button.GetComponentInChildren<TMP_Text>().alignment = TextAlignmentOptions.Left;
                 button.GetComponentInChildren<TMP_Text>().fontSize = 24;
                 var layout = button.gameObject.AddComponent<HorizontalLayoutGroup>();
@@ -112,24 +117,15 @@ namespace Arcade.Compose
                 detail.alignment = TextAlignmentOptions.Right;
                 detail.textWrappingMode = TextWrappingModes.NoWrap;
                 Size(detail.transform, 104, ControlHeight);
-                groupCopies.Add(IconButton(button.transform, "复制时间组", "Copy", () => DuplicateGroup(index)));
-                groupDeletes.Add(IconButton(button.transform, "删除时间组", "Trash", () => DeleteGroup(index)));
+                groupCopies.Add(IconButton(button.transform, "复制时间组", "Copy", () => DuplicateGroup(groupFirst + slot)));
+                groupDeletes.Add(IconButton(button.transform, "删除时间组", "Trash", () => DeleteGroup(groupFirst + slot)));
                 groupDetails.Add(detail);
                 groupRows.Add(button);
+                groupBottomSpacer.SetAsLastSibling();
             }
-            for (int i = 0; i < groupRows.Count; i++)
-            {
-                groupRows[i].gameObject.SetActive(i < groups.Count);
-                if (i >= groups.Count) continue;
-                var group = groups[i];
-                groupRows[i].GetComponentInChildren<TMP_Text>().text = GroupName(group);
-                groupDetails[i].text = group == null ? "基础" : GroupEventCount(group) + " 个事件";
-                groupRows[i].interactable = loaded;
-                groupCopies[i].interactable = loaded;
-                groupDeletes[i].interactable = loaded && group != null;
-                Style(groupCopies[i]); Style(groupDeletes[i]);
-                Highlight(groupRows[i], group == lastGroup);
-            }
+            groupFirst = -1;
+            ScrollGroups();
+            bool loaded = lastChart != null;
             bool editable = loaded && lastGroup != null;
             groupCount.text = "时间组  ·  " + groups.Count;
             Size(groupScroll.transform, -1, Mathf.Min(groups.Count, 4) * (ControlHeight + 4) - 4);
@@ -143,6 +139,40 @@ namespace Arcade.Compose
             attributes.SetTextWithoutNotify(lastGroup?.Attributes ?? "");
             if (pendingDelete != lastGroup) { pendingDelete = null; deleteConfirmation.gameObject.SetActive(false); }
             RefreshTimings();
+        }
+
+        // Binds the rows to the groups at the current scroll position; event counts are only taken for them.
+        private void ScrollGroups()
+        {
+            const float pitch = ControlHeight + 4;
+            int first = Mathf.Clamp(Mathf.FloorToInt(groupList.anchoredPosition.y / pitch), 0, Mathf.Max(0, groups.Count - groupRows.Count));
+            if (first == groupFirst) return;
+            groupFirst = first;
+            int after = groups.Count - first - groupRows.Count;
+            SetSpacer(groupTopSpacer, first * pitch - 4);
+            SetSpacer(groupBottomSpacer, after * pitch - 4);
+            bool loaded = lastChart != null;
+            for (int i = 0; i < groupRows.Count; i++)
+            {
+                int index = first + i;
+                groupRows[i].gameObject.SetActive(index < groups.Count);
+                if (index >= groups.Count) continue;
+                var group = groups[index];
+                groupRows[i].GetComponentInChildren<TMP_Text>().text = GroupName(group);
+                groupDetails[i].text = group == null ? "基础" : GroupEventCount(group) + " 个事件";
+                groupRows[i].interactable = loaded;
+                groupCopies[i].interactable = loaded;
+                groupDeletes[i].interactable = loaded && group != null;
+                Style(groupCopies[i]); Style(groupDeletes[i]);
+                Highlight(groupRows[i], group == lastGroup);
+            }
+        }
+
+        // The layout's 4px spacing already separates a spacer from its neighbouring row.
+        private static void SetSpacer(RectTransform spacer, float height)
+        {
+            spacer.gameObject.SetActive(height > 0);
+            if (height > 0) Size(spacer, -1, height);
         }
 
         private void ApplyGroup()

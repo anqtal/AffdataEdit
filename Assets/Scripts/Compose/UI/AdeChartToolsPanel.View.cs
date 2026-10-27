@@ -89,9 +89,9 @@ namespace Arcade.Compose
             return button;
         }
 
-        private static void SetOptions(TMP_Dropdown dropdown, List<string> names, int value)
+        private void SetGroupOptions(TMP_Dropdown dropdown, int value)
         {
-            dropdown.options = names.Select(x => new TMP_Dropdown.OptionData(x)).ToList();
+            if (dropdown.options != groupOptions) dropdown.options = groupOptions;
             dropdown.SetValueWithoutNotify(Mathf.Max(0, value)); dropdown.RefreshShownValue();
         }
         private void Style(Selectable control)
@@ -143,7 +143,7 @@ namespace Arcade.Compose
             foreach (var control in controls) Style(control);
             AdeUiTheme.Refresh();
             UpdateHighlights();
-            for (int i = 0; i < groupRows.Count; i++) if (groupRows[i].gameObject.activeSelf) Highlight(groupRows[i], i == groups.IndexOf(lastGroup));
+            for (int i = 0; i < groupRows.Count; i++) if (groupRows[i].gameObject.activeSelf) Highlight(groupRows[i], groupFirst + i == groups.IndexOf(lastGroup));
             foreach (var page in controlPages)
                 for (int i = 0; i < page.Events.Count; i++) Highlight(page.Rows[i], page.Events[i] == page.Selected);
         }

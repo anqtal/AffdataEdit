@@ -24,6 +24,13 @@ namespace Arcade.Compose
         private readonly List<Button> groupRows = new List<Button>();
         private readonly List<TMP_Text> groupDetails = new List<TMP_Text>();
         private readonly List<Button> groupCopies = new List<Button>(), groupDeletes = new List<Button>();
+        // The group list is virtualized: a few rows are rebound as it scrolls, between two spacers.
+        private const int GroupRowCount = 6;
+        private int groupFirst;
+        private RectTransform groupTopSpacer, groupBottomSpacer;
+        // Timing group dropdowns share one option list, rebuilt only when the groups change.
+        private readonly List<ArcTimingGroup> optionGroups = new List<ArcTimingGroup>();
+        private List<TMP_Dropdown.OptionData> groupOptions = new List<TMP_Dropdown.OptionData>();
         [SerializeField] private Button[] groupTabs = new Button[2];
         [SerializeField] private RectTransform[] groupSections = new RectTransform[2];
         private int activeGroupTab;
@@ -184,8 +191,12 @@ namespace Arcade.Compose
             lastChart = ArcGameplayManager.Instance.Chart;
             lastGroup = AdeTimingEditor.Instance.currentTimingGroup;
             groups.Clear(); groups.Add(null); groups.AddRange(ArcTimingManager.Instance.timingGroups);
-            var names = groups.Select(GroupName).ToList();
-            SetOptions(bottomGroup, names, groups.IndexOf(lastGroup));
+            if (!groups.SequenceEqual(optionGroups))
+            {
+                groupOptions = groups.Select(g => new TMP_Dropdown.OptionData(GroupName(g))).ToList();
+                optionGroups.Clear(); optionGroups.AddRange(groups);
+            }
+            SetGroupOptions(bottomGroup, groups.IndexOf(lastGroup));
             bottomGroup.interactable = lastChart != null;
             bool loaded = lastChart != null;
             pageHost.gameObject.SetActive(loaded);
@@ -195,7 +206,7 @@ namespace Arcade.Compose
             RefreshGroups();
             foreach (var page in controlPages)
             {
-                SetOptions(page.Group, names, page.Selected is IHasTimingGroup e ? groups.IndexOf(e.TimingGroup) : groups.IndexOf(lastGroup));
+                SetGroupOptions(page.Group, page.Selected is IHasTimingGroup e ? groups.IndexOf(e.TimingGroup) : groups.IndexOf(lastGroup));
                 RefreshControls(page);
             }
             UpdateHighlights();
