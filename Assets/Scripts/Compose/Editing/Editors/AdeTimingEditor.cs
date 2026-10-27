@@ -129,6 +129,7 @@ namespace Arcade.Compose.Editing
 			}
 
 			CleanUnusedInstance();
+			AdeUiTheme.Refresh();
 		}
 
 		public void SetCurrentTimingGroup(ArcTimingGroup arcTimingGroup)

@@ -133,6 +133,7 @@ namespace Arcade.Gameplay.Chart
         }
         public void Rebuild()
         {
+            ArcScoreManager.Invalidate();
             if (Instance) Instance.GetComponent<ArcSlideVisual>().Invalidate();
             if (ArcSlideManager.Instance) ArcSlideManager.Instance.RebuildGroups();
         }

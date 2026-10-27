@@ -183,7 +183,7 @@ namespace Arcade.Gameplay
 		public void ResetJudge()
 		{
             if (ArcEffectManager.Instance) ArcEffectManager.Instance.ResetHitSoundDeduplication();
-            foreach (var effect in FindObjectsByType<ArcLongNoteEffect>()) effect.ResetState();
+            ArcLongNoteEffect.ResetAll();
 			if (ArcSlideManager.Instance) ArcSlideManager.Instance.ResetFeedback();
 			if (Chart != null)
 			{

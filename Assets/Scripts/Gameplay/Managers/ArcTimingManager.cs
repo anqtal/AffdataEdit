@@ -517,6 +517,7 @@ namespace Arcade.Gameplay
 		}
 		public void OnTimingChange(ArcTimingGroup timingGroup)
 		{
+			ArcScoreManager.Invalidate();
 			if (timingGroup == null)
 			{
 				CalculateBeatlineTimes();

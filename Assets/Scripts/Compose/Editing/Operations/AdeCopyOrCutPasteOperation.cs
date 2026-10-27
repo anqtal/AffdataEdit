@@ -179,9 +179,9 @@ namespace Arcade.Compose.Operation
 									note.EndTiming = timing + duration + diff;
 									note.Judging = false;
 									(note as ArcArc)?.Rebuild();
-									if (note is ArcArc)
+									if (note is ArcArc arc)
 									{
-										ArcArcManager.Instance.CalculateArcRelationship();
+										ArcArcManager.Instance.CalculateArcRelationship(arc);
 									}
 									(note as ArcArc)?.CalculateJudgeTimings();
 									(note as ArcHold)?.CalculateJudgeTimings();

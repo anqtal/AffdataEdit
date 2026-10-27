@@ -71,6 +71,7 @@ namespace Arcade.Compose.UI
             AdeSelectionManager.Instance.NoteEventListeners.Add(this);
             AdeCommandManager.Instance.onCommandExecuted += OnCommand;
             ready = true; Refresh();
+            AdeUiTheme.Refresh();
         }
 
         private InputField RangeRow(RectTransform template, string label, bool start)

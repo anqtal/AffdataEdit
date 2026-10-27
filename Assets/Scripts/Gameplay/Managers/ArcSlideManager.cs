@@ -184,6 +184,7 @@ namespace Arcade.Gameplay
         }
         public void RebuildGroups()
         {
+            ArcScoreManager.Invalidate();
             UpdateConnections(Slides);
             ResetFeedback();
             foreach (var hit in feedback.Values) if (hit.Object) Destroy(hit.Object);

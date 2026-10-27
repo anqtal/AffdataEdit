@@ -457,7 +457,7 @@ namespace Arcade.Compose.Operation
 					note.XEnd = coord.x;
 					note.YEnd = coord.y;
 					note.Rebuild();
-					ArcArcManager.Instance.CalculateArcRelationship();
+					ArcArcManager.Instance.CalculateArcRelationship(note);
 				};
 				var startCoord = await AdeCursorManager.Instance.SelectCoordinate(note.Timing, Progress.Create(updateStartCoordinate), cancellationToken);
 				updateStartCoordinate(startCoord);
@@ -470,7 +470,7 @@ namespace Arcade.Compose.Operation
 						note.Rebuild();
 						note.CalculateJudgeTimings();
 						ArcGameplayManager.Instance.ResetJudge();
-						ArcArcManager.Instance.CalculateArcRelationship();
+						ArcArcManager.Instance.CalculateArcRelationship(note);
 					}
 				};
 				while (true)
@@ -488,7 +488,7 @@ namespace Arcade.Compose.Operation
 					note.XEnd = coord.x;
 					note.YEnd = coord.y;
 					note.Rebuild();
-					ArcArcManager.Instance.CalculateArcRelationship();
+					ArcArcManager.Instance.CalculateArcRelationship(note);
 				};
 				var endCoord = await AdeCursorManager.Instance.SelectCoordinate(note.EndTiming, Progress.Create(updateEndCoordinate), cancellationToken);
 				updateEndCoordinate(endCoord);
@@ -521,7 +521,7 @@ namespace Arcade.Compose.Operation
 					arc.XEnd = coord.x;
 					arc.YEnd = coord.y;
 					arc.Rebuild();
-					ArcArcManager.Instance.CalculateArcRelationship();
+					ArcArcManager.Instance.CalculateArcRelationship(arc);
 				};
 				var startCoord = await AdeCursorManager.Instance.SelectCoordinate(arc.Timing, Progress.Create(updateStartCoordinate), cancellationToken);
 				updateStartCoordinate(startCoord);

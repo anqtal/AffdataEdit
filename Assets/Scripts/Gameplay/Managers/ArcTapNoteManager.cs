@@ -41,12 +41,14 @@ namespace Arcade.Gameplay
 
 		public void Add(ArcTap tap)
 		{
+			ArcScoreManager.Invalidate();
 			tap.Instantiate();
 			Taps.Add(tap);
 			tap.SetupArcTapConnection();
 		}
 		public void Remove(ArcTap tap)
 		{
+			ArcScoreManager.Invalidate();
 			tap.Destroy();
 			Taps.Remove(tap);
 		}

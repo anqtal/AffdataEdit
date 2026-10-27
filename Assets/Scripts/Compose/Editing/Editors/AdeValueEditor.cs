@@ -57,6 +57,7 @@ namespace Arcade.Compose.Editing
 			colorDropdownHelper = new DropdownHelper<int?>(Color.GetComponentInChildren<Dropdown>());
 			timingGroupDropdownHelper = new DropdownHelper<ArcTimingGroupOption?>(TimingGroup.GetComponentInChildren<Dropdown>());
 			CreateArcExtensionRows();
+			AdeUiTheme.Refresh();
             Track.GetComponentInChildren<InputField>(true).contentType = InputField.ContentType.Standard;
             Track.GetComponentInChildren<InputField>(true).characterLimit = 0;
             AdeSelectionManager.Instance.NoteEventListeners.Add(this);
@@ -880,7 +881,7 @@ namespace Arcade.Compose.Editing
 							(note as ArcArc)?.CalculateJudgeTimings();
 							(note as ArcHold)?.CalculateJudgeTimings();
 							(note as ArcSlide)?.Rebuild();
-							if (note is ArcArc) ArcArcManager.Instance.CalculateArcRelationship();
+							if (note is ArcArc arc) ArcArcManager.Instance.CalculateArcRelationship(arc);
 							ArcGameplayManager.Instance.ResetJudge();
 						}
 					};
@@ -969,7 +970,7 @@ namespace Arcade.Compose.Editing
 							(note as ArcArc)?.CalculateJudgeTimings();
 							(note as ArcHold)?.CalculateJudgeTimings();
 							(note as ArcSlide)?.Rebuild();
-							if (note is ArcArc) ArcArcManager.Instance.CalculateArcRelationship();
+							if (note is ArcArc arc) ArcArcManager.Instance.CalculateArcRelationship(arc);
 							ArcGameplayManager.Instance.ResetJudge();
 						}
 					};
@@ -1023,7 +1024,7 @@ namespace Arcade.Compose.Editing
 					newNote.YStart = coordinate.y;
 					note.Rebuild();
 					note.CalculateJudgeTimings();
-					ArcArcManager.Instance.CalculateArcRelationship();
+					ArcArcManager.Instance.CalculateArcRelationship(note);
 				};
 				var newCoordinate = await AdeCursorManager.Instance.SelectCoordinate(note.Timing, Progress.Create(updateStartCoordinate), cancellationToken);
 				updateStartCoordinate(newCoordinate);
@@ -1066,7 +1067,7 @@ namespace Arcade.Compose.Editing
 					newNote.YEnd = coordinate.y;
 					note.Rebuild();
 					note.CalculateJudgeTimings();
-					ArcArcManager.Instance.CalculateArcRelationship();
+					ArcArcManager.Instance.CalculateArcRelationship(note);
 				};
 				var newCoordinate = await AdeCursorManager.Instance.SelectCoordinate(note.EndTiming, Progress.Create(updateEndCoordinate), cancellationToken);
 				updateEndCoordinate(newCoordinate);

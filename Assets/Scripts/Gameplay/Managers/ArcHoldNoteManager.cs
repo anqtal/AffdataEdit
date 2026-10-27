@@ -40,11 +40,13 @@ namespace Arcade.Gameplay
 
 		public void Add(ArcHold hold)
 		{
+			ArcScoreManager.Invalidate();
 			hold.Instantiate();
 			Holds.Add(hold);
 		}
 		public void Remove(ArcHold hold)
 		{
+			ArcScoreManager.Invalidate();
 			hold.Destroy();
 			Holds.Remove(hold);
 		}

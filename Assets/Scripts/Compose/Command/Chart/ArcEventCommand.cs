@@ -220,7 +220,7 @@ namespace Arcade.Compose.Command
 			(note as ArcArcTap)?.Relocate();
 			(note as ArcArc)?.Rebuild();
 			(note as ArcTap)?.SetupArcTapConnection();
-			if (note is ArcArc) ArcArcManager.Instance.CalculateArcRelationship();
+			if (note is ArcArc arc) ArcArcManager.Instance.CalculateArcRelationship(arc);
 			ArcGameplayManager.Instance.ResetJudge();
 		}
 		public void Undo()
@@ -230,7 +230,7 @@ namespace Arcade.Compose.Command
 			(note as ArcArcTap)?.Relocate();
 			(note as ArcArc)?.Rebuild();
 			(note as ArcTap)?.SetupArcTapConnection();
-			if (note is ArcArc) ArcArcManager.Instance.CalculateArcRelationship();
+			if (note is ArcArc arc) ArcArcManager.Instance.CalculateArcRelationship(arc);
 			ArcGameplayManager.Instance.ResetJudge();
 		}
 	}

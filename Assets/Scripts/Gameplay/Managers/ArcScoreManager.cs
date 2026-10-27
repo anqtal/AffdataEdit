@@ -1,7 +1,6 @@
 using System;
-using System.Linq;
+using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.UI;
 using Text = TMPro.TMP_Text;
 using Arcade.Gameplay.Chart;
 using System.Globalization;
@@ -21,7 +20,17 @@ namespace Arcade.Gameplay
 		public Text ScoreText;
 		public Text ComboText;
 
-		private int combo = 0;
+		private int combo;
+		private readonly List<int> judgeTimings = new List<int>();
+		private ArcChart cachedChart;
+		private bool scoreDirty = true;
+		private double singleScore;
+		private int displayedScore = -1, displayedCombo = -1;
+
+		internal static void Invalidate()
+		{
+			if (Instance) Instance.scoreDirty = true;
+		}
 
 		// Score roll shared by AffdataPlay (ScoreDisplay) and Arcade Alpha (SpinCountNText):
 		// a 500 ms linear roll while playing; seeking or a lower score shows it at once.
@@ -31,18 +40,22 @@ namespace Arcade.Gameplay
 
 		private void Update()
 		{
-			ComboText.text = "";
-			ScoreText.text = "00000000";
-			if (!ArcGameplayManager.Instance.IsLoaded || ArcGameplayManager.Instance.Chart == null)
+			var game = ArcGameplayManager.Instance;
+			if (cachedChart != game.Chart || scoreDirty) RebuildScoreCache(game.Chart);
+			int score;
+			if (game.Chart == null) { SetRoll(0); combo = 0; score = 0; }
+			else score = RollScore(CalculateScore(game.ChartTiming));
+			if (displayedScore != score)
 			{
-				SetRoll(0);
-				return;
+				displayedScore = score;
+				ScoreText.text = score.ToString("D8", CultureInfo.InvariantCulture);
 			}
-			int score = RollScore(CalculateScore(ArcGameplayManager.Instance.ChartTiming));
-			ScoreText.text = score.ToString("D8", CultureInfo.InvariantCulture);
-
-			if (combo < 2) ComboText.text = "";
-			else ComboText.text = combo.ToString(CultureInfo.InvariantCulture);
+			int visibleCombo = combo < 2 ? 0 : combo;
+			if (displayedCombo != visibleCombo)
+			{
+				displayedCombo = visibleCombo;
+				ComboText.text = visibleCombo == 0 ? "" : visibleCombo.ToString(CultureInfo.InvariantCulture);
+			}
 		}
 
 		private int RollScore(int target)
@@ -69,99 +82,45 @@ namespace Arcade.Gameplay
 			rollElapsed = ScoreRollSeconds;
 		}
 
-		private double CalculateSingleScore()
+		private void RebuildScoreCache(ArcChart chart)
 		{
-			int total = 0;
-			total += ArcTapNoteManager.Instance.Taps.Where((tap) => !tap.NoInput()).Count();
-			foreach (var hold in ArcHoldNoteManager.Instance.Holds)
+			cachedChart = chart;
+			scoreDirty = false;
+			judgeTimings.Clear();
+			singleScore = 0;
+			if (chart == null) return;
+			foreach (var tap in chart.Taps)
+				if (!tap.NoInput()) judgeTimings.Add(tap.Timing);
+			foreach (var hold in chart.Holds)
 			{
-				if (hold.NoInput())
-				{
-					continue;
-				}
-				total += hold.JudgeTimings.Count;
+				if (hold.NoInput()) continue;
+				foreach (int timing in hold.JudgeTimings) judgeTimings.Add(Math.Max(hold.Timing, timing));
 			}
-			foreach (var arc in ArcArcManager.Instance.Arcs)
+			foreach (var arc in chart.Arcs)
 			{
-				if (arc.NoInput() || arc.Designant)
-				{
-					continue;
-				}
-				total += arc.JudgeTimings.Count;
-				total += arc.ArcTaps.Count;
-				if (arc.IsVariousSizedArctap)
-				{
-					total += 1;
-				}
+				if (arc.NoInput() || arc.Designant) continue;
+				foreach (int timing in arc.JudgeTimings) judgeTimings.Add(Math.Max(arc.Timing, timing));
+				foreach (var tap in arc.ArcTaps) judgeTimings.Add(Math.Max(arc.Timing, tap.Timing));
+				if (arc.IsVariousSizedArctap) judgeTimings.Add(arc.Timing);
 			}
-			foreach (var slide in ArcSlideManager.Instance.Slides)
-				total += CountSlideJudgements(slide, slide.EndTiming);
-			if (total == 0) return 0;
-			return 10000000d / total;
+			judgeTimings.Sort();
+			long total = judgeTimings.Count;
+			foreach (var slide in chart.Slides) total += CountSlideJudgements(slide, slide.EndTiming);
+			if (total > 0) singleScore = 10000000d / total;
 		}
+
 		private int CalculateCombo(int timing)
 		{
-			int note = 0;
-			foreach (var tap in ArcTapNoteManager.Instance.Taps)
+			int low = 0, high = judgeTimings.Count;
+			while (low < high)
 			{
-				if (tap.NoInput())
-				{
-					continue;
-				}
-				if (tap.Timing <= timing)
-				{
-					note++;
-				}
+				int middle = low + (high - low) / 2;
+				if (judgeTimings[middle] <= timing) low = middle + 1;
+				else high = middle;
 			}
-			foreach (var hold in ArcHoldNoteManager.Instance.Holds)
-			{
-				if (hold.NoInput())
-				{
-					continue;
-				}
-				if (hold.Timing <= timing)
-				{
-					foreach (float t in hold.JudgeTimings)
-					{
-						if (t <= timing)
-						{
-							note++;
-						}
-					}
-				}
-			}
-			foreach (var arc in ArcArcManager.Instance.Arcs)
-			{
-				if (arc.NoInput() || arc.Designant)
-				{
-					continue;
-				}
-				if (arc.Timing > timing) continue;
-				foreach (float t in arc.JudgeTimings)
-				{
-					if (t <= timing)
-					{
-						note++;
-					}
-				}
-				foreach (var arctap in arc.ArcTaps)
-				{
-					if (arctap.Timing <= timing)
-					{
-						note++;
-					}
-				}
-				if (arc.IsVariousSizedArctap)
-				{
-					if (arc.Timing <= timing)
-					{
-						note++;
-					}
-				}
-			}
-			foreach (var slide in ArcSlideManager.Instance.Slides)
-				note += CountSlideJudgements(slide, timing);
-			return note;
+			int count = low;
+			foreach (var slide in cachedChart.Slides) count += CountSlideJudgements(slide, timing);
+			return count;
 		}
 		private static int CountSlideJudgements(ArcSlide slide, int timing)
 		{
@@ -171,7 +130,7 @@ namespace Arcade.Gameplay
 		}
 		private int CalculateScore(int timing)
 		{
-			double single = CalculateSingleScore();
+			double single = singleScore;
 			if (single == 0)
 			{
 				combo = 0;

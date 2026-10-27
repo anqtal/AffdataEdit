@@ -12,7 +12,6 @@ namespace Arcade.Compose
 	{
 		private const string EditorSceneName = "ArcEditor";
 		private const string PreferenceKey = "AffdataEdit.DarkUi";
-		private const float SweepInterval = 0.5f;
 
 		public static AdeUiTheme Instance { get; private set; }
 		public static bool Dark { get; private set; } = true;
@@ -71,9 +70,12 @@ namespace Arcade.Compose
 
 		public static void AddRoot(Transform root)
 		{
-			if (!extraRoots.Contains(root)) extraRoots.Add(root);
+			if (extraRoots.Contains(root)) return;
+			extraRoots.Add(root);
+			Refresh();
 		}
-		private float nextSweep;
+		private bool refreshRequested = true;
+		private Vector2Int screenSize;
 		private Sprite[] darkSprites;
 		private Sprite closeIcon;
 
@@ -102,9 +104,9 @@ namespace Arcade.Compose
 			Sweep();
 		}
 
-		private void Update()
+		private void LateUpdate()
 		{
-			if (Time.unscaledTime < nextSweep) return;
+			if (!refreshRequested && screenSize.x == Screen.width && screenSize.y == Screen.height) return;
 			Sweep();
 		}
 
@@ -120,20 +122,22 @@ namespace Arcade.Compose
 		public static void OnDialogOpened()
 		{
 			if (!Instance) return;
+			Refresh();
 			Canvas.ForceUpdateCanvases();
 			Instance.AlignDialogControls();
 		}
 
-		// Re-themes now instead of on the next sweep, after code changes a themed color.
+		// Coalesce UI changes into one refresh after the frame's controls have been built.
 		public static void Refresh()
 		{
-			if (Instance) Instance.Sweep();
+			if (Instance) Instance.refreshRequested = true;
 		}
 
 		// Called after the skin's UI sprites are (re)applied.
 		public static void OnSkinApplied()
 		{
 			if (Instance) Instance.ApplySkinSprites();
+			Refresh();
 		}
 
 		private void CollectRoots()
@@ -156,7 +160,9 @@ namespace Arcade.Compose
 
 		private void Sweep()
 		{
-			nextSweep = Time.unscaledTime + SweepInterval;
+			refreshRequested = false;
+			screenSize = new Vector2Int(Screen.width, Screen.height);
+			CollectRoots();
 			ApplyWindowTheme();
             staleGraphics.Clear();
             foreach (var pair in painted) if (!pair.Key) staleGraphics.Add(pair.Key);

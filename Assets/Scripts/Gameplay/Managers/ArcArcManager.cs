@@ -83,6 +83,39 @@ namespace Arcade.Gameplay
 			}
 		}
 
+        public void CalculateArcRelationship(ArcArc changed)
+        {
+            // A moved endpoint can split its old component or join another component.
+            // Include both complete components before rebuilding so splits remain correct.
+            var affected = new HashSet<ArcArc>();
+            if (changed.ArcGroup != null) affected.UnionWith(changed.ArcGroup);
+            bool present = Arcs.Contains(changed);
+            if (present)
+            {
+                affected.Add(changed);
+                foreach (var arc in Arcs)
+                    if (Connected(changed, arc) || Connected(arc, changed))
+                    {
+                        if (arc.ArcGroup != null) affected.UnionWith(arc.ArcGroup);
+                        else affected.Add(arc);
+                    }
+            }
+            var ordered = new List<ArcArc>(affected.Count);
+            foreach (var arc in Arcs) if (affected.Contains(arc)) ordered.Add(arc);
+            CalculateArcGroups(ordered);
+            foreach (var arc in ordered)
+            {
+                arc.CalculateJudgeTimings();
+                if (arc.arcRenderer && arc.arcRenderer.BuiltRenderEndTiming != arc.RenderEndTiming)
+                    arc.arcRenderer.Build();
+            }
+        }
+
+        private static bool Connected(ArcArc a, ArcArc b) => a != b
+            && !a.IsVariousSizedArctap && !b.IsVariousSizedArctap && a.IsVoid == b.IsVoid
+            && Math.Abs((long)a.EndTiming - b.Timing) <= 9
+            && Mathf.Abs(a.XEnd - b.XStart) < .1f && Mathf.Abs(a.YEnd - b.YStart) < .01f;
+
 		internal static void CalculateArcGroups(List<ArcArc> arcs)
 		{
 			int count = arcs.Count;
@@ -175,13 +208,15 @@ namespace Arcade.Gameplay
 		{
 			arc.Instantiate();
 			Arcs.Add(arc);
-			CalculateArcRelationship();
+			CalculateArcRelationship(arc);
+			ArcScoreManager.Invalidate();
 		}
 		public void Remove(ArcArc arc)
 		{
 			Arcs.Remove(arc);
+			CalculateArcRelationship(arc);
 			arc.Destroy();
-			CalculateArcRelationship();
+			ArcScoreManager.Invalidate();
 		}
 
 		private void Update()

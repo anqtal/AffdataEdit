@@ -67,6 +67,9 @@ namespace Arcade.Gameplay
         private float[] litAt;              // Ob: when each triangle was last lit
 
         private IReadOnlyList<Vector2> ranges;
+        private readonly List<Vector2> previousRanges = new List<Vector2>();
+        private bool rangeDirty = true;
+        private bool hasHistory;
         private float rangeLeft;
         private float rangeRight;
         private float clock;
@@ -109,6 +112,8 @@ namespace Arcade.Gameplay
             OpacityUploadCount = 0;
             TextureUpdateCount = 0;
             HasNonZeroOpacity = false;
+            rangeDirty = true;
+            hasHistory = false;
             if (gridSource == null || blurSource == null) return;
 
             gridMaterial = new Material(gridSource) { name = "Spc_JudgementGrid (instance)" };
@@ -136,10 +141,23 @@ namespace Arcade.Gameplay
         /// pair the original feeds to <c>judgementLineMeshEffect.$p(a, b)</c>. Pass (0, 0) when no
         /// area is active.
         /// </summary>
-        public void SetSkyRanges(IReadOnlyList<Vector2> values) { ranges = values; }
+        public void SetSkyRanges(IReadOnlyList<Vector2> values)
+        {
+            rangeDirty |= (ranges == null) != (values == null);
+            int count = values?.Count ?? 0;
+            rangeDirty |= previousRanges.Count != count;
+            for (int i = 0; i < count; i++)
+            {
+                if (i >= previousRanges.Count) { previousRanges.Add(values[i]); rangeDirty = true; }
+                else if (previousRanges[i] != values[i]) { previousRanges[i] = values[i]; rangeDirty = true; }
+            }
+            if (previousRanges.Count > count) previousRanges.RemoveRange(count, previousRanges.Count - count);
+            ranges = values;
+        }
 
         public void SetSkyRange(float left, float right)
         {
+            rangeDirty |= ranges != null || rangeLeft != left || rangeRight != right;
             ranges = null;
             rangeLeft = left;
             rangeRight = right;
@@ -163,10 +181,15 @@ namespace Arcade.Gameplay
             // an absolute Stopwatch value cast to float. Accumulating song deltas
             // changes the Perlin phase, especially during event replay and retries.
             // A supplied replay clock is already the current time, never current + dt.
-            clock = presentationClock >= 0f ? presentationClock :
+            float nextClock = presentationClock >= 0f ? presentationClock :
                 (float)((double)System.Diagnostics.Stopwatch.GetTimestamp() /
                     System.Diagnostics.Stopwatch.Frequency);
-            UpdateOpacity(clock);
+            if (clock != nextClock || rangeDirty)
+            {
+                clock = nextClock;
+                UpdateOpacity(clock);
+                rangeDirty = false;
+            }
             if (render) RenderCurrent();
         }
 
@@ -214,15 +237,20 @@ namespace Arcade.Gameplay
         public void ResetState()
         {
             if (!built) return;
-            Array.Clear(opacity, 0, opacity.Length);
-            Array.Fill(litAt, float.NegativeInfinity);
+            if (hasHistory)
+            {
+                Array.Clear(opacity, 0, opacity.Length);
+                Array.Fill(litAt, float.NegativeInfinity);
+                hasHistory = false;
+            }
+            if (HasNonZeroOpacity) InvalidateRender();
             ranges = null;
+            rangeDirty = true;
             rangeLeft = 0f;
             rangeRight = 0f;
             clock = 0f;
             LitTriangles = 0;
             HasNonZeroOpacity = false;
-            InvalidateRender(); // The next draw must replace any previously bright output with black.
         }
 
         public void Dispose()
@@ -249,13 +277,24 @@ namespace Arcade.Gameplay
         private bool ContainsColumn(float x)
         {
             if (ranges == null) return RangeActive && rangeLeft <= x && x <= rangeRight;
-            foreach (var range in ranges)
+            for (int i = 0; i < ranges.Count; i++)
+            {
+                var range = ranges[i];
                 if (range.y - range.x >= ActiveWidthEpsilon && range.x <= x && x <= range.y) return true;
+            }
             return false;
         }
 
         private void UpdateOpacity(float t)
         {
+            if (!HasNonZeroOpacity)
+            {
+                bool active = ranges == null && RangeActive;
+                if (ranges != null)
+                    for (int i = 0; i < ranges.Count && !active; i++)
+                        active = ranges[i].y - ranges[i].x >= ActiveWidthEpsilon;
+                if (!active) return;
+            }
             int lit = 0;
             bool anyNonZero = false;
             for (int i = 0; i < opacity.Length; i++)
@@ -269,6 +308,7 @@ namespace Arcade.Gameplay
                     {
                         value = 1f;
                         litAt[i] = t;
+                        hasHistory = true;
                     }
                     else
                     {

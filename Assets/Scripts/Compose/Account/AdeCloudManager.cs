@@ -130,6 +130,7 @@ namespace Arcade.Compose
 			realtimeIcon = AdeUiKit.CreateIconButton(template.transform.parent, "CloudRealtime", "Realtime", ToggleRealtime);
 			UpdateRealtimeLabel();
 			BuildDialogs();
+			AdeUiTheme.Refresh();
 		}
 
 		private void ToggleRealtime()

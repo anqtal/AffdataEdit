@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.VFX;
+using System.Collections.Generic;
 
 namespace Arcade.Gameplay
 {
@@ -7,6 +8,13 @@ namespace Arcade.Gameplay
     // Alpha's UI-camera world units are mapped into the gameplay camera's effect plane.
     public sealed class ArcLongNoteEffect : MonoBehaviour
     {
+        private static readonly List<ArcLongNoteEffect> activeEffects = new List<ArcLongNoteEffect>();
+
+        internal static void ResetAll()
+        {
+            // ResetState disables each effect and removes it from the registry.
+            for (int i = activeEffects.Count - 1; i >= 0; i--) activeEffects[i].ResetState();
+        }
         private VisualEffect anchor;
         private ParticleSystem particles;
         private Material material;
@@ -58,6 +66,7 @@ namespace Arcade.Gameplay
 
         public void SetEmission(bool value)
         {
+            if (value && !requested && !emitting) activeEffects.Add(this);
             requested = value;
             if (value) stopAt = -1;
             else if (emitting && stopAt < 0) stopAt = Time.time + .2f;
@@ -154,11 +163,12 @@ namespace Arcade.Gameplay
 
         private void OnDisable()
         {
+            activeEffects.Remove(this);
             stopAt = -1;
             requested = emitting = false;
             if (!gameObject.activeInHierarchy) played = false;
             Release();
         }
-        private void OnDestroy() { Release(); }
+        private void OnDestroy() { activeEffects.Remove(this); Release(); }
     }
 }

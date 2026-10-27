@@ -263,6 +263,7 @@ namespace Arcade.Gameplay.Chart
 		public int Timing;
 		public virtual void Assign(ArcEvent newValues)
 		{
+			ArcScoreManager.Invalidate();
 			Timing = newValues.Timing;
 		}
 		public abstract ArcEvent Clone();
@@ -594,6 +595,7 @@ namespace Arcade.Gameplay.Chart
         }
 		public void SetupArcTapConnection()
 		{
+			ArcScoreManager.Invalidate();
             foreach (var arcTap in ConnectedArcTaps) arcTap.ForgetConnection(this);
             ConnectedArcTaps.Clear();
 			if (this.NoInput()) return;
@@ -675,6 +677,7 @@ namespace Arcade.Gameplay.Chart
 
 		public void CalculateJudgeTimings()
 		{
+			ArcScoreManager.Invalidate();
 			JudgeTimings.Clear();
 			int u = 0;
 			double bpm = ArcTimingManager.Instance.CalculateBpmByTiming(Timing, TimingGroup);
@@ -978,6 +981,7 @@ namespace Arcade.Gameplay.Chart
 
 		public void Relocate()
 		{
+			ArcScoreManager.Invalidate();
 			ArcTimingManager timingManager = ArcTimingManager.Instance;
 			float t = 1f * (Timing - Arc.Timing) / (Arc.EndTiming - Arc.Timing);
 			LocalPosition = new Vector3(ArcAlgorithm.ArcXToWorld(ArcAlgorithm.X(Arc.XStart, Arc.XEnd, t, Arc.CurveType)),
@@ -1281,6 +1285,7 @@ namespace Arcade.Gameplay.Chart
 
 		public void CalculateJudgeTimings()
 		{
+			ArcScoreManager.Invalidate();
 			JudgeTimings.Clear();
 			if (IsVoid) return;
 			if (EndTiming == Timing) return;
@@ -1314,6 +1319,7 @@ namespace Arcade.Gameplay.Chart
 		}
 		public void Rebuild()
 		{
+			ArcScoreManager.Invalidate();
 			if (arcRenderer) arcRenderer.Build();
 			DestroyArcTaps();
 			InstantiateArcTaps();
@@ -1347,6 +1353,7 @@ namespace Arcade.Gameplay.Chart
 		}
 		public void AddArcTap(ArcArcTap arctap)
 		{
+			ArcScoreManager.Invalidate();
 			if (arctap.Timing > EndTiming || arctap.Timing < Timing)
 			{
 				throw new ArgumentOutOfRangeException("ArcTap 时间不在 Arc 范围内");
@@ -1361,6 +1368,7 @@ namespace Arcade.Gameplay.Chart
 		}
 		public void RemoveArcTap(ArcArcTap arctap)
 		{
+			ArcScoreManager.Invalidate();
 			arctap.Destroy();
 			ArcTaps.Remove(arctap);
 		}
@@ -1546,6 +1554,7 @@ namespace Arcade.Gameplay.Chart
 
 		public void ApplyAttributes(string attributes)
 		{
+			ArcScoreManager.Invalidate();
 			Attributes = attributes;
 			NoInput = false;
 			FadingHolds = false;
