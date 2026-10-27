@@ -297,6 +297,26 @@ namespace Arcade.Compose
 			return MathfExtension.EvaluateEllipse(degree, 60 + 10 * Mathf.Max(6, itemCount), 50 + 12 * Mathf.Max(3, itemCount));
 		}
 
+		private static void SeparateItems(Vector2 center, MarkingMenuItem[] items)
+		{
+			// Keep the existing directions, expanding only enough for the measured labels.
+			const float gap = 12;
+			float scale = 1;
+			for (int i = 0; i < items.Length; i++)
+				for (int j = i + 1; j < items.Length; j++)
+				{
+					Vector2 delta = items[i].Position - items[j].Position;
+					float x = Mathf.Abs(delta.x), y = Mathf.Abs(delta.y);
+					if (x < .001f && y < .001f) continue;
+					Vector2 space = (items[i].ItemRectTransform.rect.size + items[j].ItemRectTransform.rect.size) / 2 + Vector2.one * gap;
+					float horizontal = x < .001f ? float.PositiveInfinity : space.x / x;
+					float vertical = y < .001f ? float.PositiveInfinity : space.y / y;
+					scale = Mathf.Max(scale, Mathf.Min(horizontal, vertical));
+				}
+			if (scale <= 1) return;
+			foreach (var item in items) item.Position = center + (item.Position - center) * scale;
+		}
+
 		public void ShowAt(Vector2 position, MarkingMenuItem[] items, float from = 0, float to = 360)
 		{
 			int itemCount = items.Length;
@@ -310,6 +330,7 @@ namespace Arcade.Compose
 				items[i].Position = position + new Vector2(length * Mathf.Cos(degree * Mathf.Deg2Rad), length * Mathf.Sin(degree * Mathf.Deg2Rad));
 				items[i].Degree = degree;
 			}
+			SeparateItems(position, items);
 			shownItems.Push(items);
 		}
 		public void ShowSubMenuAt(Vector2 position, MarkingMenuItem[] items, float from = 0, float to = 360)

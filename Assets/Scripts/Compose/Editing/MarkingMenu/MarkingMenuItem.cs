@@ -62,13 +62,20 @@ namespace Arcade.Compose.MarkingMenu
 		}
 		private float pointerInItemTiming;
 		private bool active = false;
+		private bool initialized;
 		private MotionHandle fadeMotion;
 		private int themeRevision = -1;
 
 		private void Start()
 		{
-			Text = StartupText;
+			InitializeText();
 			ApplyTheme();
+		}
+		private void InitializeText()
+		{
+			if (initialized) return;
+			Text = StartupText;
+			initialized = true;
 		}
 		private void OnDestroy()
 		{
@@ -77,11 +84,13 @@ namespace Arcade.Compose.MarkingMenu
 		public void Show()
 		{
 			gameObject.SetActive(true);
+			InitializeText();
 			active = true;
 			ItemCanvasGroup.blocksRaycasts = true;
 			GetComponent<Canvas>().sortingOrder = AdeMarkingMenuManager.MenuSortingOrder;
 			fadeMotion.TryComplete();
 			ApplyTheme();
+			LayoutRebuilder.ForceRebuildLayoutImmediate(ItemRectTransform);
 			fadeMotion = LMotion.Create(ItemCanvasGroup.alpha, 1f, 0.15f)
 				.WithEase(Ease.OutQuad).WithScheduler(MotionScheduler.Update)
 				.BindToAlpha(ItemCanvasGroup);
