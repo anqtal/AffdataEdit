@@ -149,7 +149,11 @@ namespace Arcade.Compose
         {
             if (!Loaded() || lastGroup == null) return;
             if (!ChartControlText.Float(angleX.text, out float x) || !ChartControlText.Float(angleY.text, out float y))
-            { Message("角度必须是有限数值，单位为度。", true); return; }
+            {
+                angleX.SetTextWithoutNotify((lastGroup.AngleX / 10f).ToString("0.#", CultureInfo.InvariantCulture));
+                angleY.SetTextWithoutNotify((lastGroup.AngleY / 10f).ToString("0.#", CultureInfo.InvariantCulture));
+                return;
+            }
             int ax = Mathf.RoundToInt((x % 360 + 360) % 360 * 10) % 3600;
             int ay = Mathf.RoundToInt((y % 360 + 360) % 360 * 10) % 3600;
             var tokens = lastGroup.Attributes.Split('_').Where(t => t.Length > 0 && t != "noinput" && t != "fadingholds"
@@ -170,10 +174,12 @@ namespace Arcade.Compose
 
         private void SetAttributes(string text)
         {
-            if (!ChartControlText.ValidateAttributes(text, out string error)) { Message(error, true); return; }
-            if (text != lastGroup.Attributes) AdeCommandManager.Instance.Add(new EditTimingGroupAttributes(lastGroup, text));
+            if (!ChartControlText.ValidateAttributes(text, out string error))
+            { attributes.SetTextWithoutNotify(lastGroup.Attributes); Message(error, true); return; }
+            if (text == lastGroup.Attributes) return;
+            AdeCommandManager.Instance.Add(new EditTimingGroupAttributes(lastGroup, text));
             dirty = true;
-            Message("组属性已应用。未识别的扩展属性按原文保留。");
+            ClearMessage();
         }
 
         private void AddTiming()
@@ -192,18 +198,24 @@ namespace Arcade.Compose
             while (timingRows.Count < count)
             {
                 var row = new TimingRow();
-                row.Root = Row(timingList, "Timing", ControlHeight);
-                row.Time = Input(row.Root, "Time", -1); row.Bpm = Input(row.Root, "BPM", TimingBpmWidth); row.Beats = Input(row.Root, "Beats", TimingBeatsWidth);
-                Quiet(Button(row.Root, "应用", () => ApplyTiming(row), TimingApplyWidth));
-                row.Remove = Quiet(Button(row.Root, "Remove", () =>
+                row.Root = Instantiate(timingRowTemplate, timingList, false);
+                row.Root.name = "Timing";
+                row.Root.gameObject.SetActive(true);
+                row.Time = row.Root.Find("Time").GetComponent<TMP_InputField>();
+                row.Bpm = row.Root.Find("BPM").GetComponent<TMP_InputField>();
+                row.Beats = row.Root.Find("Beats").GetComponent<TMP_InputField>();
+                foreach (var field in new[] { row.Time, row.Bpm, row.Beats })
+                { controls.Add(field); labels.Add(field.textComponent); }
+                row.Time.onEndEdit.AddListener(_ => ApplyTiming(row, row.Time));
+                row.Bpm.onEndEdit.AddListener(_ => ApplyTiming(row, row.Bpm));
+                row.Beats.onEndEdit.AddListener(_ => ApplyTiming(row, row.Beats));
+                row.Remove = Quiet(row.Root.Find("Remove").GetComponent<Button>());
+                controls.Add(row.Remove);
+                row.Remove.onClick.AddListener(() =>
                 {
                     if (ArcTimingManager.Instance.GetTiming(lastGroup).Count > 1)
                         AdeCommandManager.Instance.Add(new RemoveTimingEvent(lastGroup, row.Timing));
-                }, TimingRemoveWidth));
-                var removeLabel = row.Remove.GetComponentInChildren<TMP_Text>();
-                AdeUiIcons.SetText(removeLabel, AdeUiIcons.Close);
-                removeLabel.rectTransform.offsetMin = removeLabel.rectTransform.offsetMax = Vector2.zero;
-                TimingColumns(row.Root, ControlHeight);
+                });
                 timingRows.Add(row);
             }
             for (int i = 0; i < timingRows.Count; i++)
@@ -211,22 +223,52 @@ namespace Arcade.Compose
                 var row = timingRows[i]; row.Root.gameObject.SetActive(i < count);
                 if (i >= count) continue;
                 row.Timing = timings[i];
-                row.Time.SetTextWithoutNotify(row.Timing.Timing.ToString());
-                row.Bpm.SetTextWithoutNotify(ChartControlText.Number(row.Timing.Bpm));
-                row.Beats.SetTextWithoutNotify(ChartControlText.Number(row.Timing.BeatsPerLine));
+                SetTimingFields(row);
                 row.Remove.interactable = count > 1;
+                Style(row.Remove);
             }
-            Size(timingScroll.transform, -1, Mathf.Clamp(count, 1, 4) * (ControlHeight + 8) - 8);
+            timingLayoutDirty = true;
         }
 
-        private void ApplyTiming(TimingRow row)
+        private void ResizeTimingList()
         {
-            if (!ChartControlText.Integer(row.Time.text, out int time) || !ChartControlText.Float(row.Bpm.text, out float bpm)
-                || !ChartControlText.Float(row.Beats.text, out float beats) || beats < 0 || Mathf.Abs(bpm) > 1000000)
-            { Message("Timing 需要整数时间、有效 BPM（±1000000 内）和非负拍数。", true); return; }
-            var next = (ArcTiming)row.Timing.Clone(); next.Timing = time; next.Bpm = bpm; next.BeatsPerLine = beats;
+            if (!expanded || activePage != Page.Groups || activeGroupTab != 0 || lastChart == null) return;
+            float height = ((RectTransform)pages[0].parent).rect.height;
+            if (!timingLayoutDirty && Mathf.Approximately(height, timingViewportHeight)) return;
+            timingLayoutDirty = false;
+            timingViewportHeight = height;
+            LayoutRebuilder.ForceRebuildLayoutImmediate(pages[0]);
+            float otherHeight = LayoutUtility.GetPreferredHeight(pages[0])
+                - LayoutUtility.GetPreferredHeight((RectTransform)timingScroll.transform);
+            int count = ArcTimingManager.Instance.GetTiming(lastGroup).Count;
+            float contentHeight = Mathf.Max(1, count) * (ControlHeight + 8) - 8;
+            Size(timingScroll.transform, -1, Mathf.Min(contentHeight, Mathf.Max(ControlHeight, height - otherHeight)));
+            LayoutRebuilder.ForceRebuildLayoutImmediate(pages[0]);
+        }
+
+        private static void SetTimingFields(TimingRow row)
+        {
+            row.Time.SetTextWithoutNotify(row.Timing.Timing.ToString(CultureInfo.InvariantCulture));
+            row.Bpm.SetTextWithoutNotify(row.Timing.Bpm.ToString("0.###", CultureInfo.InvariantCulture));
+            row.Beats.SetTextWithoutNotify(ChartControlText.Number(row.Timing.BeatsPerLine));
+        }
+
+        private void ApplyTiming(TimingRow row, TMP_InputField field)
+        {
+            if (lastChart == null || lastChart != ArcGameplayManager.Instance.Chart || row.Timing == null
+                || !ArcTimingManager.Instance.GetTiming(lastGroup).Contains(row.Timing)) return;
+            var next = (ArcTiming)row.Timing.Clone();
+            if (field == row.Time && ChartControlText.Integer(field.text, out int time)) next.Timing = time;
+            else if (field == row.Bpm && ChartControlText.Float(field.text, out float bpm) && Mathf.Abs(bpm) <= 1000000)
+                next.Bpm = (float)Math.Round(bpm, 3, MidpointRounding.AwayFromZero);
+            else if (field == row.Beats && ChartControlText.Float(field.text, out float beats) && beats >= 0)
+                next.BeatsPerLine = beats;
+            else { SetTimingFields(row); return; }
+            if (next.Timing == row.Timing.Timing && next.Bpm == row.Timing.Bpm && next.BeatsPerLine == row.Timing.BeatsPerLine)
+            { SetTimingFields(row); return; }
             AdeCommandManager.Instance.Add(new EditTimingEvent(lastGroup, row.Timing, next));
-            Message("Timing 已应用。可撤销。");
+            SetTimingFields(row);
+            ClearMessage();
         }
 
         private void RefreshControls(ControlPage page)

@@ -197,6 +197,9 @@ namespace Arcade.Compose
 			{
 				if (!dialog || !dialog.View.activeInHierarchy) continue;
 				AlignButton(dialog.CompleteButton, dialog.DialogBackground, 0);
+				var basic = dialog.GetComponent<Dialog.AdeBasicSingleDialogContent>();
+				if (basic && basic.CopyButton && basic.CopyButton.gameObject.activeSelf)
+					AlignButton(basic.CopyButton, dialog.DialogBackground, 1);
 				AlignClose(dialog, dialog.DialogTop);
 			}
 			foreach (AdeDualDialog dialog in skin.DualDialogs)
@@ -327,6 +330,12 @@ namespace Arcade.Compose
 					whiteClose ? Shape("ThemeCloseButton", ControlRadius, Color.white, Current.Border) : Get(2), Get(3),
 					whiteClose ? Shape("ThemeCloseButtonPressed", ControlRadius, C(0xE6E6E6), Current.Border) : Get(4));
 				dialog.ButtonText.color = whiteClose ? C(0x141413) : Current.AccentText;
+				var basic = dialog.GetComponent<Dialog.AdeBasicSingleDialogContent>();
+				if (basic && basic.CopyButton)
+				{
+					basic.CopyButton.image.sprite = Shape("ThemeSecondary", ControlRadius, Current.Input, Current.Border);
+					basic.CopyButton.GetComponentInChildren<Text>().color = Current.Text;
+				}
 			}
 			foreach (AdeDualDialog dialog in skin.DualDialogs)
 				if (dialog) { dialog.SetDialogSkin(Get(0), Get(1), Get(5), Get(6), Get(7), Get(8), Get(9), Get(10)); dialog.LeftButtonText.color = Current.Text; dialog.RightButtonText.color = dialog.RightButton.IsInteractable() ? Current.AccentText : Current.Muted; }
@@ -344,6 +353,9 @@ namespace Arcade.Compose
 				LayoutTitle(dialog.Title);
 				LayoutDialogFrame(dialog.DialogBackground, dialog.DialogTop);
 				LayoutButton(dialog.CompleteButton, dialog.ButtonText);
+				var basic = dialog.GetComponent<Dialog.AdeBasicSingleDialogContent>();
+				if (basic && basic.CopyButton)
+					LayoutButton(basic.CopyButton, basic.CopyButton.GetComponentInChildren<Text>());
 				LayoutClose(dialog);
 			}
 			foreach (AdeDualDialog dialog in skin.DualDialogs)

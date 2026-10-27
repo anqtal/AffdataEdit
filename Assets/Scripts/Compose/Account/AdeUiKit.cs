@@ -94,9 +94,17 @@ namespace Arcade.Compose
 		{
 			GameObject template = GameObject.Find(IconButtonTemplatePath);
 			if (template == null || parent == null) return null;
-			GameObject entry = Object.Instantiate(template, parent);
+			Transform existing = parent.Find(name);
+			GameObject entry = existing ? existing.gameObject : Object.Instantiate(template, parent);
 			entry.name = name;
-			entry.transform.SetAsLastSibling();
+			Transform footer = parent.Find("FeedbackSpace");
+			if (footer && name != "Feedback")
+			{
+				int index = footer.GetSiblingIndex();
+				if (entry.transform.GetSiblingIndex() < index) index--;
+				entry.transform.SetSiblingIndex(index);
+			}
+			else entry.transform.SetAsLastSibling();
 			SetOnClick(entry.GetComponent<Button>(), onClick);
 			Image image = entry.transform.Find("Image")?.GetComponent<Image>();
 			if (image != null) image.sprite = Resources.Load<Sprite>("AffdataEdit/Icons/" + icon);

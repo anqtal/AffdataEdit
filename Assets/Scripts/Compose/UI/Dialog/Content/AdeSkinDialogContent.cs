@@ -19,6 +19,7 @@ namespace Arcade.Compose.Dialog
 		public string SelectedNote;
 		public string SelectedBackground;
 		public bool IsExternalBackground;
+		public bool Customize;
 		[JsonIgnore]
 		public Side SkinSide
 		{
@@ -72,6 +73,12 @@ namespace Arcade.Compose.Dialog
 	public class AdeSkinDialogContent : AdeDialogContent<AdeSingleDialog>
 	{
 		public static AdeSkinDialogContent Instance { get; private set; }
+		[SerializeField] private AdeRightSideCard sideCard;
+		[SerializeField] private GameObject presetPage, customPage;
+		[SerializeField] private Button presetTab, customTab;
+		[SerializeField] private RectTransform customBackgroundContainer;
+		private Dictionary<string, AdeSkinBackgroundOption> customBackgroundButtons;
+		private int tabThemeRevision = -1;
 
 		public GameObject BackgroundOptionPrefab;
 
@@ -97,11 +104,13 @@ namespace Arcade.Compose.Dialog
 		{
 			Instance = this;
 			Dialog.OnClose += OnClose;
+			if (sideCard) sideCard.Closed += OnClose;
 		}
 
 		private void OnDestroy()
 		{
 			Dialog.OnClose -= OnClose;
+			if (sideCard) sideCard.Closed -= OnClose;
 		}
 
 		private void Start()
@@ -167,11 +176,20 @@ namespace Arcade.Compose.Dialog
 				}
 			}
 			InternalBackgroundButtons = new Dictionary<string, AdeSkinBackgroundOption>();
+			if (customBackgroundButtons != null)
+				foreach (var option in customBackgroundButtons.Values) Destroy(option.gameObject);
+			customBackgroundButtons = new Dictionary<string, AdeSkinBackgroundOption>();
 			foreach (string bg in AdeSkinHost.Instance.skinData.BackgroundDatas.Keys)
 			{
 				AdeSkinBackgroundOption option = Instantiate(BackgroundOptionPrefab, InternalBackgroundContainer).GetComponent<AdeSkinBackgroundOption>();
 				option.Initialize(bg, false, AdeSkinHost.Instance.skinData.BackgroundDatas[bg].background.value);
 				InternalBackgroundButtons.Add(bg, option);
+				if (customBackgroundContainer)
+				{
+					var custom = Instantiate(BackgroundOptionPrefab, customBackgroundContainer).GetComponent<AdeSkinBackgroundOption>();
+					custom.Initialize(bg, false, AdeSkinHost.Instance.skinData.BackgroundDatas[bg].background.value);
+					customBackgroundButtons.Add(bg, custom);
+				}
 			}
 			InternalBackgroundLabel.text = "皮肤内置背景";
 		}
@@ -204,13 +222,11 @@ namespace Arcade.Compose.Dialog
 					preference.SelectedBackground = AdeSkinHost.Instance.skinData.DefaultBackground;
 				}
 				AdeSkinHost.BackgroundData BgData = AdeSkinHost.Instance.skinData.BackgroundDatas[preference.SelectedBackground];
-				if (BgData.side != null)
+				if (!preference.Customize)
 				{
-					preference.SkinSide = BgData.side.Value;
-				}
-				if (BgData.theme != null)
-				{
-					preference.SelectedTheme = BgData.theme;
+					preference.SkinSide = BgData.side ?? Side.Light;
+					preference.SelectedTheme = BgData.theme ?? AdeSkinHost.Instance.skinData.DefaultThemeData;
+					preference.SelectedNote = AdeSkinHost.Instance.skinData.DefaultNoteData;
 				}
 			}
 			if (preference.SelectedTheme == null || !AdeSkinHost.Instance.skinData.ThemeDatas.ContainsKey(preference.SelectedTheme))
@@ -232,13 +248,10 @@ namespace Arcade.Compose.Dialog
 					preference.IsExternalBackground = false;
 					preference.SelectedBackground = AdeSkinHost.Instance.skinData.DefaultBackground;
 					AdeSkinHost.BackgroundData BgData = AdeSkinHost.Instance.skinData.BackgroundDatas[preference.SelectedBackground];
-					if (BgData.side != null)
+					if (!preference.Customize)
 					{
-						preference.SkinSide = BgData.side.Value;
-					}
-					if (BgData.theme != null)
-					{
-						preference.SelectedTheme = BgData.theme;
+						preference.SkinSide = BgData.side ?? Side.Light;
+						preference.SelectedTheme = BgData.theme ?? AdeSkinHost.Instance.skinData.DefaultThemeData;
 					}
 				}
 			}
@@ -250,7 +263,7 @@ namespace Arcade.Compose.Dialog
 			ThemeDropdown.SetValueWithoutNotify(ThemeIds[preference.SelectedTheme]);
 			NoteDropdown.SetValueWithoutNotify(NoteIds[preference.SelectedNote]);
 			CurrentBackgroundOption.SetSelected(true);
-			if (!preference.IsExternalBackground)
+			if (!preference.IsExternalBackground && !preference.Customize)
 			{
 				AdeSkinHost.BackgroundData BgData = AdeSkinHost.Instance.skinData.BackgroundDatas[preference.SelectedBackground];
 				SideDropdown.interactable = BgData.side == null;
@@ -265,6 +278,51 @@ namespace Arcade.Compose.Dialog
 			ApplyBackground();
 			ApplyNoteSideSkin();
 			ApplyThemeSideSkin();
+			UpdateTabs();
+		}
+
+		public void ShowPresets() => SetCustomize(false);
+		public void ShowCustom() => SetCustomize(true);
+
+		private void SetCustomize(bool custom)
+		{
+			CurrentBackgroundOption.SetSelected(false);
+			preference.Customize = custom;
+			if (!custom)
+			{
+				if (preference.IsExternalBackground)
+				{
+					preference.IsExternalBackground = false;
+					preference.SelectedBackground = AdeSkinHost.Instance.skinData.DefaultBackground;
+				}
+				VerifySkinOptions();
+			}
+			Initialize();
+			UpdateBackgroundFilterResult(custom ? "" : BackgroundSearchInput.text);
+			SavePreferences();
+		}
+
+		private void LateUpdate()
+		{
+			if (tabThemeRevision != AdeUiTheme.Revision) UpdateTabs();
+		}
+
+		private void UpdateTabs()
+		{
+			if (!presetPage || !customPage) return;
+			tabThemeRevision = AdeUiTheme.Revision;
+			presetPage.SetActive(!preference.Customize);
+			customPage.SetActive(preference.Customize);
+			foreach (var tab in new[] { presetTab, customTab })
+			{
+				var colors = tab.colors;
+				bool selected = (tab == customTab) == preference.Customize;
+				colors.normalColor = colors.selectedColor = selected ? AdeUiTheme.Current.Selection : AdeUiTheme.Current.Panel;
+				colors.highlightedColor = Color.Lerp(colors.normalColor, AdeUiTheme.Current.Text, selected ? .03f : .05f);
+				colors.pressedColor = Color.Lerp(colors.highlightedColor, AdeUiTheme.Current.Text, .06f);
+				colors.fadeDuration = 0;
+				tab.colors = colors;
+			}
 		}
 
 		private void LoadPreferences()
@@ -279,6 +337,7 @@ namespace Arcade.Compose.Dialog
 				preference = new SkinPreference();
 				Debug.Log(Ex);
 			}
+			if (preference.IsExternalBackground) preference.Customize = true;
 		}
 
 		public void SelectBackground(string name, bool external)
@@ -288,35 +347,26 @@ namespace Arcade.Compose.Dialog
 			preference.SelectedBackground = name;
 			ApplyBackground();
 			CurrentBackgroundOption.SetSelected(true);
-			if (!preference.IsExternalBackground)
+			if (!preference.IsExternalBackground && !preference.Customize)
 			{
 				AdeSkinHost.BackgroundData BgData = AdeSkinHost.Instance.skinData.BackgroundDatas[preference.SelectedBackground];
-				if (BgData.side != null)
-				{
-					preference.SkinSide = BgData.side.Value;
-					SideDropdown.SetValueWithoutNotify(preference.SkinSide.Id());
-				}
+				preference.SkinSide = BgData.side ?? Side.Light;
+				preference.SelectedTheme = BgData.theme ?? AdeSkinHost.Instance.skinData.DefaultThemeData;
+				preference.SelectedNote = AdeSkinHost.Instance.skinData.DefaultNoteData;
+				SideDropdown.SetValueWithoutNotify(preference.SkinSide.Id());
+				ThemeDropdown.SetValueWithoutNotify(ThemeIds[preference.SelectedTheme]);
+				NoteDropdown.SetValueWithoutNotify(NoteIds[preference.SelectedNote]);
 				SideDropdown.interactable = BgData.side == null;
-				if (BgData.theme != null)
-				{
-					preference.SelectedTheme = BgData.theme;
-					ThemeDropdown.SetValueWithoutNotify(ThemeIds[preference.SelectedTheme]);
-				}
 				ThemeDropdown.interactable = BgData.theme == null;
-				if (BgData.side != null)
-				{
-					ApplyNoteSideSkin();
-				}
-				if (BgData.side != null || BgData.theme != null)
-				{
-					ApplyThemeSideSkin();
-				}
+				ApplyNoteSideSkin();
+				ApplyThemeSideSkin();
 			}
 			else
 			{
 				SideDropdown.interactable = true;
 				ThemeDropdown.interactable = true;
 			}
+			SavePreferences();
 		}
 
 		public void SelectSide(int id)
@@ -367,7 +417,8 @@ namespace Arcade.Compose.Dialog
 			BackgroundSearchInput.text = "";
 		}
 
-		private AdeSkinBackgroundOption CurrentBackgroundOption => (preference.IsExternalBackground ? ExternalBackgroundButtons : InternalBackgroundButtons)[preference.SelectedBackground];
+		private AdeSkinBackgroundOption CurrentBackgroundOption => (preference.IsExternalBackground ? ExternalBackgroundButtons
+			: preference.Customize && customBackgroundContainer ? customBackgroundButtons : InternalBackgroundButtons)[preference.SelectedBackground];
 
 		private void ApplyBackground()
 		{

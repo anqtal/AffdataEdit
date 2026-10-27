@@ -355,7 +355,7 @@ namespace Arcade.Compose
 			if (type != LogType.Exception) return;
 			try
 			{
-				AdeBasicSingleDialogContent.Instance.Show(condition + "\n" + stackTrace, "异常", "确定");
+				AdeBasicSingleDialogContent.Instance.Show(condition + "\n" + stackTrace, "异常", "确定", Copyable: true);
 			}
 			catch
 			{
@@ -378,6 +378,15 @@ namespace Arcade.Compose
 		public void SetTargetFramerate(int fps)
 		{
 			Application.targetFrameRate = fps;
+		}
+
+		public void SeekToChartTiming(int timing)
+		{
+			previewing = advancing = false;
+			if (!IsEditorMode) Pause();
+			else GameplayManager.Pause();
+			GameplayManager.ChartTiming = timing;
+			GameplayManager.ResetJudge();
 		}
 
 		public void Play()

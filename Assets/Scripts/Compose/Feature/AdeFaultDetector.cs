@@ -8,7 +8,6 @@ using Arcade.Aff.Faults;
 using System.Linq;
 using UnityEngine.UI;
 using Text = TMPro.TMP_Text;
-using System.IO;
 using System.Globalization;
 
 // The checks follow Arcade Alpha's fault detector, plus Play's ArcTap range check.
@@ -56,9 +55,9 @@ namespace Arcade.Aff.Faults
 		public TapOverlapFault() : base("Tap 重叠") { }
 		public override void Check(ArcChart chart)
 		{
-			var taps = chart.Taps.Where(t => !NoInput(t)).ToList();
+			var taps = chart.Taps.Where(t => !NoInput(t)).OrderBy(t => t.Timing).ToList();
 			for (int i = 0; i < taps.Count - 1; ++i)
-				for (int k = i + 1; k < taps.Count; ++k)
+				for (int k = i + 1; k < taps.Count && taps[k].Timing == taps[i].Timing; ++k)
 					if (taps[i].Timing == taps[k].Timing && Mathf.Approximately(taps[i].WorldX, taps[k].WorldX))
 						Overlaps.Add((taps[k], taps[i]));
 		}
@@ -68,9 +67,9 @@ namespace Arcade.Aff.Faults
 		public TapTooCloseFault() : base("Tap 与前一个 Tap 间隔过小（同一轨道 25ms 内）") { }
 		public override void Check(ArcChart chart)
 		{
-			var taps = chart.Taps.Where(t => !NoInput(t)).ToList();
+			var taps = chart.Taps.Where(t => !NoInput(t)).OrderBy(t => t.Timing).ToList();
 			for (int i = 0; i < taps.Count - 1; ++i)
-				for (int k = i + 1; k < taps.Count; ++k)
+				for (int k = i + 1; k < taps.Count && taps[k].Timing - taps[i].Timing < 25; ++k)
 					if (Mathf.Abs(taps[i].WorldX - taps[k].WorldX) < LaneWidth && Mathf.Abs(taps[i].Timing - taps[k].Timing) < 25)
 						Overlaps.Add((taps[k], taps[i]));
 		}
@@ -80,9 +79,9 @@ namespace Arcade.Aff.Faults
 		public HoldOverlapFault() : base("Hold 重叠") { }
 		public override void Check(ArcChart chart)
 		{
-			var holds = chart.Holds.Where(h => !NoInput(h)).ToList();
+			var holds = chart.Holds.Where(h => !NoInput(h)).OrderBy(h => h.Timing).ToList();
 			for (int i = 0; i < holds.Count - 1; ++i)
-				for (int k = i + 1; k < holds.Count; ++k)
+				for (int k = i + 1; k < holds.Count && holds[k].Timing <= holds[i].EndTiming; ++k)
 					if (holds[k].Timing <= holds[i].EndTiming && holds[k].Timing >= holds[i].Timing
 						&& Mathf.Abs(holds[i].WorldX - holds[k].WorldX) < LaneWidth)
 						Overlaps.Add((holds[k], holds[i]));
@@ -104,8 +103,9 @@ namespace Arcade.Aff.Faults
 					ats.Add((at, ArcAlgorithm.X(arc.XStart, arc.XEnd, t, arc.CurveType), ArcAlgorithm.Y(arc.YStart, arc.YEnd, t, arc.CurveType)));
 				}
 			}
+			ats.Sort((a, b) => a.ArcTap.Timing.CompareTo(b.ArcTap.Timing));
 			for (int i = 0; i < ats.Count - 1; ++i)
-				for (int k = i + 1; k < ats.Count; ++k)
+				for (int k = i + 1; k < ats.Count && ats[k].ArcTap.Timing == ats[i].ArcTap.Timing; ++k)
 					if (ats[i].ArcTap.Timing == ats[k].ArcTap.Timing
 						&& Vector2.Distance(new Vector2(ats[i].X, ats[i].Y), new Vector2(ats[k].X, ats[k].Y)) < Epsilon)
 						Overlaps.Add((ats[k].ArcTap, ats[i].ArcTap));
@@ -128,12 +128,22 @@ namespace Arcade.Aff.Faults
 		public TapHoldOverlapFault() : base("Hold 与 Tap 重叠") { }
 		public override void Check(ArcChart chart)
 		{
+			var taps = chart.Taps.Where(t => !NoInput(t)).OrderBy(t => t.Timing).ToList();
 			foreach (var h in chart.Holds)
 			{
 				if (NoInput(h)) continue;
-				foreach (var t in chart.Taps)
+				int lo = 0, hi = taps.Count;
+				while (lo < hi)
+				{
+					int mid = lo + (hi - lo) / 2;
+					if (taps[mid].Timing < h.Timing) lo = mid + 1; else hi = mid;
+				}
+				for (int i = lo; i < taps.Count && taps[i].Timing <= h.EndTiming; i++)
+				{
+					var t = taps[i];
 					if (!NoInput(t) && t.Timing >= h.Timing && t.Timing <= h.EndTiming && Mathf.Abs(t.WorldX - h.WorldX) < LaneWidth)
 						Overlaps.Add((t, h));
+				}
 			}
 		}
 	}
@@ -201,73 +211,122 @@ namespace Arcade.Aff.Faults
 
 namespace Arcade.Compose
 {
-	public class AdeFaultDetector : MonoBehaviour
-	{
-		public Text Status;
-		public void OnInvoke()
-		{
-			if (!ArcGameplayManager.Instance.IsLoaded)
-			{
-				AdeToast.Instance.Show("未加载工程");
-				return;
-			}
+    public sealed partial class AdeFaultDetector : MonoBehaviour
+    {
+        public Text Status;
+        [SerializeField] private AdeRightSideCard card;
+        [SerializeField] private RectTransform content;
+        [SerializeField] private Button issueTemplate;
+        [SerializeField] private GameObject badge;
+        [SerializeField] private Text badgeCount;
+        private readonly List<Issue> issues = new List<Issue>();
+        private readonly List<Button> rows = new List<Button>();
+        private ArcChart chart;
+        private Coroutine checking, rendering;
+        private float nextCheck;
+        private bool dirty;
+        private int revision, themeRevision = -1;
 
-			Status.text = "请点击检查";
+        private sealed class Issue
+        {
+            public string Reason;
+            public ArcEvent Event, Related;
+        }
 
-			ArcChart chart = ArcGameplayManager.Instance.Chart;
-			Fault[] checks = {
-				new ShortHoldFault(), new TapOverlapFault(), new TapTooCloseFault(), new HoldOverlapFault(),
-				new ArcTapOverlapFault(), new TimingOverlapFault(), new TapHoldOverlapFault(), new NegativeArcFault(),
-				new ShortLongNoteFault(), new CrossTimingFault(), new ZeroTimeArcTapFault(), new ArcTapOutsideArcFault(),
-				new MissingSfxFault() };
-			string path = AdeProjectManager.Instance.CurrentProjectFolder + "/Arcade/ChartFault.txt";
-			int offset = ArcGameplayManager.Instance.ChartAudioOffset;
-			int count = 0;
-			using (var sw = new StreamWriter(new FileStream(path, FileMode.Create)))
-			{
-				sw.WriteLine("错误报告");
-				sw.WriteLine($"\t难度：{AdeProjectManager.Instance.CurrentDifficulty.ToString(CultureInfo.InvariantCulture)}.aff");
-				sw.WriteLine("\t谱面时间为 aff 中的时间，便于在 aff 中搜索；音频时间加上了音频偏移，便于在时间框中跳转");
-				sw.WriteLine();
-				foreach (var c in checks)
-				{
-					c.Check(chart);
-					if (c.Count == 0) continue;
-					sw.WriteLine(c.Reason);
-					foreach (var (current, other) in c.Overlaps)
-					{
-						sw.WriteLine($"\t与之重叠：{Statement(other)}");
-						WriteEvent(sw, current, offset);
-					}
-					foreach (var e in c.Faults)
-					{
-						if (c is CrossTimingFault cross)
-							foreach (var t in cross.Crossed[e])
-								sw.WriteLine($"\t跨越：{Statement(t)}");
-						WriteEvent(sw, e, offset);
-					}
-					count += c.Count;
-				}
-			}
-			Status.text = $"检查完成，共 {count.ToString(CultureInfo.InvariantCulture)} 个错误";
-			if (count > 0) Arcade.Util.Shell.FileBrowser.OpenExplorer(path);
-		}
+        private void Start()
+        {
+            if (!card) return;
+            ArcGameplayManager.Instance.OnChartLoad.AddListener(Schedule);
+            Command.AdeCommandManager.Instance.onCommandExecuted += OnCommand;
+            card.Opened += Render;
+            card.Closed += StopRendering;
+            Schedule();
+        }
 
-		private static void WriteEvent(StreamWriter sw, ArcEvent e, int offset)
-		{
-			int group = (e as IHasTimingGroup)?.TimingGroup?.Id ?? 0;
-			if (group != 0) sw.WriteLine($"\tTiming Group：{group.ToString(CultureInfo.InvariantCulture)}");
-			sw.WriteLine($"\t谱面时间：{e.Timing.ToString(CultureInfo.InvariantCulture)}\t音频时间：{(e.Timing + offset).ToString(CultureInfo.InvariantCulture)}");
-			sw.WriteLine($"\t语句：{Statement(e)}");
-			sw.WriteLine();
-		}
+        private void OnDestroy()
+        {
+            if (ArcGameplayManager.Instance) ArcGameplayManager.Instance.OnChartLoad.RemoveListener(Schedule);
+            if (Command.AdeCommandManager.Instance) Command.AdeCommandManager.Instance.onCommandExecuted -= OnCommand;
+            if (card) card.Opened -= Render;
+            if (card) card.Closed -= StopRendering;
+        }
 
-		// The event as written in the aff file; an ArcTap is quoted with its Arc.
-		private static string Statement(ArcEvent e)
-		{
-			if (e is ArcArcTap at)
-				return $"arctap({at.Timing.ToString(CultureInfo.InvariantCulture)})，所在 Arc：{Statement(at.Arc)}";
-			return e is IIntoRawItem item ? ArcaeaFileFormat.FormatItem(item.IntoRawItem()) : e.GetType().Name;
-		}
-	}
+        private void OnCommand(Command.ICommand command, bool undo) => Schedule();
+
+        private void Schedule()
+        {
+            revision++;
+            if (checking != null) { StopCoroutine(checking); checking = null; }
+            chart = ArcGameplayManager.Instance.Chart;
+            nextCheck = Time.unscaledTime + .6f;
+            dirty = true;
+            if (chart == null)
+            {
+                issues.Clear();
+                UpdateSummary();
+                if (card.IsOpen) Render();
+            }
+        }
+
+        private void Update()
+        {
+            if (!card) return;
+            if (chart != ArcGameplayManager.Instance.Chart) Schedule();
+            bool canCheck = !AdeOperationManager.Instance.HasOngoingOperation
+                && !AdeProjectManager.Instance.IsLoading && !ArcGameplayManager.Instance.IsPlaying;
+            if (checking != null && !canCheck)
+            {
+                StopCoroutine(checking); checking = null;
+                dirty = true; nextCheck = Time.unscaledTime + .6f;
+            }
+            if (dirty && checking == null && canCheck && Time.unscaledTime >= nextCheck)
+                checking = StartCoroutine(Check(revision));
+            if (themeRevision != AdeUiTheme.Revision)
+            {
+                themeRevision = AdeUiTheme.Revision;
+                foreach (var row in rows) StyleRow(row);
+            }
+        }
+
+        private System.Collections.IEnumerator Check(int version)
+        {
+            dirty = false;
+            if (chart == null) { checking = null; yield break; }
+            Status.text = "正在检查…";
+            var next = new List<Issue>();
+            Fault[] checks = {
+                new ShortHoldFault(), new TapOverlapFault(), new TapTooCloseFault(), new HoldOverlapFault(),
+                new ArcTapOverlapFault(), new TimingOverlapFault(), new TapHoldOverlapFault(), new NegativeArcFault(),
+                new ShortLongNoteFault(), new CrossTimingFault(), new ZeroTimeArcTapFault(), new ArcTapOutsideArcFault(),
+                new MissingSfxFault() };
+            foreach (var check in checks)
+            {
+                check.Check(chart);
+                foreach (var overlap in check.Overlaps)
+                    next.Add(new Issue { Reason = check.Reason, Event = overlap.Current, Related = overlap.Other });
+                foreach (var item in check.Faults) next.Add(new Issue { Reason = check.Reason, Event = item });
+                yield return null;
+                if (version != revision || chart != ArcGameplayManager.Instance.Chart) yield break;
+            }
+            issues.Clear();
+            issues.AddRange(next.OrderBy(i => i.Event.Timing));
+            checking = null;
+            UpdateSummary();
+            if (card.IsOpen) Render();
+        }
+
+        private void UpdateSummary()
+        {
+            Status.text = chart == null ? "打开谱面后自动检查" : issues.Count == 0 ? "没有发现问题" : $"发现 {issues.Count} 个问题";
+            badge.SetActive(issues.Count > 0);
+            badgeCount.text = issues.Count.ToString(CultureInfo.InvariantCulture);
+            float diameter = Mathf.Max(26, badgeCount.GetPreferredValues(badgeCount.text).x + 12);
+            var rect = (RectTransform)badge.transform;
+            rect.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, diameter);
+            rect.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, diameter);
+        }
+
+        // Kept for existing toolbar bindings; checking is scheduled automatically.
+        public void OnInvoke() { if (card) card.Toggle(); }
+    }
 }

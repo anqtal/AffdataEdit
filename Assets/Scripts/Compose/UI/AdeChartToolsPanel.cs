@@ -7,49 +7,51 @@ using Arcade.Compose.Editing;
 using Arcade.Gameplay;
 using Arcade.Gameplay.Chart;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using LitMotion;
 
 namespace Arcade.Compose
 {
-    public sealed partial class AdeChartToolsPanel : MonoBehaviour
+    public sealed partial class AdeChartToolsPanel : MonoBehaviour, IAdeRightSideCard
     {
         public enum Page { Groups, SceneControl, Camera }
         public static AdeChartToolsPanel Instance { get; private set; }
         private static readonly string[] Titles = { "时间组", "SC", "Camera" };
-        private readonly RectTransform[] pages = new RectTransform[3];
-        private readonly Button[] tabs = new Button[3];
-        private readonly Button[] entries = new Button[3];
+        [SerializeField] private RectTransform[] pages = new RectTransform[3];
+        [SerializeField] private Button[] tabs = new Button[3];
+        [SerializeField] private Button[] entries = new Button[3];
         private readonly List<ArcTimingGroup> groups = new List<ArcTimingGroup>();
         private readonly List<Button> groupRows = new List<Button>();
         private readonly List<TMP_Text> groupDetails = new List<TMP_Text>();
         private readonly List<Button> groupCopies = new List<Button>(), groupDeletes = new List<Button>();
-        private readonly Button[] groupTabs = new Button[2];
-        private readonly RectTransform[] groupSections = new RectTransform[2];
+        [SerializeField] private Button[] groupTabs = new Button[2];
+        [SerializeField] private RectTransform[] groupSections = new RectTransform[2];
         private int activeGroupTab;
         private readonly List<TimingRow> timingRows = new List<TimingRow>();
-        private RectTransform panel, pageHost, emptyState, groupList, timingList;
-        private ScrollRect groupScroll, timingScroll;
-        private TMP_Dropdown bottomGroup;
-        private TMP_Text context, status, groupCount, defaultGroupHint;
-        private Toggle noInput, fadingHolds, noClip;
-        private TMP_InputField angleX, angleY, attributes;
-        private CanvasGroup groupProperties;
-        private RectTransform deleteConfirmation;
-        private TMP_Text deletePrompt;
+        [SerializeField] private RectTransform panel, pageHost, emptyState, groupList, timingList, timingRowTemplate;
+        [SerializeField] private ScrollRect groupScroll, timingScroll;
+        [SerializeField] private TMP_Dropdown bottomGroup;
+        [SerializeField] private TMP_Text context, status, groupCount, defaultGroupHint;
+        [SerializeField] private Toggle noInput, fadingHolds, noClip;
+        [SerializeField] private TMP_InputField angleX, angleY, attributes;
+        [SerializeField] private CanvasGroup groupProperties;
+        [SerializeField] private RectTransform deleteConfirmation;
+        [SerializeField] private TMP_Text deletePrompt;
         private ArcTimingGroup pendingDelete;
-        private readonly ControlPage[] controlPages = new ControlPage[2];
+        [SerializeField] private ControlPage[] controlPages = new ControlPage[2];
         private Page activePage;
         private ArcTimingGroup lastGroup;
         private ArcChart lastChart;
         private bool dirty = true, ready;
         private int themeRevision = -1;
-        private TMP_FontAsset font;
-        private CanvasGroup panelGroup;
+        [SerializeField] private TMP_FontAsset font;
+        [SerializeField] private CanvasGroup panelGroup;
         private MotionHandle panelMotion;
         private bool expanded;
+        private bool timingLayoutDirty = true;
+        private float timingViewportHeight;
 
+        [Serializable]
         private sealed class ControlPage
         {
             public bool Camera;
@@ -58,8 +60,8 @@ namespace Arcade.Compose
             public readonly List<Button> Rows = new List<Button>();
             public readonly List<TMP_Text> Descriptions = new List<TMP_Text>();
             public readonly List<TMP_Text> Groups = new List<TMP_Text>();
-            public List<ArcEvent> Events = new List<ArcEvent>();
-            public ArcEvent Selected;
+            [NonSerialized] public List<ArcEvent> Events = new List<ArcEvent>();
+            [NonSerialized] public ArcEvent Selected;
             public TMP_Dropdown Scope, Group, Type;
             public TMP_InputField Time, Duration, CustomType, Parameters, Statement;
             public TMP_InputField[] Vectors;
@@ -68,25 +70,11 @@ namespace Arcade.Compose
             public Button Delete, Duplicate;
         }
 
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
-        private static void Bootstrap()
-        {
-            SceneManager.sceneLoaded += (scene, mode) =>
-            {
-                if (scene.name == "ArcEditor") new GameObject(nameof(AdeChartToolsPanel)).AddComponent<AdeChartToolsPanel>();
-            };
-        }
-
         private void Start()
         {
             Instance = this;
             var timing = AdeTimingEditor.Instance;
-            font = AdeEditorText.Font;
-            BuildPanel();
-            BuildBottomBar();
-            BuildGroups(pages[0]);
-            controlPages[0] = BuildControls(pages[1], false);
-            controlPages[1] = BuildControls(pages[2], true);
+            BindView();
             timing.View.SetActive(false);
             var timingEntry = ArcadeComposeManager.Instance.RightBarView.Find("Timing");
             if (timingEntry)
@@ -105,6 +93,7 @@ namespace Arcade.Compose
 
         private void OnDestroy()
         {
+            AdeRightSideCards.Release(this);
             panelMotion.TryCancel();
             if (ArcGameplayManager.Instance) ArcGameplayManager.Instance.OnChartLoad.RemoveListener(OnChartLoad);
             if (AdeCommandManager.Instance) AdeCommandManager.Instance.onCommandExecuted -= OnCommand;
@@ -123,6 +112,7 @@ namespace Arcade.Compose
             if (!ready) return;
             if (lastChart != ArcGameplayManager.Instance.Chart || lastGroup != AdeTimingEditor.Instance.currentTimingGroup) dirty = true;
             if (dirty) Refresh();
+            ResizeTimingList();
             if (themeRevision != AdeUiTheme.Revision) ApplyTheme();
             if (!ArcadeComposeManager.Instance.IsEditorMode && expanded) Collapse();
         }
@@ -136,6 +126,7 @@ namespace Arcade.Compose
         public void Show(Page page)
         {
             if (!ready) return;
+            AdeRightSideCards.Activate(this);
             bool opening = !expanded;
             activePage = page;
             if (!panel.gameObject.activeSelf) AdeDialogManager.Pose(panelGroup, panel, 0);
@@ -160,8 +151,31 @@ namespace Arcade.Compose
             panelGroup.blocksRaycasts = false;
             panelMotion.TryCancel();
             panelMotion = AdeDialogManager.AnimateView(panelGroup, panel, panelGroup.alpha, 0,
-                () => panel.gameObject.SetActive(false));
+                () => { panel.gameObject.SetActive(false); AdeRightSideCards.Release(this); });
             UpdateHighlights();
+        }
+
+        public void CloseImmediately()
+        {
+            panelMotion.TryCancel();
+            expanded = false;
+            panelGroup.blocksRaycasts = false;
+            panel.gameObject.SetActive(false);
+            AdeRightSideCards.Release(this);
+            UpdateHighlights();
+        }
+
+        public void FocusTiming(ArcTiming timing)
+        {
+            Show(Page.Groups);
+            ShowGroupTab(0);
+            Refresh();
+            int index = ArcTimingManager.Instance.GetTiming(lastGroup).IndexOf(timing);
+            if (index < 0) return;
+            Canvas.ForceUpdateCanvases();
+            timingScroll.verticalNormalizedPosition = timingRows.Count <= 1 ? 1 : 1f - index / (float)(timingRows.Count - 1);
+            UnityEngine.EventSystems.EventSystem.current.SetSelectedGameObject(timingRows[index].Time.gameObject);
+            timingRows[index].Time.ActivateInputField();
         }
 
         private void Refresh()
@@ -209,6 +223,7 @@ namespace Arcade.Compose
         private void ShowGroupTab(int index)
         {
             activeGroupTab = index;
+            timingLayoutDirty = true;
             for (int i = 0; i < groupSections.Length; i++) groupSections[i].gameObject.SetActive(i == index);
             UpdateHighlights();
             ClearMessage();

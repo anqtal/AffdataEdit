@@ -8,6 +8,7 @@ namespace Arcade.Compose
 	{
 		private const float PanelRadius = 16, ControlRadius = 8;
 		private readonly Dictionary<string, Sprite> shapes = new Dictionary<string, Sprite>();
+		private readonly HashSet<Sprite> generatedShapes = new HashSet<Sprite>();
 		private const string ControlShapePrefix = "ThemeControl/";
 
 		internal static Sprite RoundedSurface => Instance.Shape("ThemeRoundedSurface", ControlRadius, Color.white, Color.white);
@@ -23,6 +24,8 @@ namespace Arcade.Compose
 		{
 			string key = Current.Id + "/" + name;
 			if (shapes.TryGetValue(key, out Sprite sprite)) return sprite;
+			sprite = Resources.Load<Sprite>("AffdataEdit/Theme/Serialized/" + Current.Id + "/" + name.Replace('/', '_'));
+			if (sprite) { shapes.Add(key, sprite); return sprite; }
 			const int scale = 2;
 			int size = Mathf.CeilToInt((radius * 2 + 4) * scale);
 			float half = size / (2f * scale);
@@ -47,6 +50,7 @@ namespace Arcade.Compose
 				new Vector4(slice, topOnly ? scale : slice, slice, slice));
 			sprite.name = name;
 			shapes.Add(key, sprite);
+			generatedShapes.Add(sprite);
 			return sprite;
 		}
 
@@ -87,7 +91,7 @@ namespace Arcade.Compose
 
 		private void OnDestroy()
 		{
-			foreach (Sprite sprite in shapes.Values)
+			foreach (Sprite sprite in generatedShapes)
 			{
 				Destroy(sprite.texture);
 				Destroy(sprite);

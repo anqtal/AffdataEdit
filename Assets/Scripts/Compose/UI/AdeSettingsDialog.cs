@@ -64,7 +64,16 @@ namespace Arcade.Compose
             sources[(int)Page.Audio] = originals.FirstOrDefault(d => d.name == "Sound");
             sources[(int)Page.Hotkeys] = originals.FirstOrDefault(d => d.name == "Hotkeys");
             sources[(int)Page.Account] = AdeAccountManager.Instance ? AdeAccountManager.Instance.SettingsDialog : null;
-            if (!settings || !template || SourcePages.Any(p => !sources[(int)p])) yield break;
+            if (!settings || !template || SourcePages.Any(p => !sources[(int)p]))
+            {
+                foreach (string name in new[] { "Grid", "Volume", "Hotkeys", "Account" })
+                {
+                    var entry = compose.RightBarView.Find(name);
+                    if (entry) entry.gameObject.SetActive(true);
+                }
+                compose.LeftBarView.Find("Top/SaveMode").gameObject.SetActive(true);
+                yield break;
+            }
             font = AdeEditorText.Font;
             originalSettings = settings.parent.parent.gameObject;
             checkmark = Resources.Load<Sprite>("AffdataEdit/Icons/Checkmark");
