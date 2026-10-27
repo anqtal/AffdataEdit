@@ -237,7 +237,7 @@ namespace Arcade.Compose
 			{
 				AdeBasicSingleDialogContent.Instance.Show(Ex.Message + "\n" + Ex.ToString(), "保存错误");
 			}
-			AdeToast.Instance.Show("谱面已保存至\n" + path + "\n原文件已备份至\n" + backupPath);
+			AdeToast.Instance.Show("谱面已保存");
 			fs.Close();
 		}
 
