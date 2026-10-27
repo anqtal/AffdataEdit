@@ -9,12 +9,8 @@ namespace Arcade.Compose
 	public partial class AdeCameraManager
 	{
 		private float speed = 8, pressedTime;
-		private static bool CanNavigate => FreeCameraEnabled && ArcadeComposeManager.Instance.IsEditorMode
-			&& AdeGameplayContentInputHandler.InputActive && !AdeInputManager.Instance.IsTextInputFocused
-			&& AdeInputManager.Instance.CurrentRebindingButton == null
-			&& AdeInputManager.Instance.Controls.asset.enabled
-			&& (!AdeDialogManager.Instance || AdeDialogManager.Instance.Opening.childCount == 0);
-		public static bool FreeCameraPressing => CanNavigate && Mouse.current != null && Mouse.current.middleButton.isPressed
+		private static bool CanNavigate => FreeCameraEnabled && !AdeInputManager.Instance.IsTextInputFocused;
+		public static bool FreeCameraPressing => FreeCameraEnabled && Mouse.current != null && Mouse.current.middleButton.isPressed
 			&& (!AdeDragEdit.Instance || !AdeDragEdit.Instance.IsDragging);
 
 		internal static bool ConsumesHotkey(InputAction action)
@@ -30,8 +26,7 @@ namespace Arcade.Compose
 		private static bool HasModifier()
 		{
 			var keyboard = Keyboard.current;
-			return keyboard != null && (keyboard.ctrlKey.isPressed || keyboard.altKey.isPressed
-				|| keyboard.leftMetaKey.isPressed || keyboard.rightMetaKey.isPressed);
+			return keyboard != null && (keyboard.leftCtrlKey.isPressed || keyboard.leftAltKey.isPressed);
 		}
 
 		private void ResetFreeCamera()
@@ -45,16 +40,20 @@ namespace Arcade.Compose
 
 		private void Update()
 		{
-			if (!CanNavigate) { pressedTime = 0; return; }
+			if (!FreeCameraEnabled) return;
 			var trans = ArcCameraManager.Instance.GameplayCamera.transform;
 			if (FreeCameraPressing)
 			{
-				// Alpha's legacy mouse axes scale pixel deltas by 0.1 before its 8x rotation.
+				// AA's Mouse X/Y axes use 0.1 sensitivity and an 8x rotation multiplier.
 				Rotate(trans, Mouse.current.delta.ReadValue() * .8f);
 				float scroll = Mouse.current.scroll.ReadValue().y;
+				if (InputSystem.settings.scrollDeltaBehavior == InputSettings.ScrollDeltaBehavior.KeepPlatformSpecificInputRange
+					&& (Application.platform == RuntimePlatform.WindowsEditor || Application.platform == RuntimePlatform.WindowsPlayer))
+					scroll /= 120f;
 				if (scroll != 0)
 				{
-					speed = Mathf.Clamp(speed + Mathf.Sign(scroll) * .5f, 1, 20);
+					// AA's ScrollWheel axis has 0.1 sensitivity, then UpdateSpeed multiplies by 5.
+					speed = Mathf.Clamp(speed + scroll * .5f, 1, 20);
 					AdeToast.Instance.Show($"自由相机速度：{speed:F1}x");
 				}
 			}
@@ -62,9 +61,10 @@ namespace Arcade.Compose
 			if (gamepad != null)
 			{
 				var rotation = gamepad.rightStick.ReadValue();
-				Rotate(trans, new Vector2(-rotation.x, rotation.y) * (2.4f * 60 * Time.unscaledDeltaTime));
+				Rotate(trans, new Vector2(-rotation.x, rotation.y) * 2.4f);
 			}
-			if (HasModifier()) { pressedTime = 0; return; }
+			// AA gates translation on text editing and LeftAlt/LeftControl, not pointer position or playback.
+			if (!CanNavigate || HasModifier()) return;
 			var keyboard = Keyboard.current;
 			var move = Vector2.zero;
 			if (keyboard != null)
@@ -72,18 +72,18 @@ namespace Arcade.Compose
 				move.x = keyboard.aKey.isPressed ? -1 : keyboard.dKey.isPressed ? 1 : 0;
 				move.y = keyboard.wKey.isPressed ? 1 : keyboard.sKey.isPressed ? -1 : 0;
 			}
+			float distance = (keyboard != null && keyboard.leftShiftKey.isPressed ? .5f : .1f)
+				* (1 + pressedTime / 5) * speed / 8;
+			trans.position += (trans.right * move.x + trans.forward * move.y) * distance;
+			bool moving = move != Vector2.zero;
 			var stick = gamepad != null ? gamepad.leftStick.ReadValue() : Vector2.zero;
-			bool fast = keyboard != null && keyboard.shiftKey.isPressed;
 			if (stick.sqrMagnitude > .1f)
 			{
-				move += stick;
-				fast |= stick.sqrMagnitude > .7f;
+				if (stick.sqrMagnitude > .7f) distance = .5f * (1 + pressedTime / 5) * speed / 8;
+				trans.position += (trans.right * stick.x + trans.forward * stick.y) * distance;
+				moving = true;
 			}
-			if (move == Vector2.zero) { pressedTime = 0; return; }
-			// Preserve Alpha's 0.1/0.5 units per 60 Hz frame without depending on frame rate.
-			float distance = (fast ? .5f : .1f) * 60 * Time.unscaledDeltaTime * (1 + pressedTime / 5) * speed / 8;
-			trans.position += (trans.right * move.x + trans.forward * move.y) * distance;
-			pressedTime += Time.unscaledDeltaTime;
+			pressedTime = moving ? pressedTime + Time.deltaTime : 0;
 		}
 
 		private static void Rotate(Transform trans, Vector2 delta)

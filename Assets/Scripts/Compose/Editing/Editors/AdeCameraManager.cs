@@ -48,6 +48,7 @@ namespace Arcade.Compose
 				manager.GameplayCamera.orthographic = false;
 				manager.ResetCamera();
 			}
+			UpdateFreeCameraGrid();
 			pressedTime = 0;
 		}
 
