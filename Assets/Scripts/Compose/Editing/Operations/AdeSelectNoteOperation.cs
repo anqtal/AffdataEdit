@@ -3,8 +3,6 @@ using System.Collections.Generic;
 using Arcade.Compose.Editing;
 using Arcade.Gameplay;
 using Arcade.Gameplay.Chart;
-using Arcade.Util.UnityExtension;
-using UnityEngine;
 using UnityEngine.InputSystem;
 
 namespace Arcade.Compose.Operation
@@ -54,23 +52,7 @@ namespace Arcade.Compose.Operation
 					}
 				}
 
-				Ray ray = AdeCursorManager.Instance.GameplayCamera.MousePositionToRay();
-
-				RaycastHit[] hits = Physics.RaycastAll(ray, 120, 1 << 9);
-				ArcNote n = null;
-				float distance = float.MaxValue;
-				foreach (var h in hits)
-				{
-					ArcNote t = ArcGameplayManager.Instance.FindNoteByRaycastHit(h);
-					if (t != null)
-					{
-						if (h.distance < distance)
-						{
-							distance = h.distance;
-							n = t;
-						}
-					}
-				}
+				ArcNote n = ArcNoteRenderer.PickNote(AdeCursorManager.Instance.GameplayCamera, Mouse.current.position.ReadValue());
 				if (n != null)
 				{
 					if (!AdeInputManager.Instance.Inputs.MultipleSelection.IsPressed())

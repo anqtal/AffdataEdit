@@ -161,7 +161,6 @@ namespace Arcade.Gameplay
 			}
 			set
 			{
-                if (value && !ArcGameplayManager.Instance.IsPlaying) EnsureColliders();
 				if (enable != value)
 				{
 					enable = value;
@@ -170,7 +169,6 @@ namespace Arcade.Gameplay
 					foreach (ArcSegmentData s in segments) s.Enable = value;
 					EnableArcCap = value;
 					if (!value) EnableEffect = false;
-					ArcCollider.enabled = value && !ArcGameplayManager.Instance.IsPlaying;
 				}
 			}
 		}
@@ -186,7 +184,6 @@ namespace Arcade.Gameplay
 				{
 					headEnable = value;
 					HeadRenderer.enabled = value;
-					HeadCollider.enabled = value && !ArcGameplayManager.Instance.IsPlaying;
 				}
 			}
 		}
@@ -323,12 +320,6 @@ namespace Arcade.Gameplay
 			lowColorShaderId = Shader.PropertyToID("_LowColor");
 			mainTexShaderId = Shader.PropertyToID("_MainTex");
 		}
-		private void OnDestroy()
-		{
-			Destroy(ArcCollider.sharedMesh);
-			Destroy(HeadCollider.sharedMesh);
-			Destroy(HeadFilter.sharedMesh);
-		}
 
 		private Texture2D traceBodyGoldTexture;
 		private int highColorShaderId;
@@ -344,7 +335,6 @@ namespace Arcade.Gameplay
 		private bool highlighted;
 		private bool effect;
         private int effectColor;
-        private bool collidersDirty;
 		private ArcArc arc;
 		private Color currentHighColor;
 		private Color currentLowColor;
@@ -421,7 +411,7 @@ namespace Arcade.Gameplay
             int noteKey = ArcRenderOrder.NoteKey(arc.TimingGroup?.Id ?? 0, arc.Timing, arc.EndTiming, arc.Color);
             for (int i = 0; i < segments.Count; i++)
                 segments[i].Submit(renderer, matrix, DefaultTexture, HighlightTexture, gold, arc.Color,
-                    ArcRenderOrder.SegmentKey(noteKey, i, arc.IsVoid));
+                    ArcRenderOrder.SegmentKey(noteKey, i, arc.IsVoid), arc);
             renderer.SubmitHead(this);
             renderer.SubmitSprite(HeightIndicatorRenderer, 0, true);
             renderer.SubmitSprite(ArcCapRenderer, 0);
@@ -454,16 +444,7 @@ namespace Arcade.Gameplay
             heightIndicatorClip = default;
 			BuildHeightIndicator();
 			BuildSegments();
-            collidersDirty = true;
-            if (enable && !ArcGameplayManager.Instance.IsPlaying) EnsureColliders();
 		}
-        private void EnsureColliders()
-        {
-            if (!collidersDirty) return;
-            BuildHead();
-            BuildCollider();
-            collidersDirty = false;
-        }
 		public void BuildHeightIndicator()
 		{
 			if (arc.IsVoid || arc.IsVariousSizedArctap || arc.HiddenSegments)
@@ -550,106 +531,10 @@ namespace Arcade.Gameplay
 			LowColor = GetColor(false);
 		}
 
-		public void BuildHead()
-		{
-			Vector3 pos = new Vector3(ArcAlgorithm.ArcXToWorld(arc.XStart), ArcAlgorithm.ArcYToWorld(arc.YStart));
-			float offset = arc.IsVoid ? OffsetVoid : OffsetNormal;
-
-			Vector3[] vertices = new Vector3[4];
-			Vector2[] uv = new Vector2[4];
-			int[] triangles = new int[] { 0, 2, 1, 0, 3, 2, 0, 1, 2, 0, 2, 3 };
-
-			vertices[0] = pos + new Vector3(0, offset / 2, 0);
-			uv[0] = new Vector2(0, 0);
-			vertices[1] = pos + new Vector3(offset, -offset / 2, 0);
-			uv[1] = new Vector2(1, 0);
-			vertices[2] = pos + new Vector3(0, -offset / 2, offset);
-			uv[2] = new Vector2(1, 1);
-			vertices[3] = pos + new Vector3(-offset, -offset / 2, 0);
-			uv[3] = new Vector2(1, 1);
-
-            HeadFilter.sharedMesh = null;
-
-			Destroy(HeadCollider.sharedMesh);
-			HeadCollider.sharedMesh = new Mesh()
-			{
-				vertices = vertices,
-				uv = uv,
-				triangles = triangles
-			};
-
-			HeadRenderer.sharedMaterial = arcMaterial;
-		}
-		public void BuildCollider()
-		{
-			if (arc.Timing > arc.EndTiming || segments.Count == 0 || arc.IsVariousSizedArctap)
-			{
-				if (ArcCollider.sharedMesh)
-				{
-					Destroy(ArcCollider.sharedMesh);
-					ArcCollider.sharedMesh = null;
-				}
-				return;
-			}
-
-			List<Vector3> vert = new List<Vector3>();
-			List<int> tri = new List<int>();
-			List<Vector2> uv = new List<Vector2>();
-
-			float offset = arc.IsVoid ? OffsetVoid : OffsetNormal;
-
-			Vector3 pos = segments[0].FromPos;
-			vert.Add(pos + new Vector3(-offset, -offset / 2, 0));
-			vert.Add(pos + new Vector3(0, offset / 2, 0));
-			vert.Add(pos + new Vector3(offset, -offset / 2, 0));
-			uv.Add(new Vector2(0, 0));
-			uv.Add(new Vector2(0, 0));
-			uv.Add(new Vector2(0, 0));
-
-			int t = 0;
-			foreach (var seg in segments)
-			{
-				if (seg.FromTiming > seg.ToTiming) break;
-				float ratio = 1;
-				if (seg.FromTiming == seg.ToTiming)
-				{
-					if (seg.FromPos.Equals(seg.ToPos))
-						break;
-				}
-				else
-				{
-					ratio = ((float)(seg.ToTiming - arc.Timing)) / ((float)(arc.EndTiming - arc.Timing));
-				}
-				pos = seg.ToPos;
-				vert.Add(pos + new Vector3(-offset, -offset / 2, 0));
-				vert.Add(pos + new Vector3(0, offset / 2, 0));
-				vert.Add(pos + new Vector3(offset, -offset / 2, 0));
-				uv.Add(new Vector2(ratio, 0));
-				uv.Add(new Vector2(ratio, 0));
-				uv.Add(new Vector2(ratio, 0));
-
-				tri.AddRange(new int[] { t + 1, t, t + 3, t + 1, t + 3, t, t + 1, t + 3, t + 4, t + 1, t + 4, t + 3,
-					t + 1, t + 2, t + 5, t + 1, t + 5, t + 2, t + 1, t + 5, t + 4, t + 1, t + 4, t + 5 });
-				t += 3;
-			}
-
-			Destroy(ArcCollider.sharedMesh);
-			ArcCollider.sharedMesh = new Mesh()
-			{
-				vertices = vert.ToArray(),
-				triangles = tri.ToArray(),
-				uv = uv.ToArray(),
-			};
-		}
-
 		public void UpdateArc()
 		{
             if (!enable) return;
-            bool picking = !ArcGameplayManager.Instance.IsPlaying;
-            if (picking) EnsureColliders();
-            ArcCollider.enabled = picking;
             UpdateHead();
-            HeadCollider.enabled = picking && headEnable;
 			UpdateSegments();
 			UpdateHeightIndicator();
 			UpdateArcCap();
@@ -907,22 +792,6 @@ namespace Arcade.Gameplay
 			}
 		}
 
-		public bool IsHitMyself(RaycastHit h)
-		{
-			if (HeadCollider.gameObject.Equals(h.transform.gameObject))
-			{
-				return true;
-			}
-			else if (ArcCollider.gameObject.Equals(h.transform.gameObject))
-			{
-				if (arc.Judging || arc.IsVoid)
-				{
-					double timing = ((double)h.textureCoord.x) * (arc.EndTiming - arc.Timing) + arc.Timing;
-					return timing + double.Epsilon >= ArcGameplayManager.Instance.ChartTiming;
-				}
-				return true;
-			}
-			return false;
-		}
+
 	}
 }

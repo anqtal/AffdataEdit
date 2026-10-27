@@ -245,24 +245,7 @@ namespace Arcade.Gameplay
 			IsPlaying = false;
 		}
 
-		public ArcNote FindNoteByRaycastHit(RaycastHit h)
-		{
-			foreach (var slide in Chart.Slides)
-				if (slide.Instance == h.transform.gameObject)
-					return ArcSlideVisual.IsWithinRenderDistance(h.point.z) ? slide : null;
-			foreach (var tap in Chart.Taps) if (tap.Instance == h.transform.gameObject) return tap;
-			foreach (var hold in Chart.Holds) if (hold.Instance == h.transform.gameObject) return hold;
-			foreach (var arc in Chart.Arcs)
-			{
-				if (arc.IsHitMyself(h)) return arc;
-				if (arc.ConvertedVariousSizedArctap?.IsMyself(h.transform.gameObject) ?? false) return arc;
-				foreach (var arctap in arc.ArcTaps)
-				{
-					if (arctap.IsMyself(h.transform.gameObject)) return arctap;
-				}
-			}
-			return null;
-		}
+
 	}
 }
 

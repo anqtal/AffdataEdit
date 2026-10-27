@@ -540,7 +540,6 @@ namespace Arcade.Gameplay.Chart
 		public ArcTimingGroup TimingGroup { get; set; }
 
 		internal readonly HashSet<ArcArcTap> ConnectedArcTaps = new HashSet<ArcArcTap>();
-		private BoxCollider boxCollider;
 
 		public ArcTap()
 		{
@@ -564,26 +563,12 @@ namespace Arcade.Gameplay.Chart
 		}
 
 		public float Alpha { get; set; }
-		public override bool Enable
-        {
-            get => enable;
-            set
-            {
-                bool picking = !ArcGameplayManager.Instance.IsPlaying;
-                bool needsInstance = value && picking;
-                if (needsInstance && !instance) CreateInteraction();
-                else if (!needsInstance && instance) ReleaseVisual();
-                enable = value;
-                if (boxCollider) boxCollider.enabled = value && picking;
-            }
-        }
 		public override bool Selected { get; set; }
 		public override void Destroy()
 		{
 			base.Destroy();
             foreach (var arcTap in ConnectedArcTaps) arcTap.ForgetConnection(this);
             ConnectedArcTaps.Clear();
-			boxCollider = null;
 		}
 		public override ArcEvent Clone()
 		{
@@ -603,32 +588,10 @@ namespace Arcade.Gameplay.Chart
             FloatLane = n.FloatLane;
 			TimingGroup = n.TimingGroup;
 		}
-		public override GameObject Instance
-        {
-            get => instance;
-            set
-            {
-                if (instance) Destroy();
-                instance = value;
-                transform = instance.transform;
-                boxCollider = instance.GetComponent<BoxCollider>();
-                boxCollider.enabled = false;
-            }
-        }
 		public override void Instantiate()
 		{
-            // Chart initialization does not allocate a scene object.
+            // Ground notes are rendered and picked directly from their render matrices.
         }
-        private void CreateInteraction()
-        {
-            var manager = ArcTapNoteManager.Instance;
-            AcquireVisual(manager.VisualPool, manager.TapNotePrefab, manager.NoteLayer);
-        }
-        protected override void ReleaseVisual()
-        {
-            boxCollider = null;
-            base.ReleaseVisual();
-		}
 		public void SetupArcTapConnection()
 		{
             foreach (var arcTap in ConnectedArcTaps) arcTap.ForgetConnection(this);
@@ -679,23 +642,10 @@ namespace Arcade.Gameplay.Chart
 		public ArcTimingGroup TimingGroup { get; set; }
 
 
-		public override GameObject Instance
-        {
-            get => instance;
-            set
-            {
-                if (instance) Destroy();
-                instance = value;
-                transform = instance.transform;
-                boxCollider = instance.GetComponent<BoxCollider>();
-                boxCollider.enabled = false;
-            }
-        }
 		public override void Destroy()
 		{
 			base.Destroy();
             if (ArcEffectManager.Instance) ArcEffectManager.Instance.RemoveFloatHoldNoteEffect(this);
-			boxCollider = null;
 			JudgeTimings.Clear();
 		}
 		public override ArcEvent Clone()
@@ -722,16 +672,6 @@ namespace Arcade.Gameplay.Chart
 		{
             CalculateJudgeTimings();
         }
-        private void CreateInteraction()
-        {
-            var manager = ArcHoldNoteManager.Instance;
-            AcquireVisual(manager.VisualPool, manager.HoldNotePrefab, manager.NoteLayer);
-        }
-        protected override void ReleaseVisual()
-        {
-            boxCollider = null;
-            base.ReleaseVisual();
-		}
 
 		public void CalculateJudgeTimings()
 		{
@@ -758,19 +698,6 @@ namespace Arcade.Gameplay.Chart
 				if (total == ++n) break;
 			}
 		}
-		public override bool Enable
-        {
-            get => enable;
-            set
-            {
-                bool picking = !ArcGameplayManager.Instance.IsPlaying;
-                bool needsInstance = value && picking;
-                if (needsInstance && !instance) CreateInteraction();
-                else if (!needsInstance && instance) ReleaseVisual();
-                enable = value;
-                if (boxCollider) boxCollider.enabled = value && picking;
-            }
-        }
 		public float From { get; set; } = 0;
 		public float To { get; set; } = 1;
 		public float Alpha { get; set; } = 1;
@@ -778,7 +705,6 @@ namespace Arcade.Gameplay.Chart
 		public bool Highlight { get; set; }
 
 		public int FlashCount;
-		public BoxCollider boxCollider;
 
 
 		public ArcHold()
@@ -856,7 +782,6 @@ namespace Arcade.Gameplay.Chart
 		public Transform Shadow;
 		public MeshRenderer ModelRenderer;
 		public SpriteRenderer ShadowRenderer;
-		public MeshCollider ArcTapCollider;
 		private MaterialPropertyBlock propertyBlock = new MaterialPropertyBlock();
 
 		public override bool Enable
@@ -873,7 +798,6 @@ namespace Arcade.Gameplay.Chart
 					base.Enable = value;
 					ModelRenderer.enabled = value;
 					ShadowRenderer.enabled = value;
-					ArcTapCollider.enabled = value;
                     if (!value) ReleaseVisual();
 				}
 			}
@@ -900,14 +824,14 @@ namespace Arcade.Gameplay.Chart
 				ModelRenderer.sortingOrder = 4;
 				alphaShaderId = Shader.PropertyToID("_Alpha");
 				colorShaderId = Shader.PropertyToID("_Color");
-				ArcTapCollider = instance.GetComponentInChildren<MeshCollider>();
+				var legacyCollider = instance.GetComponentInChildren<MeshCollider>();
+                legacyCollider.sharedMesh = null;
+                legacyCollider.enabled = false;
                 Mesh generatedMesh = Arc.IsSfx ? ArcNoteMeshes.Sfx : ArcNoteMeshes.Cube;
                 ModelRenderer.GetComponent<MeshFilter>().sharedMesh = generatedMesh;
-                ArcTapCollider.sharedMesh = generatedMesh;
                 enable = false;
                 ModelRenderer.enabled = false;
                 ShadowRenderer.enabled = false;
-                ArcTapCollider.enabled = false;
                 if (ModelRenderer) ModelRenderer.renderingLayerMask = MaskUtil.SetMask(ModelRenderer.renderingLayerMask, ArcGameplayManager.Instance.SelectionLayerMask, selected);
 			}
 		}
@@ -917,7 +841,6 @@ namespace Arcade.Gameplay.Chart
 			base.Destroy();
 			currentAlpha = 1;
 			currentTintColor = Color.white;
-			ArcTapCollider = null;
 			ModelRenderer = null;
 			ShadowRenderer = null;
 		}
@@ -958,7 +881,6 @@ namespace Arcade.Gameplay.Chart
 
         protected override void ReleaseVisual()
         {
-            ArcTapCollider = null;
             ModelRenderer = null;
             ShadowRenderer = null;
             Model = null;
@@ -1443,10 +1365,6 @@ namespace Arcade.Gameplay.Chart
 			ArcTaps.Remove(arctap);
 		}
 
-		public bool IsHitMyself(RaycastHit h)
-		{
-			return arcRenderer && arcRenderer.IsHitMyself(h);
-		}
 
         private bool selected;
         internal float RenderingAlpha = 225 / 255f;

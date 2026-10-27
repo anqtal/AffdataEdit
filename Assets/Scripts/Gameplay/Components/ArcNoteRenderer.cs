@@ -10,7 +10,7 @@ namespace Arcade.Gameplay
 {
     // Managers retain editor state and visibility decisions. Only visible geometry reaches these buffers.
     [DefaultExecutionOrder(32000)]
-    public sealed class ArcNoteRenderer : MonoBehaviour
+    public sealed partial class ArcNoteRenderer : MonoBehaviour
     {
         internal static ArcNoteRenderer Instance { get; private set; }
         // AffdataPlay's Arc shader applies this after the skin and note alpha.
@@ -29,6 +29,8 @@ namespace Arcade.Gameplay
         }
         private struct Item
         {
+            public ArcNote Note;
+            public Bounds Bounds;
             public Mesh Mesh;
             public Texture Texture;
             public NoteInstance Data;
@@ -77,6 +79,11 @@ namespace Arcade.Gameplay
             frame = Time.frameCount;
             items.Clear(); sortKeys.Clear(); instances.Clear(); commands.Clear();
             meshBounds.Clear(); sortingLayers.Clear();
+            if (pickingChart != ArcGameplayManager.Instance.Chart)
+            {
+                pickingMeshes.Clear();
+                pickingChart = ArcGameplayManager.Instance.Chart;
+            }
             cameraForFrame = ArcCameraManager.Instance ? ArcCameraManager.Instance.GameplayCamera : null;
             if (!cameraForFrame || !ArcGameplayManager.Instance.IsLoaded) return;
             GeometryUtility.CalculateFrustumPlanes(cameraForFrame, frustum);
@@ -87,13 +94,13 @@ namespace Arcade.Gameplay
             {
                 if (!tap.Enable) continue;
                 SubmitGroundNote(tap.RenderMatrix, ArcTapNoteManager.Instance.DefaultSprite,
-                    tap.Selected, tap.Alpha, 0, 1, 0, ArcTapNoteManager.Instance.ShaderdMaterial.renderQueue);
+                    tap.Selected, tap.Alpha, 0, 1, 0, ArcTapNoteManager.Instance.ShaderdMaterial.renderQueue, tap);
                 SubmitConnections(tap);
             }
             foreach (var hold in ArcHoldNoteManager.Instance.Holds)
                 if (hold.Enable) SubmitGroundNote(hold.RenderMatrix,
                     hold.Highlight ? ArcHoldNoteManager.Instance.HighlightSprite : ArcHoldNoteManager.Instance.DefaultSprite,
-                    hold.Selected, hold.Alpha, hold.From, hold.To, 1, ArcHoldNoteManager.Instance.HoldNoteMatrial.renderQueue);
+                    hold.Selected, hold.Alpha, hold.From, hold.To, 1, ArcHoldNoteManager.Instance.HoldNoteMatrial.renderQueue, hold);
             foreach (var arc in ArcArcManager.Instance.RenderingArcs)
                 if (arc.Enable && arc.arcRenderer) arc.arcRenderer.Submit(this);
             foreach (var tap in ArcArcManager.Instance.RenderingArcTaps) SubmitArcTap(tap);
@@ -115,7 +122,7 @@ namespace Arcade.Gameplay
                 var manager = ArcArcManager.Instance;
                 Material material = tap.Arc.IsSfx ? (submesh == 0 ? manager.SfxArcTapNoteMaterial : manager.SfxArcTapCoreMaterial) : manager.ArcTapMaterial;
                 data.UvTransform = TextureTransform(material);
-                Submit(mesh, material.mainTexture, data, "ArcTap", 0, material.renderQueue, submesh, depthWrite: 1);
+                Submit(mesh, material.mainTexture, data, "ArcTap", 0, material.renderQueue, submesh, depthWrite: 1, note: tap);
             }
             SubmitSprite(tap.ShadowRenderer, 0);
         }
@@ -145,13 +152,13 @@ namespace Arcade.Gameplay
         }
 
         private void SubmitGroundNote(Matrix4x4 matrix, Sprite sprite, bool selected, float alpha,
-            float from, float to, int mode, int queue)
+            float from, float to, int mode, int queue, ArcNote note)
         {
             if (!sprite) return;
             var data = NoteInstance.Create(matrix, mode, selected);
             data.Options.y = alpha;
             data.ClipHeight = new Vector4(from, to, 0, 0);
-            Submit(ArcNoteMeshes.Sprite(sprite), sprite.texture, data, "Note", 0, queue);
+            Submit(ArcNoteMeshes.Sprite(sprite), sprite.texture, data, "Note", 0, queue, note: note);
         }
 
         internal void SubmitSprite(SpriteRenderer renderer, int mode, bool always = false)
@@ -179,10 +186,10 @@ namespace Arcade.Gameplay
             data.LowColor = sourceProperties.HasColor("_LowColor") ? sourceProperties.GetColor("_LowColor") : arc.LowColor;
             data.ClipHeight.z = data.ClipHeight.w = arc.Arc.YStart;
             data.Options.y = arc.Arc.IsVoid ? 1 : ArcOpacityMultiplier;
-            Submit(ArcNoteMeshes.Head, arc.Highlight ? arc.HighlightTexture : arc.DefaultTexture, data, "ArcTap", 1);
+            Submit(ArcNoteMeshes.Head, arc.Highlight ? arc.HighlightTexture : arc.DefaultTexture, data, "ArcTap", 1, note: arc.Arc);
         }
 
-        internal void SubmitSlide(Mesh mesh, MeshRenderer renderer, int mode)
+        internal void SubmitSlide(Mesh mesh, MeshRenderer renderer, int mode, ArcNote note = null)
         {
             if (!renderer.enabled || !renderer.gameObject.activeInHierarchy || mesh.vertexCount == 0) return;
             renderer.GetPropertyBlock(sourceProperties);
@@ -194,7 +201,7 @@ namespace Arcade.Gameplay
                 ReadFloat("_IsFirstOfGroup",0), ReadFloat("_IsLastOfGroup",0));
             data.Overlap = sourceProperties.GetVector("_MissingRange");
             Submit(mesh, mode == 7 ? renderer.sharedMaterial.mainTexture : null, data,
-                renderer.sortingLayerName, renderer.sortingOrder, renderer.sharedMaterial.renderQueue);
+                renderer.sortingLayerName, renderer.sortingOrder, renderer.sharedMaterial.renderQueue, note: note);
         }
         private float ReadFloat(string name, float fallback) => sourceProperties.HasFloat(name) ? sourceProperties.GetFloat(name) : fallback;
         private static Vector4 TextureTransform(Material material)
@@ -204,7 +211,7 @@ namespace Arcade.Gameplay
         }
 
         internal void Submit(Mesh mesh, Texture texture, NoteInstance data, string layer, int order,
-            int queue = 3000, int submesh = 0, int depthWrite = 0, int depthTest = 4, int? arcSortKey = null)
+            int queue = 3000, int submesh = 0, int depthWrite = 0, int depthTest = 4, int? arcSortKey = null, ArcNote note = null)
         {
             // Shared meshes and sorting layers need one native lookup per frame, not per segment.
             if (!meshBounds.TryGetValue(mesh, out var localBounds))
@@ -225,7 +232,7 @@ namespace Arcade.Gameplay
             sortKeys.Add(new SortKey { Index = items.Count, LayerValue = sortingLayer.value, Order = order, Queue = queue,
                 Distance = distance, PrimaryDistance = layer == "Arc" ? distance : 0,
                 ArcFace = arcSortKey.HasValue, ArcKey = arcSortKey.GetValueOrDefault() });
-            items.Add(new Item { Mesh = mesh, Texture = texture ? texture : Texture2D.whiteTexture, Data = data,
+            items.Add(new Item { Note = note, Bounds = bounds, Mesh = mesh, Texture = texture ? texture : Texture2D.whiteTexture, Data = data,
                 Layer = sortingLayer.id, LayerValue = sortingLayer.value, Order = order, Queue = queue,
                 Submesh = submesh, DepthWrite = depthWrite, DepthTest = depthTest });
         }

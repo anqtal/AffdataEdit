@@ -1,0 +1,118 @@
+using System.Collections.Generic;
+using Arcade.Gameplay.Chart;
+using UnityEngine;
+
+namespace Arcade.Gameplay
+{
+    public sealed partial class ArcNoteRenderer
+    {
+        private sealed class PickingMesh
+        {
+            public readonly List<Vector3> Vertices = new List<Vector3>();
+            public readonly List<Vector2> Uv = new List<Vector2>();
+            public readonly List<List<int>> Triangles = new List<List<int>>();
+            public int Query;
+        }
+
+        private readonly Dictionary<Mesh, PickingMesh> pickingMeshes = new Dictionary<Mesh, PickingMesh>();
+        private readonly List<Mesh> stalePickingMeshes = new List<Mesh>();
+        private int pickingQuery;
+        private ArcChart pickingChart;
+        private static readonly Vector2[] TracePickOffsets =
+        {
+            new Vector2(-2, 0), new Vector2(2, 0), new Vector2(0, -2), new Vector2(0, 2)
+        };
+
+        public static ArcNote PickNote(Camera camera, Vector2 screenPosition, float maxDistance = 120)
+        {
+            var owner = Instance;
+            if (!owner || owner.cameraForFrame != camera || !ArcGameplayManager.Instance.IsLoaded
+                || owner.pickingChart != ArcGameplayManager.Instance.Chart) return null;
+            owner.stalePickingMeshes.Clear();
+            foreach (var mesh in owner.pickingMeshes.Keys)
+                if (!mesh) owner.stalePickingMeshes.Add(mesh);
+            foreach (var mesh in owner.stalePickingMeshes) owner.pickingMeshes.Remove(mesh);
+            owner.pickingQuery++;
+
+            float distance = maxDistance;
+            ArcNote note = owner.RaycastNote(camera.ScreenPointToRay(screenPosition), ref distance, false);
+            if (note != null) return note;
+            // A small screen-space tolerance helps thin traces without expanding solid notes' hit areas.
+            foreach (var offset in TracePickOffsets)
+            {
+                var hit = owner.RaycastNote(camera.ScreenPointToRay(screenPosition + offset), ref distance, true);
+                if (hit != null) note = hit;
+            }
+            return note;
+        }
+
+        private ArcNote RaycastNote(Ray ray, ref float closest, bool tracesOnly)
+        {
+            ArcNote result = null;
+            foreach (var item in items)
+            {
+                if (item.Note == null || (!item.Note.Enable && !(item.Note is ArcSlide)) || item.Data.Options.y <= 0) continue;
+                if (tracesOnly && !(item.Note is ArcArc arc && arc.IsVoid)) continue;
+                if (!item.Bounds.IntersectRay(ray, out float entry)
+                    || (!item.Bounds.Contains(ray.origin) && entry > closest)) continue;
+                var geometry = GetPickingMesh(item.Mesh);
+                var triangles = geometry.Triangles[item.Submesh];
+                Matrix4x4 inverse = item.Data.Transform.inverse;
+                Vector3 origin = inverse.MultiplyPoint3x4(ray.origin);
+                // Do not normalize: the intersection parameter must stay in world units under scaling.
+                Vector3 direction = inverse.MultiplyVector(ray.direction);
+                int mode = (int)item.Data.Options.x;
+                for (int i = 0; i < triangles.Count; i += 3)
+                {
+                    int a = triangles[i], b = triangles[i + 1], c = triangles[i + 2];
+                    if (!IntersectTriangle(origin, direction, geometry.Vertices[a], geometry.Vertices[b],
+                        geometry.Vertices[c], out float distance, out Vector2 barycentric) || distance >= closest) continue;
+                    if (mode == 1 || mode == 2)
+                    {
+                        float v = geometry.Uv[a].y * (1 - barycentric.x - barycentric.y)
+                            + geometry.Uv[b].y * barycentric.x + geometry.Uv[c].y * barycentric.y;
+                        if (v < item.Data.ClipHeight.x || v > item.Data.ClipHeight.y) continue;
+                    }
+                    if (item.Note is ArcSlide && !ArcSlideVisual.IsWithinRenderDistance(ray.GetPoint(distance).z)) continue;
+                    closest = distance;
+                    result = item.Note;
+                }
+            }
+            return result;
+        }
+
+        private PickingMesh GetPickingMesh(Mesh mesh)
+        {
+            if (!pickingMeshes.TryGetValue(mesh, out var geometry))
+                pickingMeshes.Add(mesh, geometry = new PickingMesh());
+            if (geometry.Query == pickingQuery) return geometry;
+            // Refresh once per click: Slide meshes can change while playing; the lists retain their capacity.
+            mesh.GetVertices(geometry.Vertices);
+            mesh.GetUVs(0, geometry.Uv);
+            while (geometry.Triangles.Count < mesh.subMeshCount) geometry.Triangles.Add(new List<int>());
+            for (int i = 0; i < mesh.subMeshCount; i++) mesh.GetTriangles(geometry.Triangles[i], i);
+            geometry.Query = pickingQuery;
+            return geometry;
+        }
+
+        private static bool IntersectTriangle(Vector3 origin, Vector3 direction, Vector3 a, Vector3 b, Vector3 c,
+            out float distance, out Vector2 barycentric)
+        {
+            distance = 0;
+            barycentric = default;
+            Vector3 ab = b - a, ac = c - a;
+            Vector3 p = Vector3.Cross(direction, ac);
+            float determinant = Vector3.Dot(ab, p);
+            if (Mathf.Abs(determinant) < 1e-7f) return false;
+            Vector3 offset = origin - a;
+            float u = Vector3.Dot(offset, p) / determinant;
+            if (u < 0 || u > 1) return false;
+            Vector3 q = Vector3.Cross(offset, ab);
+            float v = Vector3.Dot(direction, q) / determinant;
+            if (v < 0 || u + v > 1) return false;
+            distance = Vector3.Dot(ac, q) / determinant;
+            barycentric = new Vector2(u, v);
+            return distance >= 0;
+        }
+    }
+}

@@ -8,7 +8,6 @@ namespace Arcade.Gameplay
 	public class ArcTapNoteManager : MonoBehaviour
 	{
 		public static ArcTapNoteManager Instance { get; private set; }
-        internal readonly ArcNoteVisualPool VisualPool = new ArcNoteVisualPool();
 
 		private void Awake()
 		{
@@ -30,7 +29,6 @@ namespace Arcade.Gameplay
 		{
 			foreach (var t in Taps) t.Destroy();
 			Taps.Clear();
-            VisualPool.Clear();
 		}
 		public void Load(List<ArcTap> taps)
 		{
@@ -91,11 +89,6 @@ namespace Arcade.Gameplay
                 Vector3 scale = new Vector3(widthScale, lengthScale, 1);
                 // Skin sprites face left; flip their mesh without flipping the picking/connection transform.
                 t.RenderMatrix = parentMatrix * Matrix4x4.TRS(position, rotation, new Vector3(-scale.x, scale.y, scale.z));
-                if (t.transform)
-                {
-                    t.transform.localPosition = position;
-                    t.transform.localScale = scale;
-                }
 				t.Alpha = pos < 90 ? 1 : (100 - pos) / 10f;
 			}
 		}

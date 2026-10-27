@@ -127,7 +127,7 @@ namespace Arcade.Gameplay.Chart
             LeftCurve = LeftCurve, RightCurve = RightCurve, Height = Height };
         public override void Instantiate()
         {
-            Instance = new GameObject("Slide", typeof(MeshFilter), typeof(MeshRenderer), typeof(MeshCollider));
+            Instance = new GameObject("Slide", typeof(MeshFilter), typeof(MeshRenderer));
             Instance.layer = 9;
             Instance.AddComponent<ArcSlideVisual>().Initialize(this);
         }

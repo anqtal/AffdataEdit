@@ -8,7 +8,6 @@ namespace Arcade.Gameplay
 	public class ArcHoldNoteManager : MonoBehaviour
 	{
 		public static ArcHoldNoteManager Instance { get; private set; }
-        internal readonly ArcNoteVisualPool VisualPool = new ArcNoteVisualPool();
 
 		private void Awake()
 		{
@@ -29,7 +28,6 @@ namespace Arcade.Gameplay
 		{
 			foreach (var t in Holds) t.Destroy();
 			Holds.Clear();
-            VisualPool.Clear();
 		}
 		public void Load(List<ArcHold> holds)
 		{
@@ -104,12 +102,6 @@ namespace Arcade.Gameplay
                 Vector3 position = new Vector3(t.WorldX, pos, 0);
                 Vector3 scale = new Vector3(widthScale, length / 3.79f, 1);
                 t.RenderMatrix = parentMatrix * Matrix4x4.TRS(position, rotation, new Vector3(-scale.x, scale.y, scale.z));
-                if (t.transform)
-                {
-                    t.transform.localPosition = position;
-                    t.transform.localScale = scale;
-                    t.boxCollider.center = new Vector3(0, t.boxCollider.size.y / 2);
-                }
 
 				float alpha = 1;
 				if (t.Judging)

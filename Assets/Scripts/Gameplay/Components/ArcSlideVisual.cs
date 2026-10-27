@@ -14,7 +14,6 @@ namespace Arcade.Gameplay
         private Mesh mesh;
         private MeshRenderer body, shadow;
         private readonly Transform[] brackets = new Transform[2];
-        private MeshCollider hitbox;
         private GameObject shadowObject;
         private MaterialPropertyBlock properties;
         private MaterialPropertyBlock shadowProperties;
@@ -30,7 +29,6 @@ namespace Arcade.Gameplay
             GetComponent<MeshFilter>().sharedMesh = mesh;
             body = GetComponent<MeshRenderer>(); body.sortingLayerName = "Arc"; body.sharedMaterial = ArcSlideManager.Instance.BodyMaterial;
             body.forceRenderingOff = true;
-            hitbox = GetComponent<MeshCollider>();
             properties = new MaterialPropertyBlock();
             shadowProperties = new MaterialPropertyBlock();
             shadowObject = new GameObject("Slide shadow", typeof(MeshFilter), typeof(MeshRenderer));
@@ -58,7 +56,7 @@ namespace Arcade.Gameplay
         {
             if (!note.IsValid)
             {
-                body.enabled = shadow.enabled = hitbox.enabled = false;
+                body.enabled = shadow.enabled = false;
                 foreach (var bracket in brackets) bracket.gameObject.SetActive(false);
                 return;
             }
@@ -66,7 +64,6 @@ namespace Arcade.Gameplay
             float startZ = -timing.CalculatePositionByTimingAndStart(now, note.Timing, note.TimingGroup) / 1000f;
             bool visible = !note.GroupHide() && !(consume && now >= note.EndTiming);
             body.enabled = shadow.enabled = visible;
-            hitbox.enabled = visible && !ArcGameplayManager.Instance.IsPlaying;
             var headRange = note.Range(0);
             for (int i = 0; i < brackets.Length; i++)
             {
@@ -96,10 +93,7 @@ namespace Arcade.Gameplay
             shadow.enabled = inRange && !note.IsFloor;
             body.sortingLayerName = note.IsFloor ? "Note" : "Arc";
             body.sortingOrder = note.IsFloor ? -1 : 0;
-            hitbox.enabled = inRange && !ArcGameplayManager.Instance.IsPlaying;
             if (!inRange) return;
-            // Cooking a MeshCollider every playback frame is expensive; selection is only needed while paused.
-            if (hitbox.enabled && hitbox.sharedMesh != mesh) hitbox.sharedMesh = mesh;
             float visualStart = timing.CalculatePositionByTimingAndStart(0, note.Timing, note.TimingGroup) / 1000f * NoteMeshDefinitions.SlideVisualUnitsPerWorldUnit;
             float visualNow = timing.CalculatePositionByTimingAndStart(0, now, note.TimingGroup) / 1000f * NoteMeshDefinitions.SlideVisualUnitsPerWorldUnit;
             properties.SetFloat("_VisualStart", visualStart); properties.SetFloat("_VisualChartProgress", visualNow);
@@ -132,7 +126,6 @@ namespace Arcade.Gameplay
             }
             mesh.Clear(); mesh.SetVertices(vertices); mesh.SetUVs(0, uv0); mesh.SetUVs(1, uv1); mesh.SetUVs(2, uv2);
             mesh.SetTriangles(indices, 0); mesh.RecalculateBounds();
-            hitbox.sharedMesh = null;
             void AddRow(int time)
             {
                 float progress = (time - note.Timing) / (float)duration;
@@ -146,7 +139,7 @@ namespace Arcade.Gameplay
         }
         internal void Submit(ArcNoteRenderer renderer)
         {
-            renderer.SubmitSlide(mesh, body, 6);
+            renderer.SubmitSlide(mesh, body, 6, note);
             renderer.SubmitSlide(mesh, shadow, 8);
             foreach (var bracket in brackets)
                 renderer.SubmitSlide(ArcNoteMeshes.Bracket, bracket.GetComponent<MeshRenderer>(), 7);

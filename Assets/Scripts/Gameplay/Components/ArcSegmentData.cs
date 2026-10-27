@@ -23,7 +23,7 @@ namespace Arcade.Gameplay
             FromHeight = startHeight; ToHeight = endHeight;
         }
         public void Submit(ArcNoteRenderer renderer, Matrix4x4 parent, Texture normal, Texture highlight, Texture gold,
-            int colorId, int sortKey)
+            int colorId, int sortKey, Arcade.Gameplay.Chart.ArcNote note)
         {
             if (!Enable || FromPos == ToPos) return;
             var local = Matrix4x4.identity;
@@ -41,9 +41,9 @@ namespace Arcade.Gameplay
             // Trace and solid Arc halves interleave in the same order as Play.
             int order = ArcRenderOrder.SegmentOrder(colorId, ToPos.y);
             renderer.Submit(ArcNoteMeshes.Segment, texture, data, "Arc", order,
-                submesh: 1, arcSortKey: sortKey);
+                submesh: 1, arcSortKey: sortKey, note: note);
             renderer.Submit(ArcNoteMeshes.Segment, texture, data, "Arc", order + ArcRenderOrder.RightHalfOffset,
-                submesh: 2, arcSortKey: sortKey);
+                submesh: 2, arcSortKey: sortKey, note: note);
             local.m13 = 0; local.m12 = 0;
             // Core supplies the .05 floor offset; Arc width must not scale that height.
             local.m11 = 1;
