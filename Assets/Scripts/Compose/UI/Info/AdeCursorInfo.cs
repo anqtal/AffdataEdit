@@ -14,6 +14,7 @@ namespace Arcade.Compose
 	public class AdeCursorInfo : MonoBehaviour
 	{
 		private bool enableInfo;
+		private int themeRevision = -1;
 
 		public Text InfoText;
 		public GameObject InfoGameObject;
@@ -33,12 +34,29 @@ namespace Arcade.Compose
 			}
 		}
 
+		private void ApplyTheme()
+		{
+			if (!AdeUiTheme.Instance || themeRevision == AdeUiTheme.Revision) return;
+			var background = InfoGameObject.GetComponentInChildren<Image>(true);
+			background.sprite = AdeUiTheme.PanelSurface;
+			background.type = Image.Type.Sliced;
+			background.color = Color.white;
+			background.raycastTarget = false;
+			background.rectTransform.sizeDelta = Vector2.zero;
+			background.rectTransform.anchoredPosition = Vector2.zero;
+			InfoGameObject.GetComponent<VerticalLayoutGroup>().padding = new RectOffset(16, 16, 12, 12);
+			AdeEditorText.Configure(InfoText, AdeEditorText.BodySize);
+			InfoText.color = AdeUiTheme.Current.Text;
+			themeRevision = AdeUiTheme.Revision;
+		}
+
 		void Update()
 		{
 			AdeCursorManager cursor = AdeCursorManager.Instance;
 			EnableInfo = cursor.WallEnabled || cursor.TrackEnabled;
 			string content = string.Empty;
 			if (!EnableInfo) return;
+			ApplyTheme();
 			content += $"音乐时间: {(cursor.AttachedTiming + ArcGameplayManager.Instance.ChartAudioOffset).ToString(CultureInfo.InvariantCulture)}\n";
 			content += $"谱面时间: {cursor.AttachedTiming.ToString(CultureInfo.InvariantCulture)}";
 			if (cursor.WallEnabled)
