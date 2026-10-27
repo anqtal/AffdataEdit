@@ -125,16 +125,21 @@ namespace Arcade.Gameplay.Chart
         public IRawAffItem IntoRawItem() => new RawAffSlide { Timing = Timing, EndTiming = EndTiming,
             StartCenter = StartCenter, StartWidth = StartWidth, EndCenter = EndCenter, EndWidth = EndWidth,
             LeftCurve = LeftCurve, RightCurve = RightCurve, Height = Height };
+        internal ArcSlideVisual Visual;
         public override void Instantiate()
         {
-            Instance = new GameObject("Slide", typeof(MeshFilter), typeof(MeshRenderer));
-            Instance.layer = 9;
-            Instance.AddComponent<ArcSlideVisual>().Initialize(this);
+            if (Visual == null) Visual = new ArcSlideVisual(this);
+        }
+        protected override void ReleaseVisual()
+        {
+            Visual?.Dispose();
+            Visual = null;
+            base.ReleaseVisual();
         }
         public void Rebuild()
         {
             ArcScoreManager.Invalidate();
-            if (Instance) Instance.GetComponent<ArcSlideVisual>().Invalidate();
+            Visual?.Invalidate();
             if (ArcSlideManager.Instance) ArcSlideManager.Instance.RebuildGroups();
         }
     }

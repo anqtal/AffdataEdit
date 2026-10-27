@@ -6,75 +6,51 @@ using UnityEngine.Rendering;
 
 namespace Arcade.Gameplay
 {
-    public sealed class ArcSlideVisual : MonoBehaviour
+    // Render state of one Slide without a GameObject, as in AffdataPlay: a ribbon mesh relative to
+    // its head, drawn with its shadow and entry brackets by ArcNoteRenderer.
+    public sealed class ArcSlideVisual
     {
         public const float RenderDistance = 100f;
         public static bool IsWithinRenderDistance(float worldZ) => Mathf.Abs(worldZ) <= RenderDistance;
-        private ArcSlide note;
-        private Mesh mesh;
-        private MeshRenderer body, shadow;
-        private readonly Transform[] brackets = new Transform[2];
-        private GameObject shadowObject;
-        private MaterialPropertyBlock properties;
-        private MaterialPropertyBlock shadowProperties;
+        private static readonly Vector3 BracketScale = Vector3.one * (8.5f / 1.62f);
+        private readonly ArcSlide note;
+        private readonly Mesh mesh;
+        private bool bodyVisible, shadowVisible;
+        private readonly bool[] bracketVisible = new bool[2];
+        private readonly Vector3[] bracketPositions = new Vector3[2];
+        private float startZ;
+        private Color bodyColor;
+        private Vector4 slideParameters, missingRange;
         private readonly List<Vector3> vertices = new List<Vector3>();
         private readonly List<Vector2> uv0 = new List<Vector2>(), uv1 = new List<Vector2>(), uv2 = new List<Vector2>();
         private readonly List<int> indices = new List<int>();
         private int lastStart = int.MinValue, signature;
         private bool lastConsumed;
-        public void Initialize(ArcSlide slide)
+        public ArcSlideVisual(ArcSlide slide)
         {
             note = slide;
             mesh = new Mesh { name = "Slide ribbon", indexFormat = IndexFormat.UInt32 };
-            GetComponent<MeshFilter>().sharedMesh = mesh;
-            body = GetComponent<MeshRenderer>(); body.sortingLayerName = "Arc"; body.sharedMaterial = ArcSlideManager.Instance.BodyMaterial;
-            body.forceRenderingOff = true;
-            properties = new MaterialPropertyBlock();
-            shadowProperties = new MaterialPropertyBlock();
-            shadowObject = new GameObject("Slide shadow", typeof(MeshFilter), typeof(MeshRenderer));
-            shadowObject.layer = 9;
-            shadowObject.transform.SetParent(transform, false);
-            shadowObject.transform.localPosition = new Vector3(0, -note.WorldHeight + 0.02f, 0);
-            shadowObject.GetComponent<MeshFilter>().sharedMesh = mesh;
-            shadow = shadowObject.GetComponent<MeshRenderer>(); shadow.forceRenderingOff = true; shadow.sortingLayerName = "Shadow"; shadow.sharedMaterial = ArcSlideManager.Instance.ShadowMaterial;
-            transform.position = new Vector3(0, note.WorldHeight, 0);
-            for (int i = 0; i < 2; i++)
-            {
-                var go = new GameObject("Slide entry bracket", typeof(MeshFilter), typeof(MeshRenderer));
-                go.layer = 9;
-                go.transform.SetParent(transform, false); brackets[i] = go.transform;
-                brackets[i].localScale = Vector3.one * (8.5f / 1.62f);
-                brackets[i].localRotation = Quaternion.Euler(0, i == 0 ? 180 : 0, 0);
-                go.GetComponent<MeshFilter>().sharedMesh = ArcSlideManager.Instance.BracketMesh;
-                go.GetComponent<MeshRenderer>().sharedMaterial = ArcSlideManager.Instance.BracketMaterial;
-                go.GetComponent<MeshRenderer>().sortingLayerName = "Arc";
-                go.GetComponent<MeshRenderer>().forceRenderingOff = true;
-            }
         }
+        public void Dispose() => Object.Destroy(mesh);
         public void Invalidate() => lastStart = int.MinValue;
         public void Present(int now, bool consume)
         {
             if (!note.IsValid)
             {
-                body.enabled = shadow.enabled = false;
-                foreach (var bracket in brackets) bracket.gameObject.SetActive(false);
+                bodyVisible = shadowVisible = bracketVisible[0] = bracketVisible[1] = false;
                 return;
             }
             var timing = ArcTimingManager.Instance;
-            float startZ = -timing.CalculatePositionByTimingAndStart(now, note.Timing, note.TimingGroup) / 1000f;
+            startZ = -timing.CalculatePositionByTimingAndStart(now, note.Timing, note.TimingGroup) / 1000f;
             bool visible = !note.GroupHide() && !(consume && now >= note.EndTiming);
-            body.enabled = shadow.enabled = visible;
+            bodyVisible = shadowVisible = visible;
             var headRange = note.Range(0);
-            for (int i = 0; i < brackets.Length; i++)
+            for (int i = 0; i < bracketVisible.Length; i++)
             {
-                brackets[i].gameObject.SetActive(visible && IsWithinRenderDistance(startZ) && note.IsGroupHead && (long)note.Timing - now > 5);
-                brackets[i].localPosition = new Vector3(note.WorldX(i == 0 ? headRange.x : headRange.y), .026f, 0);
+                bracketVisible[i] = visible && IsWithinRenderDistance(startZ) && note.IsGroupHead && (long)note.Timing - now > 5;
+                bracketPositions[i] = new Vector3(note.WorldX(i == 0 ? headRange.x : headRange.y), .026f, 0);
             }
             if (!visible) return;
-            // Store geometry relative to the head. Scrolling only moves the transform.
-            transform.position = new Vector3(0, note.WorldHeight, startZ);
-            shadowObject.transform.localPosition = new Vector3(0, -note.WorldHeight + 0.02f, 0);
-            body.renderingLayerMask = note.Selected ? ArcGameplayManager.Instance.SelectionLayerMask : 1u;
             int hash = System.HashCode.Combine(note.Timing, note.EndTiming, note.StartCenter, note.StartWidth,
                 note.EndCenter, note.EndWidth, note.LeftCurve, note.RightCurve);
             hash = System.HashCode.Combine(hash, timing.BaseBpm, timing.SettingVelocity, note.Height);
@@ -89,24 +65,15 @@ namespace Arcade.Gameplay
             // a middle section into view while both endpoints remain beyond the cutoff.
             bool inRange = mesh.bounds.max.z + startZ >= -RenderDistance
                 && mesh.bounds.min.z + startZ <= RenderDistance;
-            body.enabled = inRange;
-            shadow.enabled = inRange && !note.IsFloor;
-            body.sortingLayerName = note.IsFloor ? "Note" : "Arc";
-            body.sortingOrder = note.IsFloor ? -1 : 0;
+            bodyVisible = inRange;
+            shadowVisible = inRange && !note.IsFloor;
             if (!inRange) return;
             float visualStart = timing.CalculatePositionByTimingAndStart(0, note.Timing, note.TimingGroup) / 1000f * NoteMeshDefinitions.SlideVisualUnitsPerWorldUnit;
             float visualNow = timing.CalculatePositionByTimingAndStart(0, now, note.TimingGroup) / 1000f * NoteMeshDefinitions.SlideVisualUnitsPerWorldUnit;
-            properties.SetFloat("_VisualStart", visualStart); properties.SetFloat("_VisualChartProgress", visualNow);
-            properties.SetFloat("_IsFirstOfGroup", note.IsGroupHead ? 1 : 0); properties.SetFloat("_IsLastOfGroup", note.IsGroupTail ? 1 : 0);
-            properties.SetVector("_MissingRange", note.Overlap);
+            slideParameters = new Vector4(visualStart, visualNow, note.IsGroupHead ? 1 : 0, note.IsGroupTail ? 1 : 0);
+            missingRange = note.Overlap;
             // Darker floor fill stays readable against the pale lanes; keep source edge/glow colors.
-            properties.SetColor("_Color", note.IsFloor
-                ? new Color(0.42f, 0.32f, 0.70f, 1f)
-                : ArcSlideManager.Instance.BodyMaterial.GetColor("_Color"));
-            properties.SetFloat("_Danger", 0);
-            body.SetPropertyBlock(properties);
-            shadowProperties.SetColor("_Color", ArcSkinManager.Instance.GetShadowTint());
-            shadow.SetPropertyBlock(shadowProperties);
+            bodyColor = note.IsFloor ? new Color(0.42f, 0.32f, 0.70f, 1f) : ArcSlideManager.Instance.BodyMaterial.GetColor("_Color");
         }
         private void Fill(int start)
         {
@@ -139,11 +106,23 @@ namespace Arcade.Gameplay
         }
         internal void Submit(ArcNoteRenderer renderer)
         {
-            renderer.SubmitSlide(mesh, body, 6, note);
-            renderer.SubmitSlide(mesh, shadow, 8);
-            foreach (var bracket in brackets)
-                renderer.SubmitSlide(ArcNoteMeshes.Bracket, bracket.GetComponent<MeshRenderer>(), 7);
+            var manager = ArcSlideManager.Instance;
+            // Geometry is stored relative to the head; scrolling only moves this matrix.
+            Matrix4x4 root = Matrix4x4.Translate(new Vector3(0, note.WorldHeight, startZ));
+            if (bodyVisible)
+                renderer.SubmitSlide(mesh, root, 6, bodyColor, slideParameters, missingRange, null,
+                    note.IsFloor ? "Note" : "Arc", note.IsFloor ? -1 : 0, manager.BodyMaterial.renderQueue, note.Selected, note);
+            if (shadowVisible)
+                renderer.SubmitSlide(mesh, root * Matrix4x4.Translate(new Vector3(0, -note.WorldHeight + 0.02f, 0)), 8,
+                    ArcSkinManager.Instance.GetShadowTint(), Vector4.zero, Vector4.zero, null, "Shadow", 0, manager.ShadowMaterial.renderQueue, false);
+            Material bracket = manager.BracketMaterial;
+            for (int i = 0; i < bracketVisible.Length; i++)
+            {
+                if (!bracketVisible[i]) continue;
+                var matrix = root * Matrix4x4.TRS(bracketPositions[i], Quaternion.Euler(0, i == 0 ? 180 : 0, 0), BracketScale);
+                renderer.SubmitSlide(ArcNoteMeshes.Bracket, matrix, 7, bracket.HasColor("_Color") ? bracket.GetColor("_Color") : Color.white,
+                    Vector4.zero, Vector4.zero, bracket.mainTexture, "Arc", 0, bracket.renderQueue, false);
+            }
         }
-        private void OnDestroy() { if (mesh) Destroy(mesh); }
     }
 }

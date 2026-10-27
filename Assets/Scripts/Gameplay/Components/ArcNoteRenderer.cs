@@ -59,7 +59,6 @@ namespace Arcade.Gameplay
         private readonly List<GraphicsBuffer.IndirectDrawIndexedArgs> commands = new List<GraphicsBuffer.IndirectDrawIndexedArgs>();
         private readonly List<Draw> draws = new List<Draw>();
         private readonly Dictionary<(int,int,int), Material> materials = new Dictionary<(int,int,int), Material>();
-        private MaterialPropertyBlock sourceProperties;
         private readonly Plane[] frustum = new Plane[6];
         private readonly Dictionary<Mesh, Bounds> meshBounds = new Dictionary<Mesh, Bounds>();
         private readonly Dictionary<string, (int id, int value)> sortingLayers = new Dictionary<string, (int, int)>();
@@ -73,7 +72,7 @@ namespace Arcade.Gameplay
         private static readonly int NotesId = Shader.PropertyToID("_Notes"), OffsetId = Shader.PropertyToID("_NoteOffset"),
             SelectionId = Shader.PropertyToID("_NoteSelection"), TextureId = Shader.PropertyToID("_MainTex");
 
-        private void Awake() { Instance = this; sourceProperties = new MaterialPropertyBlock(); }
+        private void Awake() { Instance = this; }
         private void LateUpdate()
         {
             frame = Time.frameCount;
@@ -104,29 +103,31 @@ namespace Arcade.Gameplay
                     hold.Highlight ? ArcHoldNoteManager.Instance.HighlightSprite : ArcHoldNoteManager.Instance.DefaultSprite,
                     hold.Selected, hold.Alpha, hold.From, hold.To, 1, ArcHoldNoteManager.Instance.HoldNoteMatrial.renderQueue, hold);
             foreach (var arc in ArcArcManager.Instance.RenderingArcs)
-                if (arc.Enable && arc.arcRenderer) arc.arcRenderer.Submit(this);
+                if (arc.Enable && arc.arcRenderer != null) arc.arcRenderer.Submit(this);
             foreach (var tap in ArcArcManager.Instance.RenderingArcTaps) SubmitArcTap(tap);
             foreach (var slide in ArcSlideManager.Instance.Slides)
-                if (slide.Instance) slide.Instance.GetComponent<ArcSlideVisual>().Submit(this);
+                slide.Visual?.Submit(this);
             Upload();
         }
 
         private void SubmitArcTap(ArcArcTap tap)
         {
-            if (!tap.Enable || !tap.ModelRenderer) return;
-            var renderer = tap.ModelRenderer;
+            if (!tap.Enable) return;
+            var manager = ArcArcManager.Instance;
+            Matrix4x4 parent = tap.ParentMatrix;
             Mesh mesh = tap.Arc.IsSfx ? ArcNoteMeshes.Sfx : ArcNoteMeshes.Cube;
-            var data = NoteInstance.Create(renderer.localToWorldMatrix, 3, tap.Selected);
+            var data = NoteInstance.Create(parent * tap.ModelMatrix, 3, tap.Selected);
             data.HighColor = tap.TintColor;
             data.Options.y = tap.Alpha;
             for (int submesh = 0; submesh < mesh.subMeshCount; submesh++)
             {
-                var manager = ArcArcManager.Instance;
                 Material material = tap.Arc.IsSfx ? (submesh == 0 ? manager.SfxArcTapNoteMaterial : manager.SfxArcTapCoreMaterial) : manager.ArcTapMaterial;
                 data.UvTransform = TextureTransform(material);
                 Submit(mesh, material.mainTexture, data, "ArcTap", 0, material.renderQueue, submesh, depthWrite: 1, note: tap);
             }
-            SubmitSprite(tap.ShadowRenderer, 0);
+            var shadow = manager.ArcTapShadowStyle(tap.Arc.IsSfx);
+            if (tap.TryGetShadowMatrix(manager.ArcTapShadowSkin, shadow.transform.localRotation, out Matrix4x4 local))
+                SubmitSprite(manager.ArcTapShadowSkin, parent * local, tap.ShadowColor, shadow, shadow.sortingOrder, 0);
         }
 
         private void SubmitConnections(ArcTap tap)
@@ -163,49 +164,41 @@ namespace Arcade.Gameplay
             Submit(ArcNoteMeshes.Sprite(sprite), sprite.texture, data, "Note", 0, queue, note: note);
         }
 
-        internal void SubmitSprite(SpriteRenderer renderer, int mode, bool always = false)
+        // A sprite drawn from values; the renderer supplies only its sorting and material settings.
+        internal void SubmitSprite(Sprite sprite, Matrix4x4 matrix, Color color, SpriteRenderer style, int order, int mode, bool always = false)
         {
-            if (!renderer || !renderer.enabled || !renderer.gameObject.activeInHierarchy || !renderer.sprite) return;
-            renderer.GetPropertyBlock(sourceProperties);
-            var matrix = renderer.localToWorldMatrix * Matrix4x4.Scale(new Vector3(renderer.flipX ? -1 : 1, renderer.flipY ? -1 : 1, 1));
-            var data = NoteInstance.Create(matrix, mode, (renderer.renderingLayerMask & ArcGameplayManager.Instance.SelectionLayerMask) != 0);
-            data.HighColor = renderer.color;
-            data.Options.y = ReadFloat("_Alpha", 1);
-            data.ClipHeight = new Vector4(ReadFloat("_From",0), ReadFloat("_To",1),0,0);
-            Submit(ArcNoteMeshes.Sprite(renderer.sprite), renderer.sprite.texture, data, renderer.sortingLayerName,
-                renderer.sortingOrder, renderer.sharedMaterial.renderQueue, depthTest: always ? 8 : 4);
+            if (!sprite) return;
+            matrix *= Matrix4x4.Scale(new Vector3(style.flipX ? -1 : 1, style.flipY ? -1 : 1, 1));
+            var data = NoteInstance.Create(matrix, mode);
+            data.HighColor = color;
+            Submit(ArcNoteMeshes.Sprite(sprite), sprite.texture, data, style.sortingLayerName,
+                order, style.sharedMaterial.renderQueue, depthTest: always ? 8 : 4);
         }
 
-        internal void SubmitHead(ArcArcRenderer arc)
+        internal void SubmitHead(ArcArcVisual arc, Matrix4x4 parent, Texture texture)
         {
             if (!arc.EnableHead) return;
-            arc.HeadRenderer.GetPropertyBlock(sourceProperties);
             float width = arc.Arc.IsVoid ? ArcArcRenderer.OffsetVoid : ArcArcRenderer.OffsetNormal;
             var local = Matrix4x4.TRS(new Vector3(ArcAlgorithm.ArcXToWorld(arc.Arc.XStart), ArcAlgorithm.ArcYToWorld(arc.Arc.YStart),0),
                 Quaternion.identity, Vector3.one * width);
-            var data = NoteInstance.Create(arc.Head.localToWorldMatrix * local, 2, arc.Selected);
-            data.HighColor = sourceProperties.HasColor("_HighColor") ? sourceProperties.GetColor("_HighColor") : arc.HighColor;
-            data.LowColor = sourceProperties.HasColor("_LowColor") ? sourceProperties.GetColor("_LowColor") : arc.LowColor;
+            var data = NoteInstance.Create(parent * Matrix4x4.Translate(arc.HeadOffset) * local, 2, arc.Selected);
+            data.HighColor = arc.HeadHighColor;
+            data.LowColor = arc.HeadLowColor;
             data.ClipHeight.z = data.ClipHeight.w = arc.Arc.YStart;
             data.Options.y = arc.Arc.IsVoid ? 1 : ArcOpacityMultiplier;
-            Submit(ArcNoteMeshes.Head, arc.Highlight ? arc.HighlightTexture : arc.DefaultTexture, data, "ArcTap", 1, note: arc.Arc);
+            Submit(ArcNoteMeshes.Head, texture, data, "ArcTap", 1, note: arc.Arc);
         }
 
-        internal void SubmitSlide(Mesh mesh, MeshRenderer renderer, int mode, ArcNote note = null)
+        internal void SubmitSlide(Mesh mesh, Matrix4x4 matrix, int mode, Color color, Vector4 slide, Vector4 overlap,
+            Texture texture, string layer, int order, int queue, bool selected, ArcNote note = null)
         {
-            if (!renderer.enabled || !renderer.gameObject.activeInHierarchy || mesh.vertexCount == 0) return;
-            renderer.GetPropertyBlock(sourceProperties);
-            var data = NoteInstance.Create(renderer.localToWorldMatrix, mode,
-                (renderer.renderingLayerMask & ArcGameplayManager.Instance.SelectionLayerMask) != 0);
-            if (sourceProperties.HasColor("_Color")) data.HighColor = sourceProperties.GetColor("_Color");
-            else if (renderer.sharedMaterial.HasColor("_Color")) data.HighColor = renderer.sharedMaterial.GetColor("_Color");
-            data.Slide = new Vector4(ReadFloat("_VisualStart",0), ReadFloat("_VisualChartProgress",0),
-                ReadFloat("_IsFirstOfGroup",0), ReadFloat("_IsLastOfGroup",0));
-            data.Overlap = sourceProperties.GetVector("_MissingRange");
-            Submit(mesh, mode == 7 ? renderer.sharedMaterial.mainTexture : null, data,
-                renderer.sortingLayerName, renderer.sortingOrder, renderer.sharedMaterial.renderQueue, note: note);
+            if (mesh.vertexCount == 0) return;
+            var data = NoteInstance.Create(matrix, mode, selected);
+            data.HighColor = color;
+            data.Slide = slide;
+            data.Overlap = overlap;
+            Submit(mesh, texture, data, layer, order, queue, note: note);
         }
-        private float ReadFloat(string name, float fallback) => sourceProperties.HasFloat(name) ? sourceProperties.GetFloat(name) : fallback;
         private static Vector4 TextureTransform(Material material)
         {
             Vector2 scale = material.mainTextureScale, offset = material.mainTextureOffset;

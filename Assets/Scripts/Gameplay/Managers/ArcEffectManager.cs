@@ -55,7 +55,7 @@ namespace Arcade.Gameplay
 		private sealed class ArcEffect
 		{
 			public VisualEffect Effect;
-			public readonly List<ArcArcRenderer> Owners = new List<ArcArcRenderer>();
+			public readonly List<ArcArcVisual> Owners = new List<ArcArcVisual>();
 		}
 		private readonly Dictionary<int, ArcEffect> arcEffects = new Dictionary<int, ArcEffect>();
 
@@ -109,26 +109,26 @@ namespace Arcade.Gameplay
 
 		// Arc renderers report their judging state; the color's particle follows the most
 		// recent judging arc of that color and keeps emitting while any of them judges.
-		public void SetArcEffect(ArcArcRenderer renderer, int color, bool enable)
+		internal void SetArcEffect(ArcArcVisual renderer, int color, bool enable)
 		{
 			if (!arcEffects.TryGetValue(color, out var state))
 			{
 				state = new ArcEffect();
 				arcEffects.Add(color, state);
 			}
-			state.Owners.RemoveAll(owner => !owner);
+			var skin = ArcArcManager.Instance.ArcSkin.JudgeEffect;
 			bool registered = state.Owners.Contains(renderer);
             if (registered == enable && (!enable || (state.Effect && ArcLongNoteEffect.Get(state.Effect).Active))) return;
 			if (enable && !registered) state.Owners.Add(renderer);
 			else if (!enable) state.Owners.Remove(renderer);
-			if (!state.Effect) state.Effect = CreateLongNoteAnchor($"Arc hit {color}", renderer.JudgeEffect);
-			ArcArcRenderer current = state.Owners.Count > 0 ? state.Owners[state.Owners.Count - 1] : null;
+			if (!state.Effect) state.Effect = CreateLongNoteAnchor($"Arc hit {color}", skin);
+			ArcArcVisual current = state.Owners.Count > 0 ? state.Owners[state.Owners.Count - 1] : null;
 			var effect = ArcLongNoteEffect.Get(state.Effect);
-			if (current)
+			if (current != null)
 			{
 				// Keep the shared anchor outside pooled Arc objects; follow the judge point in LateUpdate.
-				CopyLongNoteSkin(current.JudgeEffect, state.Effect);
-				effect.FollowTarget = current.JudgeEffectTransform;
+				CopyLongNoteSkin(skin, state.Effect);
+				effect.FollowTarget = current;
 				effect.RefreshSkin();
 				effect.SetEmission(true);
 			}

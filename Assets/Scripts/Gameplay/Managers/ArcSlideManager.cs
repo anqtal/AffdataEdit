@@ -112,7 +112,7 @@ namespace Arcade.Gameplay
             activeRanges.Clear(); floorRanges.Clear(); highRanges.Clear(); activeSegments.Clear();
             foreach (var slide in Slides)
             {
-                if (!slide.Instance) slide.Instantiate();
+                if (slide.Visual == null) slide.Instantiate();
                 bool hit = slide.IsValid && game.Auto && !slide.NoInput() && !slide.GroupHide()
                     && now >= slide.Timing && now < slide.EndTiming;
                 slide.Judging = hit;
@@ -126,7 +126,7 @@ namespace Arcade.Gameplay
                 }
                 // Match Play: noinput still consumes passed geometry unless noclip is set.
                 bool consume = (game.Auto || slide.NoInput()) && !(slide.TimingGroup?.NoClip ?? false);
-                slide.Instance.GetComponent<ArcSlideVisual>().Present(now, consume);
+                slide.Visual.Present(now, consume);
                 if (hit)
                 {
                     var root = slide.GroupRoot;

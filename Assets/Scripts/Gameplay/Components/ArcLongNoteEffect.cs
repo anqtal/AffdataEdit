@@ -25,7 +25,7 @@ namespace Arcade.Gameplay
 
         // Emitting or still inside the 200 ms stop delay.
         public bool Active => requested || emitting;
-        internal Transform FollowTarget { get; set; }
+        internal ArcArcVisual FollowTarget { get; set; }
 
         public static ArcLongNoteEffect Get(VisualEffect anchor)
         {
@@ -112,7 +112,7 @@ namespace Arcade.Gameplay
             }
             // The Arc renderer updates the hit position during Update. Position first,
             // then prewarm/emit, so no particles are born at the prefab's old location.
-            if (FollowTarget) transform.position = FollowTarget.position;
+            if (FollowTarget != null) transform.position = FollowTarget.JudgePosition;
             UpdateSimulationSpace();
             if (!emitting)
             {

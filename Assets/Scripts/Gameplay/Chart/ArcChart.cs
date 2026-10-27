@@ -439,24 +439,6 @@ namespace Arcade.Gameplay.Chart
 		public bool Judged;
 		public float Position;
 
-		protected GameObject instance;
-		public virtual GameObject Instance
-		{
-			get
-			{
-				return instance;
-			}
-			set
-			{
-				if (instance != null) Destroy();
-				instance = value;
-				transform = instance.transform;
-				spriteRenderer = instance.GetComponent<SpriteRenderer>();
-                if (spriteRenderer) spriteRenderer.forceRenderingOff = true;
-				meshRenderer = instance.GetComponent<MeshRenderer>();
-			}
-		}
-
 		protected bool enable;
 		public virtual bool Enable
 		{
@@ -466,40 +448,14 @@ namespace Arcade.Gameplay.Chart
 			}
 			set
 			{
-				if (enable != value)
-				{
-					enable = value;
-					if (spriteRenderer != null) spriteRenderer.enabled = value;
-					if (meshRenderer != null) meshRenderer.enabled = value;
-				}
+				enable = value;
 			}
 		}
 		public abstract bool Selected { get; set; }
 
-		public Transform transform;
-		public SpriteRenderer spriteRenderer;
-		public MeshRenderer meshRenderer;
-
-        private ArcNoteVisualPool visualPool;
-
-        internal void AcquireVisual(ArcNoteVisualPool pool, GameObject prefab, Transform parent)
-        {
-            Instance = pool.Rent(prefab, parent);
-            visualPool = pool;
-        }
-
+        // Notes own no GameObject. Subclasses release their pooled render state here.
         protected virtual void ReleaseVisual()
         {
-            if (instance)
-            {
-                if (visualPool != null) visualPool.Return(instance);
-                else UnityEngine.Object.Destroy(instance);
-            }
-            visualPool = null;
-            instance = null;
-            transform = null;
-            spriteRenderer = null;
-            meshRenderer = null;
             enable = false;
         }
 
@@ -801,71 +757,26 @@ namespace Arcade.Gameplay.Chart
         public float Width = 1;
         public bool IsMine;
 
-		public Transform Model;
-		public Transform Shadow;
-		public MeshRenderer ModelRenderer;
-		public SpriteRenderer ShadowRenderer;
-		private MaterialPropertyBlock propertyBlock = new MaterialPropertyBlock();
+		// ArcNoteRenderer draws the model and shadow from these values, as in AffdataPlay.
+		private float rootZ;
+		internal Matrix4x4 ParentMatrix => ArcArcManager.Instance.ArcLayer.localToWorldMatrix * Matrix4x4.Translate(new Vector3(0, 0, rootZ));
+		internal Matrix4x4 ModelMatrix
+		{
+			get
+			{
+				Vector3 centre = Arc.IsSfx ? NoteMeshDefinitions.SfxArcTapCenter : NoteMeshDefinitions.ArcTapCenter;
+				Vector3 position = localPosition + Vector3.up * (centre.y - NoteMeshDefinitions.ArcTapAnchorYOffset);
+				return Matrix4x4.TRS(position, Quaternion.identity, new Vector3(localScale * BaseModelScale.x, BaseModelScale.y, BaseModelScale.z));
+			}
+		}
+		internal Color ShadowColor => new Color(0.49f, 0.49f, 0.49f, 0.7843f * currentAlpha);
 
-		public override bool Enable
-		{
-			get
-			{
-				return base.Enable;
-			}
-			set
-			{
-                if (value && !instance) CreateVisual();
-				if (enable != value)
-				{
-					base.Enable = value;
-					ModelRenderer.enabled = value;
-					ShadowRenderer.enabled = value;
-                    if (!value) ReleaseVisual();
-				}
-			}
-		}
-		public override GameObject Instance
-		{
-			get
-			{
-				return base.Instance;
-			}
-			set
-			{
-				if (instance != null) Destroy();
-				base.Instance = value;
-				ModelRenderer = instance.GetComponentInChildren<MeshRenderer>();
-                ModelRenderer.forceRenderingOff = true;
-                var sortingGroup = ModelRenderer.GetComponent<UnityEngine.Rendering.SortingGroup>();
-                if (sortingGroup) sortingGroup.enabled = false;
-				Model = ModelRenderer.transform;
-				ShadowRenderer = instance.GetComponentInChildren<SpriteRenderer>();
-                ShadowRenderer.forceRenderingOff = true;
-				Shadow = ShadowRenderer.transform;
-				ModelRenderer.sortingLayerName = "Arc";
-				ModelRenderer.sortingOrder = 4;
-				alphaShaderId = Shader.PropertyToID("_Alpha");
-				colorShaderId = Shader.PropertyToID("_Color");
-				var legacyCollider = instance.GetComponentInChildren<MeshCollider>();
-                legacyCollider.sharedMesh = null;
-                legacyCollider.enabled = false;
-                Mesh generatedMesh = Arc.IsSfx ? ArcNoteMeshes.Sfx : ArcNoteMeshes.Cube;
-                ModelRenderer.GetComponent<MeshFilter>().sharedMesh = generatedMesh;
-                enable = false;
-                ModelRenderer.enabled = false;
-                ShadowRenderer.enabled = false;
-                if (ModelRenderer) ModelRenderer.renderingLayerMask = MaskUtil.SetMask(ModelRenderer.renderingLayerMask, ArcGameplayManager.Instance.SelectionLayerMask, selected);
-			}
-		}
 		public override void Destroy()
 		{
 			RemoveArcTapConnection();
 			base.Destroy();
 			currentAlpha = 1;
 			currentTintColor = Color.white;
-			ModelRenderer = null;
-			ShadowRenderer = null;
 		}
 		public override ArcEvent Clone()
 		{
@@ -892,30 +803,6 @@ namespace Arcade.Gameplay.Chart
             SetupArcTapConnection();
         }
 
-        private void CreateVisual()
-        {
-            var manager = ArcArcManager.Instance;
-            AcquireVisual(Arc.IsSfx ? manager.SfxTapVisualPool : manager.TapVisualPool,
-                Arc.IsSfx ? manager.SfxArcTapPrefab : manager.ArcTapPrefab, manager.ArcLayer);
-            ShadowRenderer.sprite = manager.ArcTapShadowSkin;
-            UpdatePosition();
-            UpdateScale();
-            propertyBlock.Clear();
-            propertyBlock.SetFloat(alphaShaderId, currentAlpha);
-            propertyBlock.SetColor(colorShaderId, currentTintColor);
-            ModelRenderer.SetPropertyBlock(propertyBlock);
-            ShadowRenderer.color = new Color(0.49f, 0.49f, 0.49f, 0.7843f * currentAlpha);
-        }
-
-        protected override void ReleaseVisual()
-        {
-            ModelRenderer = null;
-            ShadowRenderer = null;
-            Model = null;
-            Shadow = null;
-            base.ReleaseVisual();
-        }
-
 		public void UpdatePosition()
 		{
 			ArcTimingManager timingManager = ArcTimingManager.Instance;
@@ -933,7 +820,7 @@ namespace Arcade.Gameplay.Chart
 			}
 			Vector3 offsetLocalPosition = -timingManager.CalculatePositionByTiming(Timing, Arc.TimingGroup) / 1000f * this.FallDirection();
 			Vector3 additionalLocalPosition = new Vector3(0, 0, -0.6f);
-			if (transform) transform.localPosition = parentLocalPosition;
+			rootZ = parentLocalPosition.z;
             LocalPosition = baseLocalPosition + offsetLocalPosition - parentLocalPosition + additionalLocalPosition;
 		}
 
@@ -1016,80 +903,40 @@ namespace Arcade.Gameplay.Chart
 			SetupArcTapConnection();
 		}
 
-		public bool IsMyself(GameObject gameObject)
-		{
-			return Model && Model.gameObject.Equals(gameObject);
-		}
 		public Color TintColor
 		{
-			get
-			{
-				return currentTintColor;
-			}
-			set
-			{
-				if (currentTintColor != value)
-				{
-					currentTintColor = value;
-                    if (!ModelRenderer) return;
-					ModelRenderer.GetPropertyBlock(propertyBlock);
-					propertyBlock.SetColor(colorShaderId, value);
-					ModelRenderer.SetPropertyBlock(propertyBlock);
-				}
-			}
+			get => currentTintColor;
+			set => currentTintColor = value;
 		}
 
 		public float Alpha
 		{
-			get
-			{
-				return currentAlpha;
-			}
-			set
-			{
-				if (currentAlpha != value)
-				{
-					currentAlpha = value;
-                    if (!ModelRenderer) return;
-					ModelRenderer.GetPropertyBlock(propertyBlock);
-					propertyBlock.SetFloat(alphaShaderId, value);
-					ModelRenderer.SetPropertyBlock(propertyBlock);
-					ShadowRenderer.color = new Color(0.49f, 0.49f, 0.49f, 0.7843f * value);
-				}
-			}
+			get => currentAlpha;
+			set => currentAlpha = value;
 		}
 		public Vector3 LocalPosition
 		{
-			get
-			{
-				return localPosition;
-			}
-			set
-			{
-				localPosition = value;
-                if (!Model) return;
-                Vector3 centre = Arc.IsSfx ? NoteMeshDefinitions.SfxArcTapCenter : NoteMeshDefinitions.ArcTapCenter;
-                Model.localPosition = value + Vector3.up * (centre.y - NoteMeshDefinitions.ArcTapAnchorYOffset);
-                UpdateShadowTransform();
-			}
+			get => localPosition;
+			set => localPosition = value;
 		}
 
         private float shadowDepthScale = 1f;
 
-        internal void UpdateShadowTransform()
+        internal bool TryGetShadowMatrix(Sprite sprite, Quaternion rotation, out Matrix4x4 matrix)
         {
-            if (!ShadowRenderer || !ShadowRenderer.sprite) return;
-            Bounds bounds = ShadowRenderer.sprite.bounds;
+            matrix = default;
+            if (!sprite) return false;
+            Bounds bounds = sprite.bounds;
             float xScale = localScale * NoteMeshDefinitions.ArcTapShadowWidth / bounds.size.x;
             float yScale = NoteMeshDefinitions.ArcTapShadowDepth * shadowDepthScale / bounds.size.y;
-            Shadow.localScale = new Vector3(xScale, yScale, 1);
             Vector3 p = localPosition;
             p.x -= bounds.center.x * xScale;
             p.y = NoteMeshDefinitions.ArcTapShadowHeight;
             // Sprite local Y becomes world +Z. Keep its near edge at the ArcTap timing,
             // extending the far edge as speed changes instead of stretching around the centre.
             p.z -= NoteMeshDefinitions.ArcTapCenter.z + bounds.max.y * yScale;
-            Shadow.localPosition = p;
+            matrix = Matrix4x4.TRS(p, rotation, new Vector3(xScale, yScale, 1));
+            return true;
         }
 
 		internal static readonly Vector3 NormalArcTapScale = new Vector3(-4.4625f, 0.6f, -1.2f);
@@ -1099,33 +946,13 @@ namespace Arcade.Gameplay.Chart
 
 		public float LocalScale
 		{
-			get
-			{
-				return localScale;
-			}
-			set
-			{
-				localScale = value;
-                if (!Model) return;
-                Model.localScale = new Vector3(value * BaseModelScale.x, BaseModelScale.y, BaseModelScale.z);
-                UpdateShadowTransform();
-			}
+			get => localScale;
+			set => localScale = value;
 		}
 		public override bool Selected
 		{
-			get
-			{
-				return selected;
-			}
-
-			set
-			{
-				if (selected != value)
-				{
-					if (ModelRenderer) ModelRenderer.renderingLayerMask = MaskUtil.SetMask(ModelRenderer.renderingLayerMask, ArcGameplayManager.Instance.SelectionLayerMask, value);
-					selected = value;
-				}
-			}
+			get => selected;
+			set => selected = value;
 		}
 
         private Vector3 localPosition;
@@ -1134,8 +961,6 @@ namespace Arcade.Gameplay.Chart
 		private bool selected;
 		private Color currentTintColor = Color.white;
 		private float currentAlpha = 1f;
-		private int alphaShaderId = 0;
-		private int colorShaderId = 0;
 
 		public ArcArcTap()
 		{
@@ -1246,10 +1071,11 @@ namespace Arcade.Gameplay.Chart
 			}
 			set
 			{
-                if (value && !instance)
+                if (value && arcRenderer == null)
                 {
-                    var manager = ArcArcManager.Instance;
-                    AcquireVisual(manager.VisualPool, manager.ArcNotePrefab, manager.ArcLayer);
+                    arcRenderer = ArcArcManager.Instance.RentVisual();
+                    arcRenderer.Bind(this);
+                    arcRenderer.Selected = selected;
                 }
                 if (enable != value)
                 {
@@ -1268,29 +1094,13 @@ namespace Arcade.Gameplay.Chart
 			set
 			{
 				selected = value;
-                if (arcRenderer) arcRenderer.Selected = value;
+                if (arcRenderer != null) arcRenderer.Selected = value;
 				if (ConvertedVariousSizedArctap != null)
 				{
 					ConvertedVariousSizedArctap.Selected = value;
 				}
 			}
 		}
-		public override GameObject Instance
-		{
-			get
-			{
-				return base.Instance;
-			}
-			set
-			{
-				base.Instance = value;
-				arcRenderer = instance.GetComponent<ArcArcRenderer>();
-				arcRenderer.Bind(this);
-                arcRenderer.Selected = selected;
-                enable = false;
-			}
-		}
-
 		public bool IsSfx
 		{
 			get
@@ -1347,7 +1157,7 @@ namespace Arcade.Gameplay.Chart
 		public void Rebuild()
 		{
 			ArcScoreManager.Invalidate();
-			if (arcRenderer) arcRenderer.Build();
+			arcRenderer?.Build();
 			DestroyArcTaps();
 			InstantiateArcTaps();
 		}
@@ -1407,7 +1217,11 @@ namespace Arcade.Gameplay.Chart
 
         protected override void ReleaseVisual()
         {
-            if (arcRenderer) arcRenderer.Unbind();
+            if (arcRenderer != null)
+            {
+                arcRenderer.Unbind();
+                ArcArcManager.Instance.ReturnVisual(arcRenderer);
+            }
             arcRenderer = null;
             base.ReleaseVisual();
         }
@@ -1417,7 +1231,7 @@ namespace Arcade.Gameplay.Chart
 		public bool Flag;
 		public bool RenderHead;
 		public List<ArcArc> ArcGroup;
-		public ArcArcRenderer arcRenderer;
+		internal ArcArcVisual arcRenderer;
 
 		public ArcArc()
 		{

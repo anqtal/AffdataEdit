@@ -8,9 +8,18 @@ namespace Arcade.Gameplay
 	public class ArcArcManager : MonoBehaviour
 	{
 		public static ArcArcManager Instance { get; private set; }
-        internal readonly ArcNoteVisualPool TapVisualPool = new ArcNoteVisualPool();
-        internal readonly ArcNoteVisualPool SfxTapVisualPool = new ArcNoteVisualPool();
-        internal readonly ArcNoteVisualPool VisualPool = new ArcNoteVisualPool();
+        // Visible Arcs borrow plain render state objects; no note owns a GameObject.
+        private const int MaxIdleVisuals = 256;
+        private readonly Stack<ArcArcVisual> idleVisuals = new Stack<ArcArcVisual>();
+        private ArcArcRenderer arcSkin;
+        internal ArcArcRenderer ArcSkin => arcSkin ? arcSkin : arcSkin = ArcNotePrefab.GetComponent<ArcArcRenderer>();
+        internal ArcArcVisual RentVisual() => idleVisuals.Count > 0 ? idleVisuals.Pop() : new ArcArcVisual();
+        internal void ReturnVisual(ArcArcVisual visual)
+        {
+            if (idleVisuals.Count < MaxIdleVisuals) idleVisuals.Push(visual);
+        }
+        // Sorting, material and rotation of the ArcTap shadow, read from the (never instantiated) prefab.
+        internal SpriteRenderer ArcTapShadowStyle(bool sfx) => (sfx ? SfxArcTapPrefab : ArcTapPrefab).GetComponentInChildren<SpriteRenderer>();
 
 		private void Awake()
 		{
@@ -61,9 +70,7 @@ namespace Arcade.Gameplay
 				t.Destroy();
 			};
 			Arcs.Clear();
-            VisualPool.Clear();
-            TapVisualPool.Clear();
-            SfxTapVisualPool.Clear();
+            idleVisuals.Clear();
 		}
 		public void Load(List<ArcArc> arcs)
 		{
@@ -78,7 +85,7 @@ namespace Arcade.Gameplay
 			foreach (ArcArc arc in Arcs)
 			{
 				arc.CalculateJudgeTimings();
-                if (arc.arcRenderer && arc.arcRenderer.BuiltRenderEndTiming != arc.RenderEndTiming)
+                if (arc.arcRenderer != null && arc.arcRenderer.BuiltRenderEndTiming != arc.RenderEndTiming)
                     arc.arcRenderer.Build();
 			}
 		}
@@ -106,7 +113,7 @@ namespace Arcade.Gameplay
             foreach (var arc in ordered)
             {
                 arc.CalculateJudgeTimings();
-                if (arc.arcRenderer && arc.arcRenderer.BuiltRenderEndTiming != arc.RenderEndTiming)
+                if (arc.arcRenderer != null && arc.arcRenderer.BuiltRenderEndTiming != arc.RenderEndTiming)
                     arc.arcRenderer.Build();
             }
         }
@@ -258,7 +265,7 @@ namespace Arcade.Gameplay
 					continue;
 				}
 				t.Enable = true;
-				t.transform.localPosition = new Vector3(0, 0, -t.Position / 1000f);
+				t.arcRenderer.RootZ = -t.Position / 1000f;
 				if (!t.IsVoid)
 				{
 					t.arcRenderer.EnableEffect = currentTiming > t.Timing && currentTiming <= t.EndTiming && !t.IsVoid && t.Judging;
@@ -400,43 +407,16 @@ namespace Arcade.Gameplay
 			ArcTapShadowSkin = sprite;
 			ArcTapPrefab.GetComponentInChildren<SpriteRenderer>().sprite = sprite;
 			SfxArcTapPrefab.GetComponentInChildren<SpriteRenderer>().sprite = sprite;
-			foreach (ArcArc arc in Arcs)
-			{
-				foreach (ArcArcTap t in arc.ArcTaps)
-				{
-                    if (t.ShadowRenderer)
-                    {
-                        t.ShadowRenderer.sprite = sprite;
-                        t.UpdateShadowTransform();
-                    }
-				}
-				if (arc.ConvertedVariousSizedArctap?.ShadowRenderer)
-				{
-					arc.ConvertedVariousSizedArctap.ShadowRenderer.sprite = sprite;
-                    arc.ConvertedVariousSizedArctap.UpdateShadowTransform();
-				}
-			}
 		}
 
 		public void SetArcCapSkin(Sprite sprite)
 		{
-			ArcNotePrefab.GetComponent<ArcArcRenderer>().ArcCapRenderer.sprite = sprite;
-			foreach (ArcArc arc in Arcs)
-			{
-				if (arc.arcRenderer) arc.arcRenderer.ArcCapRenderer.sprite = sprite;
-			}
+			ArcSkin.ArcCapRenderer.sprite = sprite;
 		}
 		public void SetHeightIndicatorSkin(Sprite sprite)
 		{
-			ArcNotePrefab.GetComponent<ArcArcRenderer>().HeightIndicatorRenderer.sprite = sprite;
-			foreach (ArcArc arc in Arcs)
-			{
-                if (arc.arcRenderer)
-                {
-                    arc.arcRenderer.HeightIndicatorRenderer.sprite = sprite;
-                    arc.arcRenderer.BuildHeightIndicator();
-                }
-			}
+			ArcSkin.HeightIndicatorRenderer.sprite = sprite;
+			foreach (ArcArc arc in Arcs) arc.arcRenderer?.BuildHeightIndicator();
 		}
 
 		public void SetArcColors(
@@ -455,11 +435,9 @@ namespace Arcade.Gameplay
 			ArcVoid = arcVoid;
 			ArcDesignant = arcDesignant;
 			ArcTapDesignant = arcTapDesignant;
-			ArcArcRenderer prefabRenderer = ArcNotePrefab.GetComponent<ArcArcRenderer>();
-			prefabRenderer.ReloadColor();
 			foreach (ArcArc arc in Arcs)
 			{
-				if (arc.arcRenderer) arc.arcRenderer.ReloadColor();
+				arc.arcRenderer?.ReloadColor();
 				foreach (ArcArcTap arctap in arc.ArcTaps)
 				{
 					arctap.UpdateColor();
@@ -470,35 +448,18 @@ namespace Arcade.Gameplay
 		public void SetArcBodySkin(Texture2D normal, Texture2D highlight)
 		{
 			ArcMaterial.mainTexture = normal;
-			ArcArcRenderer prefabRenderer = ArcNotePrefab.GetComponent<ArcArcRenderer>();
-			prefabRenderer.HighlightTexture = highlight;
-			prefabRenderer.DefaultTexture = normal;
-			prefabRenderer.ReloadSkin();
-			ArcArcSegmentComponent prefabSegmentComponent = prefabRenderer.SegmentPrefab.GetComponent<ArcArcSegmentComponent>();
+			ArcSkin.HighlightTexture = highlight;
+			ArcSkin.DefaultTexture = normal;
+			ArcArcSegmentComponent prefabSegmentComponent = ArcSkin.SegmentPrefab.GetComponent<ArcArcSegmentComponent>();
 			prefabSegmentComponent.HighlightTexture = highlight;
 			prefabSegmentComponent.DefaultTexture = normal;
 			prefabSegmentComponent.ReloadSkin();
-			foreach (ArcArc arc in Arcs)
-			{
-				if (!arc.arcRenderer) continue;
-                arc.arcRenderer.HighlightTexture = highlight;
-				arc.arcRenderer.DefaultTexture = normal;
-				arc.arcRenderer.ReloadSkin();
-			}
 		}
 
 		public void SetParticleArcColor(Color particleArcStartColor, Color particleArcEndColor)
 		{
-			ArcArcRenderer prefabRenderer = ArcNotePrefab.GetComponent<ArcArcRenderer>();
-			prefabRenderer.JudgeEffect.SetVector4("StartColor", particleArcStartColor);
-			prefabRenderer.JudgeEffect.SetVector4("EndColor", particleArcEndColor);
-			foreach (ArcArc arc in Arcs)
-			{
-				if (!arc.arcRenderer) continue;
-                arc.arcRenderer.JudgeEffect.SetVector4("StartColor", particleArcStartColor);
-				arc.arcRenderer.JudgeEffect.SetVector4("EndColor", particleArcEndColor);
-                arc.arcRenderer.JudgeEffect.GetComponent<ArcLongNoteEffect>()?.RefreshSkin();
-			}
+			ArcSkin.JudgeEffect.SetVector4("StartColor", particleArcStartColor);
+			ArcSkin.JudgeEffect.SetVector4("EndColor", particleArcEndColor);
 		}
 
 		public void SetArcTapSkin(Texture2D texture)
@@ -518,14 +479,7 @@ namespace Arcade.Gameplay
 
 		internal void SetParticleArcTexture(Texture2D texture)
 		{
-			ArcArcRenderer prefabRenderer = ArcNotePrefab.GetComponent<ArcArcRenderer>();
-			prefabRenderer.JudgeEffect.SetTexture("Texture", texture);
-			foreach (ArcArc arc in Arcs)
-			{
-				if (!arc.arcRenderer) continue;
-                arc.arcRenderer.JudgeEffect.SetTexture("Texture", texture);
-                arc.arcRenderer.JudgeEffect.GetComponent<ArcLongNoteEffect>()?.RefreshSkin();
-			}
+			ArcSkin.JudgeEffect.SetTexture("Texture", texture);
 		}
 	}
 }
