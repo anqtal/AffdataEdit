@@ -82,7 +82,7 @@ namespace Arcade.Compose
             if (state == ContextMenuState.Create || state == ContextMenuState.CreateSelected)
             {
                 string[] ids = { "create-none", "create-tap", "create-hold", "create-arc", "create-arctap", "create-exit", "grid", "create-slide" };
-                string[] titles = { "不创建", "Tap", "Hold", "Arc", "ArcTap", "退出点立得", "网格线", "Slide 区域" };
+                string[] titles = { "不创建", "Tap", "Hold", "Arc", "ArcTap", "退出点立得", "网格线", "Slide" };
                 for (int i = 0; i < ids.Length && i < create.ClickToCreateItems.Length; i++)
                     choices.Add(new MenuChoice(ids[i], titles[i], create.ClickToCreateItems[i]));
                 if (selected) choices.Add(new MenuChoice("delete", "删除", create.Delete));

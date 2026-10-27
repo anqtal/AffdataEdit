@@ -32,7 +32,7 @@ New: slide(1500,2300,0.35,0.3,0.6,0.5,1,2,1);
 
 ## Editing
 
-Use the existing 点立得 marking menu and select **Slide 区域**. Click a start time, choose a start centre, choose the end time, then choose the end centre. New notes have width 1/3. Escape cancels the unfinished operation.
+Use the existing 点立得 marking menu and select **Slide**. Click a start time, choose a start centre, choose the end time, then choose the end centre. New notes have width 1/3. Escape cancels the unfinished operation.
 
 Select a Slide to edit it in the existing left-hand **ValueEdit** window:
 

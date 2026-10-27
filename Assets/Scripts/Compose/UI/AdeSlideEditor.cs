@@ -60,7 +60,7 @@ namespace Arcade.Compose.UI
             if (create.ClickToCreateItems.Length > 0)
             {
                 menu = Instantiate(create.ClickToCreateItems[0], create.ClickToCreateItems[0].transform.parent);
-                menu.StartupText = "Slide 区域"; menu.HasSubMenu = false; menu.SubItems = new MarkingMenuItem[0];
+                menu.StartupText = "Slide"; menu.HasSubMenu = false; menu.SubItems = new MarkingMenuItem[0];
                 menu.OnConfirmed = new UnityEvent(); menu.OnConfirmed.AddListener(() =>
                 {
                     create.Enable = true; create.SetClickToCreateMode(ClickToCreateMode.Slide);
