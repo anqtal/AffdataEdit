@@ -159,9 +159,11 @@ namespace Arcade.Compose
             size.preferredHeight = 48;
             input.textComponent.fontSize = 24;
             input.textComponent.alignment = TMPro.TextAlignmentOptions.Left;
-            input.textComponent.rectTransform.offsetMin = new Vector2(14, 0);
-            input.textComponent.rectTransform.offsetMax = new Vector2(-14, 0);
-            var hint = Instantiate(input.textComponent, input.transform, false);
+            input.textViewport.offsetMin = new Vector2(14, 0);
+            input.textViewport.offsetMax = new Vector2(-14, 0);
+            input.textComponent.rectTransform.offsetMin = Vector2.zero;
+            input.textComponent.rectTransform.offsetMax = Vector2.zero;
+            var hint = Instantiate(input.textComponent, input.textComponent.transform.parent, false);
             hint.name = "Placeholder";
             hint.text = placeholder;
             hint.fontStyle = TMPro.FontStyles.Normal;

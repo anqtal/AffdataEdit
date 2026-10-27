@@ -18,7 +18,7 @@ using Text = TMPro.TMP_Text;
 namespace Arcade.Compose
 {
 	// Opens AffdataNet cloud charts as local projects and pushes chart edits back to the cloud.
-	public sealed class AdeCloudManager : MonoBehaviour
+	public sealed partial class AdeCloudManager : MonoBehaviour
 	{
 		private const string ApiUrl = "https://api.affdata.net";
 		private const string EditorSceneName = "ArcEditor";
@@ -114,6 +114,7 @@ namespace Arcade.Compose
 		private void OnDestroy()
 		{
 			if (Instance == this) Instance = null;
+			ReleaseListCovers();
 			DestroySkinObjects();
 		}
 
@@ -190,15 +191,15 @@ namespace Arcade.Compose
 					AdeAccountManager.Instance?.ShowLoginWindow();
 					return;
 				}
-				listDialog.Title.text = $"云端谱面（{AdeAccountManager.Username}）";
+				listDialog.Title.text = "云端谱面";
 				listDialog.Open();
 				StartCoroutine(LoadList());
 			});
 
 			listDialog = AdeUiKit.CloneDialog(basic, "CloudChartsDialog");
-			AdeUiKit.SetMaxHeight(listDialog, 480);
 			listContent = AdeUiKit.Content(listDialog);
 			listStatus = AdeUiKit.CreateLabelRow(listContent, labelTemplate, "");
+			ConfigureListDialog();
 			listDialog.ButtonText.text = "关闭";
 			AdeUiKit.SetOnClick(listDialog.CompleteButton, () =>
 			{
@@ -223,37 +224,9 @@ namespace Arcade.Compose
 			if (listDialog != null) listDialog.CompleteButton.interactable = !value;
 		}
 
-		private void RebuildList()
-		{
-			foreach (Button button in openButtons)
-			{
-				if (button != null) Destroy(button.transform.parent.gameObject);
-			}
-			openButtons.Clear();
-			foreach (CloudChart chart in charts)
-			{
-				GameObject row = AdeUiKit.CloneRow(buttonRowTemplate, listContent, $"Chart{chart.ArchiveId}");
-				string diffs = string.Join("  ", chart.EnabledDiffs.Select(d =>
-				{
-					CloudDiff diff = chart.Diffs?.FirstOrDefault(x => x.Difficulty == d);
-					string name = string.IsNullOrWhiteSpace(diff?.DifficultyLabel) ? DifficultyNames[d] : diff.DifficultyLabel;
-					return $"{name} {diff?.ChartDifficulty}{(chart.RankedDiffs.Contains(d) ? " (Ranked)" : "")}";
-				}));
-				Text label = AdeUiKit.CreateLabel(row.transform, labelTemplate, $"#{chart.ArchiveId} {chart.Title} - {chart.Artist}{(chart.IsPrivate ? "（私密）" : "")}\n<size=18>{diffs}</size>", 520);
-				label.alignment = TMPro.TextAlignmentOptions.Left;
-				label.richText = true;
-				label.transform.SetAsFirstSibling();
-				Button open = row.GetComponentInChildren<Button>(true);
-				open.GetComponentInChildren<Text>(true).text = "打开";
-				LayoutElement openLayout = open.GetComponent<LayoutElement>();
-				if (openLayout != null) openLayout.preferredWidth = 120;
-				AdeUiKit.SetOnClick(open, () => RequestOpenChart(chart));
-				openButtons.Add(open);
-			}
-		}
-
 		private void Update()
 		{
+			if (listDialog && listDialog.View.activeInHierarchy) RefreshListAppearance();
 			AdeProjectManager project = AdeProjectManager.Instance;
 			if (skinProjectFolder != null && (project == null || project.CurrentProjectFolder != skinProjectFolder))
 			{

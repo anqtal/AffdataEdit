@@ -28,7 +28,7 @@ namespace Arcade.Compose.Feature
 		public bool usePassword = false;
 		public string password = "";
 	}
-	public class AdeObsManager : MonoBehaviour
+	public partial class AdeObsManager : MonoBehaviour
 	{
 		private OBSWebsocket obs = new OBSWebsocket();
 		public static AdeObsManager Instance { get; private set; }
@@ -60,6 +60,7 @@ namespace Arcade.Compose.Feature
 			ObsServerPasswordInput.onEndEdit.AddListener(OnOBSServerPasswordChange);
 			ObsServerUsePasswordToggle.onValueChanged.AddListener(OnOBSServerUsePasswordChange);
 			ArcGameplayManager.Instance.OnChartLoad.AddListener(UpdateFieldsState);
+			OBSDialog.OnOpen += ConfigureRecordingDialog;
 		}
 
 		private void UpdatePreferencesInput()
@@ -169,6 +170,7 @@ namespace Arcade.Compose.Feature
 				}
 			}
 			OBSDialog.RightButton.interactable = obs.IsConnected && ArcGameplayManager.Instance.IsLoaded && !obsIsRecording && RecordingCancellation == null;
+			UpdateRecordingView();
 		}
 
 		// OBS event handlers are not executed in main unity thread,

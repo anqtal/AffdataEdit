@@ -234,7 +234,7 @@ namespace Arcade.Compose
             }
             if (button && button.image && button.image.sprite && button.image.sprite.name == "ThemePrimary")
             {
-                graphic.color = Current.AccentText;
+                graphic.color = button.IsInteractable() ? Current.AccentText : Current.Muted;
                 return;
             }
             bool text = graphic is Text;
@@ -319,7 +319,7 @@ namespace Arcade.Compose
 				dialog.ButtonText.color = whiteClose ? C(0x141413) : Current.AccentText;
 			}
 			foreach (AdeDualDialog dialog in skin.DualDialogs)
-				if (dialog) { dialog.SetDialogSkin(Get(0), Get(1), Get(5), Get(6), Get(7), Get(8), Get(9), Get(10)); dialog.LeftButtonText.color = Current.Text; dialog.RightButtonText.color = Current.AccentText; }
+				if (dialog) { dialog.SetDialogSkin(Get(0), Get(1), Get(5), Get(6), Get(7), Get(8), Get(9), Get(10)); dialog.LeftButtonText.color = Current.Text; dialog.RightButtonText.color = dialog.RightButton.IsInteractable() ? Current.AccentText : Current.Muted; }
 			skin.Toast.sprite = Get(1);
 			StylePlaybackHud();
 		}
