@@ -15789,7 +15789,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "1\u3001Arcade \u662F Arcaea \u7B2C\u4E09\u65B9\u8C31\u9762\u5236\u4F5C\u5DE5\u5177\uFF0C\u4F5C\u8005\u4E0E\nlowiro \u6CA1\u6709\u4EFB\u4F55\u5173\u7CFB\u3002\n2\u3001\u7528\u6237\u4F7F\u7528 Arcade \u5236\u4F5C\u7684\u8C31\u9762\uFF0C\u6240\u91C7\u7528\u7684\u5176\u4ED6\u8D44\u6E90\n\u5982\u97F3\u9891\u3001\u56FE\u7247\u4E0D\u5E94\u4FB5\u72AF\u5176\u8457\u4F5C\u6743\u4EBA\u7684\u76F8\u5173\u6743\u76CA\uFF0CArcade\n\u4F5C\u8005\u5BF9\u7528\u6237\u4FB5\u6743\u884C\u4E3A\u65E0\u6CD5\u77E5\u60C5\u3001\u65E0\u6CD5\u5236\u6B62\uFF0C\u4E0D\u627F\u62C5\u5176\n\u6CD5\u5F8B\u8D23\u4EFB\u3002\n3\u3001Arcade \u6240\u5448\u73B0\u7684\u6548\u679C\u4EC5\u4F9B\u53C2\u8003\uFF0C\u4E0E\u6E38\u620F\u5B9E\u9645\u753B\u9762\n\u4E0D\u540C\u65F6\uFF0C\u6B22\u8FCE\u63D0\u51FA\u3002"
+  m_text: "1\u3001AffdataEdit \u662F\u57FA\u4E8E Arcade \u7684 Arcaea \u7B2C\u4E09\u65B9\u8C31\u9762\u5236\u4F5C\u5DE5\u5177\uFF0C\u4F5C\u8005\u4E0E lowiro \u6CA1\u6709\u4EFB\u4F55\u5173\u7CFB\u3002\n2\u3001\u7528\u6237\u4F7F\u7528 AffdataEdit \u5236\u4F5C\u7684\u8C31\u9762\uFF0C\u6240\u91C7\u7528\u7684\u5176\u4ED6\u8D44\u6E90\u5982\u97F3\u9891\u3001\u56FE\u7247\u4E0D\u5E94\u4FB5\u72AF\u5176\u8457\u4F5C\u6743\u4EBA\u7684\u76F8\u5173\u6743\u76CA\u3002AffdataEdit \u4F5C\u8005\u5BF9\u7528\u6237\u4FB5\u6743\u884C\u4E3A\u65E0\u6CD5\u77E5\u60C5\u3001\u65E0\u6CD5\u5236\u6B62\uFF0C\u4E0D\u627F\u62C5\u5176\u6CD5\u5F8B\u8D23\u4EFB\u3002\n3\u3001AffdataEdit \u6240\u5448\u73B0\u7684\u6548\u679C\u4EC5\u4F9B\u53C2\u8003\uFF0C\u4E0E\u6E38\u620F\u5B9E\u9645\u753B\u9762\u4E0D\u540C\u65F6\uFF0C\u6B22\u8FCE\u53CD\u9988\u3002"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 6f4af5f37daaf447bbfd4b27433af869, type: 2}
   m_sharedMaterial: {fileID: 8937308637161560739, guid: 6f4af5f37daaf447bbfd4b27433af869, type: 2}
@@ -15823,7 +15823,7 @@ MonoBehaviour:
   m_fontSizeMin: 18
   m_fontSizeMax: 72
   m_fontStyle: 0
-  m_HorizontalAlignment: 2
+  m_HorizontalAlignment: 1
   m_VerticalAlignment: 512
   m_textAlignment: 65535
   m_characterSpacing: 0
@@ -15831,9 +15831,9 @@ MonoBehaviour:
   m_wordSpacing: 0
   m_lineSpacing: 0
   m_lineSpacingMax: 0
-  m_paragraphSpacing: 0
+  m_paragraphSpacing: 12
   m_charWidthMaxAdj: 0
-  m_TextWrappingMode: 0
+  m_TextWrappingMode: 1
   m_wordWrappingRatios: 0.4
   m_overflowMode: 0
   m_linkedTextComponent: {fileID: 0}
