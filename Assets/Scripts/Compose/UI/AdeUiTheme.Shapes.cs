@@ -75,8 +75,9 @@ namespace Arcade.Compose
 			string name = image.sprite.name;
 			if (name == "ToolBackground" && selectable is Button && !selectable.GetComponent<AdeToolbarPointerFocus>())
 				selectable.gameObject.AddComponent<AdeToolbarPointerFocus>();
-			bool themed = name.StartsWith(ControlShapePrefix);
-			if (themed) name = name.Substring(ControlShapePrefix.Length);
+			// Serialized asset names replace the control path separator with an underscore.
+			if (name.StartsWith(ControlShapePrefix) || name.StartsWith("ThemeControl_"))
+				name = name.Substring(ControlShapePrefix.Length);
 			if (name != "UISprite" && name != "InputFieldBackground") return;
 			image.sprite = Shape(ControlShapePrefix + name, ControlRadius, Current.Input, Current.Border);
 			image.type = UnityEngine.UI.Image.Type.Sliced;

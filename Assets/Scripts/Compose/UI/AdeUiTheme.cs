@@ -59,6 +59,8 @@ namespace Arcade.Compose
 			Image(null, 0x323232, 0xCCCCCC),
 			Image(null, 0xF5F5F5, 0x2B2B2B),
 			new Entry { Text = true, Light = C(0x323232), Dark = C(0xCCCCCC) },
+			// Scene-serialized controls use the ChatGPT palette's text colors.
+			new Entry { Text = true, Light = C(0x0D0D0D), Dark = C(0xEDEDED) },
 		};
 
 		private readonly List<Graphic> graphics = new List<Graphic>();
