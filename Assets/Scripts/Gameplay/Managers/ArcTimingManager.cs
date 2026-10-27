@@ -43,6 +43,11 @@ namespace Arcade.Gameplay
 		private int phaseShaderId = 0;
 		private MaterialPropertyBlock phaseBlock;
 		private float phase = 0;
+		// Render ranges depend only on these inputs, so a paused editor recomputes nothing.
+		// Every timing edit goes through this manager and bumps the version.
+		private int renderRangeVersion;
+		private (int timing, float velocity, float baseBpm, int begin, int end, int version) renderRangeInputs = (int.MinValue, 0, 0, 0, 0, -1);
+		private float[] timingPositions = new float[0];
 		public float CurrentSpeed { get; set; }
 		public List<ArcTiming> Timings { get => timings; }
 		private float Velocity
@@ -67,10 +72,16 @@ namespace Arcade.Gameplay
 			if (Timings == null) return;
 			if (Timings.Count == 0) return;
 			UpdateChartSpeedStatus();
-			UpdateRenderRange(null);
-			foreach (var timingGroup in timingGroups)
+			var gameplay = ArcGameplayManager.Instance;
+			var inputs = (gameplay.ChartTiming, Velocity, BaseBpm, gameplay.AllBeginChartTiming, gameplay.AllEndChartTiming, renderRangeVersion);
+			if (inputs != renderRangeInputs)
 			{
-				UpdateRenderRange(timingGroup);
+				renderRangeInputs = inputs;
+				UpdateRenderRange(null);
+				foreach (var timingGroup in timingGroups)
+				{
+					UpdateRenderRange(timingGroup);
+				}
 			}
 			UpdateTrackSpeed();
 		}
@@ -80,6 +91,7 @@ namespace Arcade.Gameplay
 			CurrentSpeed = 0;
 			Timings.Clear();
 			timingGroups.Clear();
+			renderRangeVersion++;
 			AdeTimingEditor.Instance.SetCurrentTimingGroup(null);
 			SetTrackPhase(0);
 		}
@@ -351,7 +363,9 @@ namespace Arcade.Gameplay
 			{
 				int currentTiming = ArcGameplayManager.Instance.ChartTiming;
 				int currentTimingId = FindTimingIndex(Timings, currentTiming);
-				float[] TimingPosition = new float[Timings.Count];
+				// One buffer for every group; each pass writes all entries it reads.
+				if (timingPositions.Length < Timings.Count) timingPositions = new float[Mathf.NextPowerOfTwo(Timings.Count)];
+				float[] TimingPosition = timingPositions;
 				for (int i = currentTimingId; i + 1 < Timings.Count; i++)
 				{
 					int startTiming = i == currentTimingId ? currentTiming : Timings[i].Timing;
@@ -404,16 +418,16 @@ namespace Arcade.Gameplay
 						nearTime = Mathf.Lerp(startTime, finishTime, Mathf.InverseLerp(startPosition, finishPosition, nearPosition));
 						farTime = Mathf.Lerp(startTime, finishTime, Mathf.InverseLerp(startPosition, finishPosition, farPosition));
 					}
-					earliestRenderTime = Mathf.Min(earliestRenderTime, nearTime, farTime);
-					latestRenderTime = Mathf.Max(latestRenderTime, nearTime, farTime);
+					earliestRenderTime = Mathf.Min(earliestRenderTime, Mathf.Min(nearTime, farTime));
+					latestRenderTime = Mathf.Max(latestRenderTime, Mathf.Max(nearTime, farTime));
 				}
 
 				if (Timings[0].Bpm == 0)
 				{
 					if (allBeginPosition <= farPosition && allBeginPosition >= nearPosition)
 					{
-						earliestRenderTime = Mathf.Min(earliestRenderTime, allBeginTime, float.NegativeInfinity);
-						latestRenderTime = Mathf.Max(latestRenderTime, allBeginTime, float.NegativeInfinity);
+						earliestRenderTime = Mathf.Min(earliestRenderTime, Mathf.Min(allBeginTime, float.NegativeInfinity));
+						latestRenderTime = Mathf.Max(latestRenderTime, Mathf.Max(allBeginTime, float.NegativeInfinity));
 					}
 				}
 				else
@@ -422,8 +436,8 @@ namespace Arcade.Gameplay
 					float beforeAllBeginTime = allBeginTime + (beforeAllBeginTargetPosition - allBeginPosition) / (Timings[0].Bpm / BaseBpm * Velocity);
 					if (beforeAllBeginTime <= allBeginTime)
 					{
-						earliestRenderTime = Mathf.Min(earliestRenderTime, allBeginTime, beforeAllBeginTime);
-						latestRenderTime = Mathf.Max(latestRenderTime, allBeginTime, beforeAllBeginTime);
+						earliestRenderTime = Mathf.Min(earliestRenderTime, Mathf.Min(allBeginTime, beforeAllBeginTime));
+						latestRenderTime = Mathf.Max(latestRenderTime, Mathf.Max(allBeginTime, beforeAllBeginTime));
 					}
 				}
 
@@ -431,8 +445,8 @@ namespace Arcade.Gameplay
 				{
 					if (allEndPosition <= farPosition && allEndPosition >= nearPosition)
 					{
-						earliestRenderTime = Mathf.Min(earliestRenderTime, allEndTime, float.PositiveInfinity);
-						latestRenderTime = Mathf.Max(latestRenderTime, allEndTime, float.PositiveInfinity);
+						earliestRenderTime = Mathf.Min(earliestRenderTime, Mathf.Min(allEndTime, float.PositiveInfinity));
+						latestRenderTime = Mathf.Max(latestRenderTime, Mathf.Max(allEndTime, float.PositiveInfinity));
 					}
 				}
 				else
@@ -441,8 +455,8 @@ namespace Arcade.Gameplay
 					float afterAllEndTime = allEndTime + (afterAllEndTargetPosition - allEndPosition) / (Timings[Timings.Count - 1].Bpm / BaseBpm * Velocity);
 					if (afterAllEndTime >= allEndTime)
 					{
-						earliestRenderTime = Mathf.Min(earliestRenderTime, allEndTime, afterAllEndTime);
-						latestRenderTime = Mathf.Max(latestRenderTime, allEndTime, afterAllEndTime);
+						earliestRenderTime = Mathf.Min(earliestRenderTime, Mathf.Min(allEndTime, afterAllEndTime));
+						latestRenderTime = Mathf.Max(latestRenderTime, Mathf.Max(allEndTime, afterAllEndTime));
 					}
 				}
 
@@ -531,6 +545,7 @@ namespace Arcade.Gameplay
 		}
 		public void OnTimingChange(ArcTimingGroup timingGroup)
 		{
+			renderRangeVersion++;
 			ArcScoreManager.Invalidate();
 			if (timingGroup == null)
 			{
@@ -568,6 +583,7 @@ namespace Arcade.Gameplay
 		}
 		public void OnTimingGroupChange()
 		{
+			renderRangeVersion++;
 			AdeTimingEditor.Instance.ForceUpdateAll();
 		}
 		// Note: this is a function used to optimize rendering by avoid not needed position calculation
