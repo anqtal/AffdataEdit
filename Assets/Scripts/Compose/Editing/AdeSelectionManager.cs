@@ -19,6 +19,9 @@ namespace Arcade.Compose
 	{
 		public static AdeSelectionManager Instance { get; private set; }
 
+		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+		private static void ResetStaticState() => Instance = null;
+
 		[System.NonSerialized]
 		public List<ArcNote> SelectedNotes = new List<ArcNote>();
 

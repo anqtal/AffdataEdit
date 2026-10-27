@@ -8,6 +8,9 @@ namespace Arcade.Gameplay
     public sealed class ArcSlideManager : MonoBehaviour
     {
         public static ArcSlideManager Instance { get; private set; }
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStaticState() => Instance = null;
         public List<ArcSlide> Slides { get; private set; } = new List<ArcSlide>();
         public Material BodyMaterial { get; private set; }
         public Material ShadowMaterial { get; private set; }

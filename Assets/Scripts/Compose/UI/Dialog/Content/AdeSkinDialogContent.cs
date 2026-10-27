@@ -73,6 +73,9 @@ namespace Arcade.Compose.Dialog
 	public class AdeSkinDialogContent : AdeDialogContent<AdeSingleDialog>
 	{
 		public static AdeSkinDialogContent Instance { get; private set; }
+
+		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+		private static void ResetStaticState() => Instance = null;
 		[SerializeField] private AdeRightSideCard sideCard;
 		[SerializeField] private GameObject presetPage, customPage;
 		[SerializeField] private Button presetTab, customTab;

@@ -11,6 +11,9 @@ namespace Arcade.Gameplay
 		public Transform SkyInputLabel;
 		public static ArcCameraManager Instance { get; private set; }
 
+		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+		private static void ResetStaticState() => Instance = null;
+
 		[HideInInspector]
 		public float CurrentTilt = 0;
 

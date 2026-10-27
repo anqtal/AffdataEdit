@@ -10,6 +10,9 @@ namespace Arcade.Compose
 		public const float OpenDuration = 0.3f;
 		public const float CloseDuration = 0.75f;
 		public static AdeShutterManager Instance { get; private set; }
+
+		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+		private static void ResetStaticState() => Instance = null;
 		private void Awake()
 		{
 			if (Instance != null)

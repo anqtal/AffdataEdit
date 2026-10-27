@@ -14,6 +14,9 @@ namespace Arcade.Compose
     {
         public enum Page { General, Appearance, Audio, Grid, ContextMenu, Hotkeys, Account, Storage, About }
         public static AdeSettingsDialog Instance { get; private set; }
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStaticState() => Instance = null;
         public bool Ready { get; private set; }
         private static readonly string[] Titles = { "常规", "外观", "音频", "网格", "右键", "热键", "账号", "存储", "关于" };
         private readonly RectTransform[] pages = new RectTransform[Titles.Length];
@@ -44,10 +47,13 @@ namespace Arcade.Compose
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void Bootstrap()
         {
-            UnityEngine.SceneManagement.SceneManager.sceneLoaded += (scene, mode) =>
-            {
-                if (scene.name == "ArcEditor") new GameObject(nameof(AdeSettingsDialog)).AddComponent<AdeSettingsDialog>();
-            };
+            UnityEngine.SceneManagement.SceneManager.sceneLoaded -= OnSceneLoaded;
+            UnityEngine.SceneManagement.SceneManager.sceneLoaded += OnSceneLoaded;
+        }
+
+        private static void OnSceneLoaded(UnityEngine.SceneManagement.Scene scene, UnityEngine.SceneManagement.LoadSceneMode mode)
+        {
+            if (scene.name == "ArcEditor") new GameObject(nameof(AdeSettingsDialog)).AddComponent<AdeSettingsDialog>();
         }
 
         private IEnumerator Start()

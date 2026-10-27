@@ -47,6 +47,9 @@ namespace Arcade.Compose
 	{
 		public static AdeDialogManager Instance { get; private set; }
 
+		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+		private static void ResetStaticState() => Instance = null;
+
 		public Transform Opening, Closed;
 
 		private const float TransitionDuration = 0.25f, ClosedScale = 1.08f;

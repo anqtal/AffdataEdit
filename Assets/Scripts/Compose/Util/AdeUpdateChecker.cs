@@ -41,11 +41,14 @@ namespace Arcade.Compose
         private static void Bootstrap()
         {
             if (Application.isEditor) return;
-            SceneManager.sceneLoaded += (scene, mode) =>
-            {
-                if (scene.name == EditorSceneName)
-                    new GameObject(nameof(AdeUpdateChecker)).AddComponent<AdeUpdateChecker>();
-            };
+            SceneManager.sceneLoaded -= OnSceneLoaded;
+            SceneManager.sceneLoaded += OnSceneLoaded;
+        }
+
+        private static void OnSceneLoaded(UnityEngine.SceneManagement.Scene scene, UnityEngine.SceneManagement.LoadSceneMode mode)
+        {
+            if (scene.name == EditorSceneName)
+                new GameObject(nameof(AdeUpdateChecker)).AddComponent<AdeUpdateChecker>();
         }
 
         private void Start()

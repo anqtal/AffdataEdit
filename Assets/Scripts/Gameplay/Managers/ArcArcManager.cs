@@ -9,6 +9,9 @@ namespace Arcade.Gameplay
 	{
 		public static ArcArcManager Instance { get; private set; }
 
+		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+		private static void ResetStaticState() => Instance = null;
+
         // Visible Arcs borrow plain render state objects; no note owns a GameObject.
         private const int MaxIdleVisuals = 256;
         private readonly Stack<ArcArcVisual> idleVisuals = new Stack<ArcArcVisual>();

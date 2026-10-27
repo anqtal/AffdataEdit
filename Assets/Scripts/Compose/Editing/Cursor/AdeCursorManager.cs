@@ -21,6 +21,9 @@ namespace Arcade.Compose
 	{
 		public static AdeCursorManager Instance { get; private set; }
 
+		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+		private static void ResetStaticState() => Instance = null;
+
 		public Camera GameplayCamera;
 		public MeshCollider TrackCollider;
 		public MeshCollider WallCollider;

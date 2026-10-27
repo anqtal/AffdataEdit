@@ -12,6 +12,9 @@ namespace Arcade.Gameplay
 	public class ArcTimingManager : MonoBehaviour
 	{
 		public static ArcTimingManager Instance { get; private set; }
+
+		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+		private static void ResetStaticState() => Instance = null;
 		private void Awake()
 		{
 			Instance = this;

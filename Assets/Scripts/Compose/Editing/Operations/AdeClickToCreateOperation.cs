@@ -33,6 +33,9 @@ namespace Arcade.Compose.Operation
 	{
 		public static AdeClickToCreate Instance { get; private set; }
 
+		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+		private static void ResetStaticState() => Instance = null;
+
 		public MarkingMenuItem Delete;
 		public MarkingMenuItem[] Entry;
 		public MarkingMenuItem[] ClickToCreateItems;

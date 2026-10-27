@@ -44,6 +44,9 @@ namespace Arcade.Compose
 		public const int DIFFICULTY_COUNT = 5;
 		public static AdeProjectManager Instance { get; private set; }
 
+		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+		private static void ResetStaticState() => Instance = null;
+
 		public string CurrentProjectFolder { get; set; }
 		public ArcadeProjectMetadata CurrentProjectMetadata { get; set; }
 		public int CurrentDifficulty { get; set; } = 2;

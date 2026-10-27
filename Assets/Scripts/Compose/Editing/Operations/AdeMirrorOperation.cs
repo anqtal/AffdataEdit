@@ -15,6 +15,9 @@ namespace Arcade.Compose.Operation
 	{
 		public static AdeMirrorOperation Instance { get; private set; }
 
+		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+		private static void ResetStaticState() => Instance = null;
+
 		public MarkingMenuItem Entry;
 		private MarkingMenuItem verticalEntry;
         private MarkingMenuItem convertToSlideEntry;

@@ -11,6 +11,9 @@ namespace Arcade.Compose.Operation
 	public class AdeTimingSnapOperation : AdeOperation
 	{
 		public static AdeTimingSnapOperation Instance { get; private set; }
+
+		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+		private static void ResetStaticState() => Instance = null;
 		public MarkingMenuItem Entry;
 
 		public override bool IsOnlyMarkingMenu => false;

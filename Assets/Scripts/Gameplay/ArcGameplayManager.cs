@@ -20,6 +20,9 @@ namespace Arcade.Gameplay
 
 		public static ArcGameplayManager Instance { get; private set; }
 
+		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+		private static void ResetStaticState() => Instance = null;
+
 		public ShaderVariantCollection Shaders;
 		private void Awake()
 		{

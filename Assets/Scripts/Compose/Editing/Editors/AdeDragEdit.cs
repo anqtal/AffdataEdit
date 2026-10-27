@@ -15,6 +15,9 @@ namespace Arcade.Compose.Editing
     {
         public enum DragMode { Off, Time, Position }
         public static AdeDragEdit Instance { get; private set; }
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStaticState() => Instance = null;
         private const string PreferenceKey = "AffdataEdit.DragMode";
         public DragMode Mode { get; private set; }
         public bool IsDragging { get; private set; }

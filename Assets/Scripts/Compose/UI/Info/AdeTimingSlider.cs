@@ -9,6 +9,9 @@ namespace Arcade.Compose.UI
 	public class AdeTimingSlider : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, IDragHandler
 	{
 		public static AdeTimingSlider Instance { get; private set; }
+
+		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+		private static void ResetStaticState() => Instance = null;
 		private Slider timingSlider;
 		private bool pointerDown;
 		private bool enable;

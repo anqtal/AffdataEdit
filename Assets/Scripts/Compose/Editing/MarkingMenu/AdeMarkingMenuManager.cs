@@ -19,6 +19,9 @@ namespace Arcade.Compose
 	public partial class AdeMarkingMenuManager : MonoBehaviour
 	{
 		public static AdeMarkingMenuManager Instance { get; private set; }
+
+		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+		private static void ResetStaticState() => Instance = null;
 		public static bool BlocksEditorInput => Instance && (Instance.isOn || Instance.consumedFrame == Time.frameCount);
 		public bool IsOpen => isOn;
 		internal const int MenuSortingOrder = 30;

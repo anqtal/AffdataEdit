@@ -15,6 +15,10 @@ namespace Arcade.Compose
         private static int inputFrame = -1;
         private static bool pointerNavigation = true;
 
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStaticState() { inputFrame = -1; pointerNavigation = true; }
+
+
         private void OnEnable()
         {
             item = GetComponent<Toggle>();

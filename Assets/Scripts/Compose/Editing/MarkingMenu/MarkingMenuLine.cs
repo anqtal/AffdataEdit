@@ -10,6 +10,9 @@ namespace Arcade.Compose.MarkingMenu
 	{
 		public static MarkingMenuLine Instance { get; private set; }
 
+		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+		private static void ResetStaticState() => Instance = null;
+
 		public GameObject KnobPrefab;
 		public Image PointerImage;
 		public RectTransform Pointer;

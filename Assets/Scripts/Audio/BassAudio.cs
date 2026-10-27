@@ -13,6 +13,18 @@ namespace Arcade.Audio
         private static readonly Dictionary<int, Bus> voices = new Dictionary<int, Bus>();
         private readonly List<int> finished = new List<int>();
         private static float musicVolume = .7f, effectVolume, guideVolume = 1;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStaticState()
+        {
+            instance = null;
+            samples.Clear();
+            voices.Clear();
+            musicVolume = .7f;
+            effectVolume = 0;
+            guideVolume = 1;
+        }
+
         public enum Bus { Effect, Music, Guide }
         public static double Clock => Stopwatch.GetTimestamp() / (double)Stopwatch.Frequency;
         // Volumes range 0.0-2.0 like AffdataPlay; BASS amplifies above 1.

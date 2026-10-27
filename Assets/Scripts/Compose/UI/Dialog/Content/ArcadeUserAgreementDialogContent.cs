@@ -5,6 +5,9 @@ namespace Arcade.Compose.Dialog
 	public class ArcadeUserAgreementDialogContent : AdeDialogContent<AdeDualDialog>
 	{
 		public static ArcadeUserAgreementDialogContent Instance { get; private set; }
+
+		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+		private static void ResetStaticState() => Instance = null;
 		public const int CurrentUserAgreementVersion = 1;
 		private void Awake()
 		{

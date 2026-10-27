@@ -10,6 +10,9 @@ namespace Arcade.Gameplay
 	public class ArcScoreManager : MonoBehaviour
 	{
 		public static ArcScoreManager Instance { get; private set; }
+
+		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+		private static void ResetStaticState() => Instance = null;
 		private void Awake()
 		{
 			Instance = this;

@@ -9,6 +9,9 @@ namespace Arcade.Gameplay
 	{
 		public static ArcHoldNoteManager Instance { get; private set; }
 
+		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+		private static void ResetStaticState() => Instance = null;
+
 		private void Awake()
 		{
 			Instance = this;

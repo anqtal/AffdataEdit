@@ -30,6 +30,9 @@ namespace Arcade.Compose
 	{
 		public static AdeGridManager Instance { get; private set; }
 
+		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+		private static void ResetStaticState() => Instance = null;
+
 		public GameObject BeatlinePrefab, VerticalPrefab;
 		public Transform VerticalPanel;
 		public float BeatlineDensity;

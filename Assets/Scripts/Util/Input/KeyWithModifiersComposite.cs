@@ -54,6 +54,6 @@ namespace Arcade.Util.Input
 		}
 
 		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
-		static void Init() { } // Trigger static constructor.
+		static void Init() => InputSystem.RegisterBindingComposite<KeyWithModifiersComposite>();
 	}
 }

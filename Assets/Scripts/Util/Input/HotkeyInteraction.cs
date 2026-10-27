@@ -70,7 +70,7 @@ namespace Arcade.Util.Input
 		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
 		private static void Initialize()
 		{
-			// Will execute the static constructor as a side effect.
+			InputSystem.RegisterInteraction<HotKeyInteraction>();
 		}
 	}
 }

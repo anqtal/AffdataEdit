@@ -16,6 +16,9 @@ namespace Arcade.Compose.Editing
 	{
 		public static AdeTimingEditor Instance { get; private set; }
 
+		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+		private static void ResetStaticState() => Instance = null;
+
 		public GameObject View;
 		public GameObject TimingPrefab;
 		public RectTransform TimingContent;

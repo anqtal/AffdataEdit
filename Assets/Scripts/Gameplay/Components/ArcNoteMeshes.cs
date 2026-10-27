@@ -40,12 +40,14 @@ namespace Arcade.Gameplay
             return mesh;
         }
 
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         public static void Release()
         {
             foreach (var mesh in new[] { segment, shadow, head, cube, sfx, bracket, connection, line })
                 if (mesh) Object.Destroy(mesh);
             foreach (var mesh in sprites.Values) if (mesh) Object.Destroy(mesh);
             sprites.Clear();
+            segment = shadow = head = cube = sfx = bracket = connection = line = null;
         }
     }
 }

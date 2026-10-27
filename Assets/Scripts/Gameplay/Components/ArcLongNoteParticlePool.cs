@@ -14,6 +14,10 @@ namespace Arcade.Gameplay
         }
 
         private static ArcLongNoteParticlePool current;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStaticState() => current = null;
+
         private readonly Stack<Instance> available = new Stack<Instance>();
         private readonly List<Instance> instances = new List<Instance>();
 

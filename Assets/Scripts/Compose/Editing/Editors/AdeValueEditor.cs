@@ -22,6 +22,9 @@ namespace Arcade.Compose.Editing
 	{
 		public static AdeValueEditor Instance { get; private set; }
 
+		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+		private static void ResetStaticState() => Instance = null;
+
 		public RectTransform Panel;
 		public RectTransform Timing, Track, EndTiming, StartPos, EndPos, CurveType, Color, IsVoid, SelectParent, SeparateArctap, TimingGroup;
 		public RectTransform MoveTiming, MoveTrack, MoveEndTiming, MoveStartPos, MoveEndPos;

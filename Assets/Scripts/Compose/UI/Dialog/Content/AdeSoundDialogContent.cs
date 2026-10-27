@@ -19,6 +19,9 @@ namespace Arcade.Compose.Dialog
 	{
 		public static AdeSoundDialogContent Instance { get; private set; }
 
+		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+		private static void ResetStaticState() => Instance = null;
+
 		public AdeNumberInputWithSlider ChartAudioInput, EffectAudioInput;
 		private AdeNumberInputWithSlider guideAudioInput;
 		private SoundPreferences preferences;

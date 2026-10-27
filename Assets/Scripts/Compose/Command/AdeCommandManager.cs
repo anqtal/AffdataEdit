@@ -11,6 +11,9 @@ namespace Arcade.Compose.Command
 		public delegate void OnCommandExecuted(ICommand command, bool undo);
 		public OnCommandExecuted onCommandExecuted;
 		public static AdeCommandManager Instance { get; private set; }
+
+		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+		private static void ResetStaticState() => Instance = null;
 		private void Awake()
 		{
 			Instance = this;

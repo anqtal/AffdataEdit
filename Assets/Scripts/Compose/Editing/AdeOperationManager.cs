@@ -29,6 +29,9 @@ namespace Arcade.Compose
 	public class AdeOperationManager : AdeMarkingMenuItemProvider
 	{
 		public static AdeOperationManager Instance { get; private set; }
+
+		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+		private static void ResetStaticState() => Instance = null;
 		private AdeOngoingOperation? ongoingOperation = null;
 		public bool HasOngoingOperation { get => ongoingOperation != null; }
 		public AdeOperation[] operations;

@@ -19,6 +19,9 @@ namespace Arcade.Compose.Operation
 	{
 		public static AdeCopyOrCutPasteOperation Instance { get; private set; }
 
+		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+		private static void ResetStaticState() => Instance = null;
+
 		public MarkingMenuItem CopyItem;
 		public MarkingMenuItem CutItem;
         private MarkingMenuItem horizontalCutItem;

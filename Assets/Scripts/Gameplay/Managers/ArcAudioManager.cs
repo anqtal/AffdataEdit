@@ -8,6 +8,9 @@ namespace Arcade.Gameplay
     public class ArcAudioManager : MonoBehaviour
     {
         public static ArcAudioManager Instance { get; private set; }
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStaticState() => Instance = null;
         public Text PlayBackSpeedButtonText;
         public BassClip Clip { get; private set; }
         private BassVoice voice;

@@ -14,6 +14,15 @@ namespace Arcade.Compose
 		private const string PreferenceKey = "AffdataEdit.DarkUi";
 
 		public static AdeUiTheme Instance { get; private set; }
+
+		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+		private static void ResetStaticState()
+		{
+			Instance = null;
+			extraRoots.Clear();
+			toolbarToggleStates.Clear();
+			Revision = 0;
+		}
 		public static bool Dark { get; private set; } = true;
 
 		private struct Entry
@@ -86,11 +95,14 @@ namespace Arcade.Compose
 		{
 			Dark = AdeSettings.GetInt(PreferenceKey, 1) != 0;
 			LoadPresets();
-			SceneManager.sceneLoaded += (scene, mode) =>
-			{
-				if (scene.name == EditorSceneName)
-					new GameObject(nameof(AdeUiTheme)).AddComponent<AdeUiTheme>();
-			};
+			SceneManager.sceneLoaded -= OnSceneLoaded;
+			SceneManager.sceneLoaded += OnSceneLoaded;
+		}
+
+		private static void OnSceneLoaded(UnityEngine.SceneManagement.Scene scene, UnityEngine.SceneManagement.LoadSceneMode mode)
+		{
+			if (scene.name == EditorSceneName)
+				new GameObject(nameof(AdeUiTheme)).AddComponent<AdeUiTheme>();
 		}
 
 		private void Awake()

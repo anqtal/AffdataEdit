@@ -42,6 +42,9 @@ namespace Arcade.Compose
 	public class ArcadeComposeManager : MonoBehaviour
 	{
 		public static ArcadeComposeManager Instance { get; private set; }
+
+		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+		private static void ResetStaticState() => Instance = null;
 		public const float ModeSwitchDuration = 0.3f;
 		public const Ease ToEditorModeEase = Ease.OutCubic;
 		public const Ease ToPlayerModeEase = Ease.InCubic;

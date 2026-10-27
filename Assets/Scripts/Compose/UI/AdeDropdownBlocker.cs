@@ -15,11 +15,14 @@ namespace Arcade.Compose
 		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
 		private static void Bootstrap()
 		{
-			SceneManager.sceneLoaded += (scene, mode) =>
-			{
-				if (scene.name == EditorSceneName)
-					new GameObject(nameof(AdeDropdownBlocker)).AddComponent<AdeDropdownBlocker>();
-			};
+			SceneManager.sceneLoaded -= OnSceneLoaded;
+			SceneManager.sceneLoaded += OnSceneLoaded;
+		}
+
+		private static void OnSceneLoaded(UnityEngine.SceneManagement.Scene scene, UnityEngine.SceneManagement.LoadSceneMode mode)
+		{
+			if (scene.name == EditorSceneName)
+				new GameObject(nameof(AdeDropdownBlocker)).AddComponent<AdeDropdownBlocker>();
 		}
 
 		private void Start()

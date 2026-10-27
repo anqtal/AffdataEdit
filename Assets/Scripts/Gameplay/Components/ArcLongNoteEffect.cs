@@ -8,6 +8,10 @@ namespace Arcade.Gameplay
     {
         private static readonly List<ArcLongNoteEffect> activeEffects = new List<ArcLongNoteEffect>();
 
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStaticState() => activeEffects.Clear();
+
+
         internal static void ResetAll()
         {
             // ResetState disables each effect and removes it from the registry.

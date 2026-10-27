@@ -11,6 +11,9 @@ namespace Arcade.Compose.Operation
 	{
 		public static AdeSelectNoteOperation Instance { get; private set; }
 
+		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+		private static void ResetStaticState() => Instance = null;
+
 		private void Awake()
 		{
 			Instance = this;

@@ -32,6 +32,9 @@ namespace Arcade.Compose.Feature
 	{
 		private OBSWebsocket obs = new OBSWebsocket();
 		public static AdeObsManager Instance { get; private set; }
+
+		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+		private static void ResetStaticState() => Instance = null;
 		private OBSPreferences preference;
 
 		public InputField ObsServerIpInput;
@@ -43,6 +46,7 @@ namespace Arcade.Compose.Feature
 		public AdeDualDialog OBSDialog;
 
 		private bool hasOngoingConnectionTask = false;
+		private bool shuttingDown;
 		private bool obsIsRecording = false;
 		private void Awake()
 		{
@@ -90,6 +94,21 @@ namespace Arcade.Compose.Feature
 		{
 			AdeSettings.SetString("AdeOBSDialog", JsonConvert.SerializeObject(preference));
 		}
+		private void OnDestroy()
+		{
+			shuttingDown = true;
+			var cancellation = RecordingCancellation;
+			RecordingCancellation = null;
+			cancellation?.Cancel();
+			cancellation?.Dispose();
+			obs.Connected -= OnConnect;
+			obs.Disconnected -= OnDisconnect;
+			obs.RecordStateChanged -= OnRecordStateChanged;
+			eventActionChannel.Writer.TryComplete();
+			while (eventActionChannel.Reader.TryRead(out _)) { }
+			obs.Disconnect();
+		}
+
 		private void OnApplicationQuit()
 		{
 			Debug.Log("saving obs setting when exit...");
@@ -272,10 +291,13 @@ namespace Arcade.Compose.Feature
 				{
 					RecordingCancellation = null;
 				}
-				ArcadeComposeManager.Instance.Pause();
-				ArcGameplayManager.Instance.Pause();
-				AdeToast.Instance.Show($"OBS 快速录制已结束");
-				UpdateFieldsState();
+				if (!shuttingDown && this)
+				{
+					ArcadeComposeManager.Instance.Pause();
+					ArcGameplayManager.Instance.Pause();
+					AdeToast.Instance.Show($"OBS 快速录制已结束");
+					UpdateFieldsState();
+				}
 			}
 		}
 

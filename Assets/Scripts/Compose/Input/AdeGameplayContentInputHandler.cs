@@ -10,6 +10,9 @@ namespace Arcade.Compose
 	{
 		public static AdeGameplayContentInputHandler Instance { get; private set; }
 
+		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+		private static void ResetStaticState() => Instance = null;
+
 		private bool active = false;
 
 		public static bool InputActive => Instance != null && Instance.active && !AdeMarkingMenuManager.BlocksEditorInput;

@@ -456,6 +456,9 @@ namespace Arcade.Compose
 		}
 
 		public static AdeSkinHost Instance { get; private set; }
+
+		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+		private static void ResetStaticState() => Instance = null;
 		private List<UnityEngine.Object> externalSkinDataObjects = new List<UnityEngine.Object>();
 		private List<UnityEngine.Object> externalBackgroundDataObjects = new List<UnityEngine.Object>();
 		public RawSkinDefaults rawDefaultData;

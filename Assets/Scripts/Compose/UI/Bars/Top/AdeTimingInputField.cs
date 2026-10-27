@@ -12,6 +12,9 @@ namespace Arcade.Compose.UI
 	public class AdeTimingInputField : MonoBehaviour
 	{
 		public static AdeTimingInputField Instance { get; private set; }
+
+		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+		private static void ResetStaticState() => Instance = null;
 		private void Start()
 		{
 			Instance = this;

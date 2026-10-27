@@ -10,6 +10,9 @@ namespace Arcade.Compose
 		public const float Duration = 0.12f;
 		public const float Stay = 1f;
 		public static AdeToast Instance { get; private set; }
+
+		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+		private static void ResetStaticState() => Instance = null;
 		public RectTransform ContentRect;
 		public Text Content;
 		[SerializeField] private CanvasGroup noticeGroup;

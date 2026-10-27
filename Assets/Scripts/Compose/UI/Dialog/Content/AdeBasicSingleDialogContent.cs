@@ -8,6 +8,9 @@ namespace Arcade.Compose.Dialog
 	public class AdeBasicSingleDialogContent : AdeDialogContent<AdeSingleDialog>
 	{
 		public static AdeBasicSingleDialogContent Instance { get; private set; }
+
+		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+		private static void ResetStaticState() => Instance = null;
 		private void Awake()
 		{
 			Instance = this;

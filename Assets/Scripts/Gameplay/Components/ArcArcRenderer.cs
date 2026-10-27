@@ -27,6 +27,10 @@ namespace Arcade.Gameplay
 		// timing at its start. On, every segment point follows later timing changes.
 		public static bool AllowCrossTiming;
 
+		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+		private static void ResetStaticState() => AllowCrossTiming = false;
+
+
 		private Texture2D traceBodyGoldTexture;
 		internal Texture2D TraceBodyGoldTexture => traceBodyGoldTexture
 			? traceBodyGoldTexture

@@ -22,6 +22,9 @@ namespace Arcade.Compose
 
 		public static AdeInputManager Instance { get; private set; }
 
+		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+		private static void ResetStaticState() => Instance = null;
+
 		public static bool UsesCommand => Application.platform == RuntimePlatform.OSXEditor
 			|| Application.platform == RuntimePlatform.OSXPlayer;
 		public static string PrimaryModifierLabel => UsesCommand ? "Cmd" : "Ctrl";
@@ -59,6 +62,14 @@ namespace Arcade.Compose
 		public void OnDisable()
 		{
 			Controls.Disable();
+		}
+
+		private void OnDestroy()
+		{
+			rebindingOperation?.Dispose();
+			rebindingOperation = null;
+			Controls?.Dispose();
+			Controls = null;
 		}
 
 		private bool IsFocusingOnTextField()

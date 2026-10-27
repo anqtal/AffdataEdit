@@ -14,6 +14,10 @@ namespace Arcade.Compose
     {
         private static IAdeRightSideCard active;
 
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStaticState() => active = null;
+
+
         public static void Activate(IAdeRightSideCard card)
         {
             if (active != card) active?.CloseImmediately();

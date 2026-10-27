@@ -12,6 +12,9 @@ namespace Arcade.Gameplay
 	{
 		public static ArcEffectManager Instance { get; private set; }
 
+		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+		private static void ResetStaticState() => Instance = null;
+
 		public ArcEffectPlane EffectPlane;
 		private void Awake()
 		{

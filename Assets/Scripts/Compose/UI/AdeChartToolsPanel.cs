@@ -16,6 +16,9 @@ namespace Arcade.Compose
     {
         public enum Page { Groups, SceneControl, Camera }
         public static AdeChartToolsPanel Instance { get; private set; }
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStaticState() => Instance = null;
         private static readonly string[] Titles = { "时间组", "SC", "Camera" };
         [SerializeField] private RectTransform[] pages = new RectTransform[3];
         [SerializeField] private Button[] tabs = new Button[3];

@@ -10,6 +10,9 @@ using System;
 public class ArcSceneControlManager : MonoBehaviour
 {
 	public static ArcSceneControlManager Instance { get; private set; }
+
+	[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+	private static void ResetStaticState() => Instance = null;
 	private void Awake()
 	{
 		Instance = this;

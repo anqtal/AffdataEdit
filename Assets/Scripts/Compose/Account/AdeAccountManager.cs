@@ -30,6 +30,9 @@ namespace Arcade.Compose
 
 		public static AdeAccountManager Instance { get; private set; }
 
+		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+		private static void ResetStaticState() => Instance = null;
+
 		public static bool IsLoggedIn => Instance != null && Instance.session != null && Instance.session.ExpiresAt > DateTime.UtcNow;
 		public static string Token => IsLoggedIn ? Instance.session.Token : null;
 		public static string Username => IsLoggedIn ? Instance.session.Username : null;
@@ -50,11 +53,14 @@ namespace Arcade.Compose
 		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
 		private static void Bootstrap()
 		{
-			SceneManager.sceneLoaded += (scene, mode) =>
-			{
-				if (scene.name == EditorSceneName && Instance == null)
-					new GameObject(nameof(AdeAccountManager)).AddComponent<AdeAccountManager>();
-			};
+			SceneManager.sceneLoaded -= OnSceneLoaded;
+			SceneManager.sceneLoaded += OnSceneLoaded;
+		}
+
+		private static void OnSceneLoaded(UnityEngine.SceneManagement.Scene scene, UnityEngine.SceneManagement.LoadSceneMode mode)
+		{
+			if (scene.name == EditorSceneName && Instance == null)
+				new GameObject(nameof(AdeAccountManager)).AddComponent<AdeAccountManager>();
 		}
 
 		private void Awake()

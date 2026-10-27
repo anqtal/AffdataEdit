@@ -12,6 +12,9 @@ namespace Arcade.Gameplay
 	{
 		public static ArcSkinManager Instance { get; private set; }
 
+		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+		private static void ResetStaticState() => Instance = null;
+
 		[Header("Background")]
 		public Image Background;
 		public Image BackgroundDarken;

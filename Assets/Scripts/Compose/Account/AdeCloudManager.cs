@@ -71,6 +71,9 @@ namespace Arcade.Compose
 
 		public static AdeCloudManager Instance { get; private set; }
 
+		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+		private static void ResetStaticState() => Instance = null;
+
 		public static string CloudRoot => AdeStorage.CloudChartsFolder;
 
 		private bool busy;
@@ -98,11 +101,14 @@ namespace Arcade.Compose
 		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
 		private static void Bootstrap()
 		{
-			SceneManager.sceneLoaded += (scene, mode) =>
-			{
-				if (scene.name == EditorSceneName && Instance == null)
-					new GameObject(nameof(AdeCloudManager)).AddComponent<AdeCloudManager>();
-			};
+			SceneManager.sceneLoaded -= OnSceneLoaded;
+			SceneManager.sceneLoaded += OnSceneLoaded;
+		}
+
+		private static void OnSceneLoaded(UnityEngine.SceneManagement.Scene scene, UnityEngine.SceneManagement.LoadSceneMode mode)
+		{
+			if (scene.name == EditorSceneName && Instance == null)
+				new GameObject(nameof(AdeCloudManager)).AddComponent<AdeCloudManager>();
 		}
 
 		private void Awake()

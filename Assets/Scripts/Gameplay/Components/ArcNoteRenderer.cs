@@ -13,6 +13,9 @@ namespace Arcade.Gameplay
     public sealed partial class ArcNoteRenderer : MonoBehaviour
     {
         internal static ArcNoteRenderer Instance { get; private set; }
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStaticState() => Instance = null;
         // AffdataPlay's Arc shader applies this after the skin and note alpha.
         internal const float ArcOpacityMultiplier = 0.9f;
         [StructLayout(LayoutKind.Sequential)]
