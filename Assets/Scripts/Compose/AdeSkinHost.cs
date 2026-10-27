@@ -7,6 +7,7 @@ using System.Text.RegularExpressions;
 using Arcade.Util.Loader;
 using Newtonsoft.Json;
 using UnityEngine;
+using Affdata.Core.Chart;
 
 namespace Arcade.Compose
 {
@@ -873,24 +874,22 @@ namespace Arcade.Compose
 			internalDefaultNoteData.Conflict.SfxArcTapCore = new Labelled<Texture2D> { value = rawDefaultData.SfxArcTapCoreConflict, label = "<internal:conflict>" };
 			internalDefaultNoteData.Light.ConnectionLineColor = Affdata.Core.Chart.ConnectionLineStyle.Light;
 			internalDefaultNoteData.Conflict.ConnectionLineColor = Affdata.Core.Chart.ConnectionLineStyle.Conflict;
-			var normalRedLow = Affdata.Core.Chart.ArcColors.NormalRedLow;
-			internalDefaultNoteData.Light.ArcRedLow = new Color32(normalRedLow.R, normalRedLow.G, normalRedLow.B, normalRedLow.A);
+			internalDefaultNoteData.Light.ArcRedLow = ArcColors.NormalLow[ArcColors.RedId];
 			internalDefaultNoteData.Conflict.ArcRedLow = internalDefaultNoteData.Light.ArcRedLow;
-			internalDefaultNoteData.Light.ArcBlueLow = rawDefaultData.ArcBlueLow;
-			internalDefaultNoteData.Conflict.ArcBlueLow = rawDefaultData.ArcBlueLow;
-			internalDefaultNoteData.Light.ArcGreenLow = rawDefaultData.ArcGreenLow;
-			internalDefaultNoteData.Conflict.ArcGreenLow = rawDefaultData.ArcGreenLow;
-			internalDefaultNoteData.Light.ArcUnknownLow = rawDefaultData.ArcUnknownLow;
-			internalDefaultNoteData.Conflict.ArcUnknownLow = rawDefaultData.ArcUnknownLow;
-			internalDefaultNoteData.Light.ArcRedHigh = rawDefaultData.ArcRedHigh;
-			internalDefaultNoteData.Conflict.ArcRedHigh = rawDefaultData.ArcRedHigh;
-			internalDefaultNoteData.Light.ArcBlueHigh = rawDefaultData.ArcBlueHigh;
-			internalDefaultNoteData.Conflict.ArcBlueHigh = rawDefaultData.ArcBlueHigh;
-			var normalGreenHigh = Affdata.Core.Chart.ArcColors.NormalGreenHigh;
-			internalDefaultNoteData.Light.ArcGreenHigh = new Color32(normalGreenHigh.R, normalGreenHigh.G, normalGreenHigh.B, normalGreenHigh.A);
+			internalDefaultNoteData.Light.ArcBlueLow = ArcColors.NormalLow[ArcColors.BlueId];
+			internalDefaultNoteData.Conflict.ArcBlueLow = internalDefaultNoteData.Light.ArcBlueLow;
+			internalDefaultNoteData.Light.ArcGreenLow = ArcColors.NormalLow[ArcColors.GreenId];
+			internalDefaultNoteData.Conflict.ArcGreenLow = internalDefaultNoteData.Light.ArcGreenLow;
+			internalDefaultNoteData.Light.ArcUnknownLow = ArcColors.NormalLow[ArcColors.GrayId];
+			internalDefaultNoteData.Conflict.ArcUnknownLow = internalDefaultNoteData.Light.ArcUnknownLow;
+			internalDefaultNoteData.Light.ArcRedHigh = ArcColors.NormalHigh[ArcColors.RedId];
+			internalDefaultNoteData.Conflict.ArcRedHigh = internalDefaultNoteData.Light.ArcRedHigh;
+			internalDefaultNoteData.Light.ArcBlueHigh = ArcColors.NormalHigh[ArcColors.BlueId];
+			internalDefaultNoteData.Conflict.ArcBlueHigh = internalDefaultNoteData.Light.ArcBlueHigh;
+			internalDefaultNoteData.Light.ArcGreenHigh = ArcColors.NormalHigh[ArcColors.GreenId];
 			internalDefaultNoteData.Conflict.ArcGreenHigh = internalDefaultNoteData.Light.ArcGreenHigh;
-			internalDefaultNoteData.Light.ArcUnknownHigh = rawDefaultData.ArcUnknownHigh;
-			internalDefaultNoteData.Conflict.ArcUnknownHigh = rawDefaultData.ArcUnknownHigh;
+			internalDefaultNoteData.Light.ArcUnknownHigh = ArcColors.NormalHigh[ArcColors.GrayId];
+			internalDefaultNoteData.Conflict.ArcUnknownHigh = internalDefaultNoteData.Light.ArcUnknownHigh;
 			internalDefaultNoteData.Light.ArcVoid = rawDefaultData.ArcVoid;
 			internalDefaultNoteData.Conflict.ArcVoid = rawDefaultData.ArcVoid;
 			internalDefaultNoteData.Light.ArcDesignant = rawDefaultData.ArcDesignant;

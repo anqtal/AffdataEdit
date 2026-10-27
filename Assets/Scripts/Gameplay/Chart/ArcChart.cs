@@ -1,4 +1,5 @@
 using Affdata.Core.Geometry;
+using Affdata.Core.Chart;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -1238,7 +1239,7 @@ namespace Arcade.Gameplay.Chart
 		{
 			get
 			{
-				if (Color == 3 && Timing == EndTiming && Math.Abs(YStart - YEnd) < float.Epsilon && !IsVoid)
+				if (Color == ArcColors.GrayId && Timing == EndTiming && Math.Abs(YStart - YEnd) < float.Epsilon && !IsVoid)
 				{
 					return true;
 				}

@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "net.affdata.core": "https://github.com/anqtal/Affdata.Core.git#56ea4f2d9112ed1251bf2fc2c8151be25c01fe95",
+    "net.affdata.core": "https://github.com/anqtal/Affdata.Core.git#8893599abd03993a0c005e330d3af26c74abebfb",
     "com.annulusgames.lit-motion": "https://github.com/annulusgames/LitMotion.git?path=src/LitMotion/Assets/LitMotion#v2.0.2",
     "com.cysharp.unitask": "2.5.11",
     "com.unity.2d.sprite": "1.0.0",

@@ -14,6 +14,7 @@ using System.Threading;
 using Arcade.Util.UniTaskHelper;
 using Arcade.Util.UI;
 using System.Globalization;
+using Affdata.Core.Chart;
 
 namespace Arcade.Compose.Editing
 {
@@ -305,9 +306,11 @@ namespace Arcade.Compose.Editing
 
 		private Dictionary<ValueTuple<int?>, string> colorToDropDownLabel = new Dictionary<ValueTuple<int?>, string>{
 			{ValueTuple.Create<int?>(null),"-"},
-			{ValueTuple.Create<int?>(0),"蓝"},
-			{ValueTuple.Create<int?>(1),"红"},
-			{ValueTuple.Create<int?>(2),"绿"},
+			{ValueTuple.Create<int?>(ArcColors.BlueId),"蓝"},
+			{ValueTuple.Create<int?>(ArcColors.RedId),"红"},
+			{ValueTuple.Create<int?>(ArcColors.GreenId),"绿"},
+			{ValueTuple.Create<int?>(ArcColors.GrayId),"灰"},
+			{ValueTuple.Create<int?>(ArcColors.BlackId),"黑"},
 		};
 
 		private string GetColorOptionString(int? color)
@@ -324,18 +327,16 @@ namespace Arcade.Compose.Editing
 
 		private void ApplyColorDropDown(int? data)
 		{
+			List<int?> options = new List<int?> { ArcColors.BlueId, ArcColors.RedId, ArcColors.GreenId, ArcColors.GrayId, ArcColors.BlackId };
 			if (data == null)
 			{
-				colorDropdownHelper.UpdateOptions(new List<int?> { null, 0, 1 }, (color, _) => GetColorOptionString(color));
+				options.Insert(0, null);
 			}
-			else if (data >= 2 || data < 0)
+			else if (!options.Contains(data))
 			{
-				colorDropdownHelper.UpdateOptions(new List<int?> { 0, 1, data }, (color, _) => GetColorOptionString(color));
+				options.Add(data);
 			}
-			else
-			{
-				colorDropdownHelper.UpdateOptions(new List<int?> { 0, 1 }, (color, _) => GetColorOptionString(color));
-			}
+			colorDropdownHelper.UpdateOptions(options, (color, _) => GetColorOptionString(color));
 			colorDropdownHelper.SetValueWithoutNotify(data);
 		}
 

@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Threading;
+using Affdata.Core.Chart;
 using Arcade.Compose.Command;
 using Arcade.Compose.Editing;
 using Arcade.Compose.MarkingMenu;
@@ -118,7 +119,7 @@ namespace Arcade.Compose.Operation
 		{
 			get
 			{
-				return currentArcColor == 0 ? "蓝" : "红";
+				return ArcColorNames[currentArcColor];
 			}
 		}
 		public string CurrentArcIsVoid
@@ -144,7 +145,8 @@ namespace Arcade.Compose.Operation
 		}
 
 		private bool enable = false;
-		private int currentArcColor;
+		private static readonly string[] ArcColorNames = { "蓝", "红", "绿", "灰", "黑" };
+		private int currentArcColor = ArcColors.BlueId;
 		private bool currentArcIsVoid;
 		private ArcLineType currentArcLineType
 		{
@@ -248,7 +250,7 @@ namespace Arcade.Compose.Operation
 		{
 			if (!AdeOperationManager.Instance.HasOngoingOperation)
 			{
-				currentArcColor = currentArcColor == 0 ? 1 : 0;
+				currentArcColor = currentArcColor == ArcColors.BlackId ? ArcColors.BlueId : currentArcColor + 1;
 			}
 		}
 		public void SwitchIsVoid()

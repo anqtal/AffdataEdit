@@ -383,26 +383,25 @@ namespace Arcade.Gameplay
 			}
 			else
 			{
-				if (arc.Color == 0)
+				if (arc.Color == ArcColors.BlueId)
 				{
 					return high ? ArcBlueHigh : ArcBlueLow;
 				}
-				else if (arc.Color == 1)
+				else if (arc.Color == ArcColors.RedId)
 				{
 					return high ? ArcRedHigh : ArcRedLow;
 				}
-				else if (arc.Color == 2)
+				else if (arc.Color == ArcColors.GreenId)
 				{
 					return high ? ArcGreenHigh : ArcGreenLow;
 				}
-				else if (arc.Color == 3)
+				else if (arc.Color == ArcColors.GrayId)
 				{
 					return high ? ArcUnknownHigh : ArcUnknownLow;
 				}
 				else
 				{
-					// Arcade Alpha has no palette entry beyond color 3.
-					return Color.black;
+					return ArcColors.Fallback;
 				}
 			}
 		}
