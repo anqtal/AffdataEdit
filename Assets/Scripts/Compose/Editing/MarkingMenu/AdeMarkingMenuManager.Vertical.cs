@@ -95,23 +95,26 @@ namespace Arcade.Compose
 			}
 			Curve(s, ArcCurveType.S);
 			Curve(b, ArcCurveType.B);
-			Curve(Find(combined, "SISI"), ArcCurveType.SiSi, "Si");
-			Curve(Find(combined, "SISO"), ArcCurveType.SiSo, "So");
-			Curve(Find(combined, "SOSI"), ArcCurveType.SoSi, "Si");
-			Curve(Find(combined, "SOSO"), ArcCurveType.SoSo, "So");
-			// Si/So apply themselves on click and derive the Y easing on hover.
-			if (si)
+			Curve(Find(combined, "SISI"), ArcCurveType.SiSi, "SiSi");
+			Curve(Find(combined, "SISO"), ArcCurveType.SiSo, "SiSo");
+			Curve(Find(combined, "SOSI"), ArcCurveType.SoSi, "SoSi");
+			Curve(Find(combined, "SOSO"), ArcCurveType.SoSo, "SoSo");
+			MarkingMenuItem Derived(MarkingMenuItem item, ArcCurveType type, params MarkingMenuItem[] children)
 			{
-				si.IconKind = () => create.ArcCurveType == ArcCurveType.Si ? "check" : null;
-				si.ClickConfirms = true;
-				si.VerticalSubItems = new[] { Find(combined, "SISI"), Find(combined, "SISO") };
+				if (!item) return null;
+				Curve(item, type, type.ToString());
+				item.VerticalLeaf = true;
+				item.VerticalColumn = 1;
+				var options = CloneVerticalItem(item, "ContextMenu" + type + "Options", "");
+				options.VerticalLeaf = false;
+				options.VerticalColumn = 2;
+				options.VerticalWidth = VerticalButtonWidth;
+				options.VerticalSubItems = children;
+				options.OnConfirmed.AddListener(item.OnConfirmed.Invoke);
+				return options;
 			}
-			if (so)
-			{
-				so.IconKind = () => create.ArcCurveType == ArcCurveType.So ? "check" : null;
-				so.ClickConfirms = true;
-				so.VerticalSubItems = new[] { Find(combined, "SOSI"), Find(combined, "SOSO") };
-			}
+			var siMore = Derived(si, ArcCurveType.Si, Find(combined, "SISI"), Find(combined, "SISO"));
+			var soMore = Derived(so, ArcCurveType.So, Find(combined, "SOSI"), Find(combined, "SOSO"));
 			arc.VerticalLeaf = true;
 
 			// 颜色 derives one row per color; a fresh parent keeps 切换颜色's cycling out of hover and click.
@@ -130,7 +133,7 @@ namespace Arcade.Compose
 			arcMoreItem.OnConfirmed.AddListener(arc.OnConfirmed.Invoke);
 			arcMoreItem.VerticalLeaf = false;
 			arcMoreItem.VerticalWidth = VerticalButtonWidth;
-			var items = new List<MarkingMenuItem> { isVoid, colorMenu, s, si, so, b };
+			var items = new List<MarkingMenuItem> { isVoid, colorMenu, s, si, siMore, so, soMore, b };
 			items.RemoveAll(item => !item);
 			arcMoreItem.VerticalSubItems = items.ToArray();
 		}
