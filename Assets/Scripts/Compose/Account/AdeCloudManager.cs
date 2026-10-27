@@ -222,6 +222,7 @@ namespace Arcade.Compose
 				if (button != null) button.interactable = !value;
 			}
 			if (listDialog != null) listDialog.CompleteButton.interactable = !value;
+			AdeUiTheme.Refresh();
 		}
 
 		private void Update()
