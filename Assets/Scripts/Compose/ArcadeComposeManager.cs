@@ -453,7 +453,7 @@ namespace Arcade.Compose
 		// On: a translucent accent tile like a VS Code selection; off: the plain tool tile.
 		private void UpdateAutoButton()
 		{
-			AutoButton.image.color = ArcGameplayManager.Instance.Auto ? new Color(0f, 0.47f, 0.83f, 0.4f) : new Color(0.9f, 0.9f, 0.9f, 1);
+			AutoButton.image.color = ArcGameplayManager.Instance.Auto ? AdeUiTheme.ToolbarActiveColor : new Color(0.9f, 0.9f, 0.9f, 1);
 			AdeUiTheme.Refresh();
 		}
 		public void OnShutdownClicked()

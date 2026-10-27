@@ -22,7 +22,7 @@ namespace Arcade.Compose
 	{
 		private const string ApiUrl = "https://api.affdata.net";
 		private const string EditorSceneName = "ArcEditor";
-		private const string ButtonTemplatePath = "ArcaeaEditor/EditorCanvas/Bars/Left/View/Top/SaveMode";
+		private const string ButtonTemplatePath = "ArcaeaEditor/EditorCanvas/Bars/Left/View/Top/Folder";
 		private const string RealtimePrefsKey = "AdeCloudRealtime";
 		private static readonly string[] DifficultyNames = { "Past", "Present", "Future", "Beyond", "Eternal" };
 
@@ -144,8 +144,7 @@ namespace Arcade.Compose
 
 		private void UpdateRealtimeLabel()
 		{
-			if (realtimeIcon != null)
-				realtimeIcon.color = realtime && AdeProjectManager.Instance != null ? AdeProjectManager.Instance.EnableColor : AdeUiTheme.IconColor;
+			AdeUiTheme.SetToolbarToggleState(realtimeIcon, realtime);
 		}
 
 		public void ShowOpenChooser()

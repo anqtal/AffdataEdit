@@ -56,7 +56,6 @@ namespace Arcade.Compose
 		public Text OpenLabel;
 		public Text SaveMode;
 
-		public Color EnableColor, DisableColor;
 		public Image FileWatchEnableImage;
 
 		public CanvasGroup TutorialCanvasGroup;
@@ -167,7 +166,7 @@ namespace Arcade.Compose
 			AudioOffset.interactable = false;
 			CurrentTimingGroup.interactable = false;
 			watcher.EnableRaisingEvents = false;
-			FileWatchEnableImage.color = DisableColor;
+			AdeUiTheme.SetToolbarToggleState(FileWatchEnableImage, false);
 			ArcEffectManager.Instance.CleanSpecialEffectAudios();
 			ArcGameplayManager.Instance.Clean();
 		}
@@ -347,7 +346,7 @@ namespace Arcade.Compose
 		{
 			CleanProject();
 			watcher.EnableRaisingEvents = false;
-			FileWatchEnableImage.color = DisableColor;
+			AdeUiTheme.SetToolbarToggleState(FileWatchEnableImage, false);
 			CurrentProjectFolder = folder;
 			CreateArcadeDirectories(folder);
 			try
@@ -635,7 +634,7 @@ namespace Arcade.Compose
 			if (CurrentProjectMetadata != null && CurrentDifficulty != -1)
 			{
 				watcher.EnableRaisingEvents = !watcher.EnableRaisingEvents;
-				FileWatchEnableImage.color = watcher.EnableRaisingEvents ? EnableColor : DisableColor;
+				AdeUiTheme.SetToolbarToggleState(FileWatchEnableImage, watcher.EnableRaisingEvents);
 			}
 		}
 

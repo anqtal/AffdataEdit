@@ -41,12 +41,14 @@ namespace Arcade.Compose
 			return entry;
 		}
 
+		private static readonly Entry ToolbarEntry = HiddenAtRest(Image("ToolBackground", 0xE6E6E6, 0x181818, 0x2A2D2E, 0x37373D));
+
 		// VS Code Dark Modern colours. Specific sprites first; a null sprite matches any image.
 		private static readonly Entry[] Palette =
 		{
 			Image("Top", 0xFFFFFF, 0x181818), Image("Left", 0xFFFFFF, 0x181818),
 			Image("Right", 0xFFFFFF, 0x181818), Image("Bottom", 0xFFFFFF, 0x181818),
-			HiddenAtRest(Image("ToolBackground", 0xE6E6E6, 0x181818, 0x2A2D2E, 0x37373D)),
+			ToolbarEntry,
 			Image("ToolBackground", 0xFFFFFF, 0x37373D, 0x45454B, 0x505056),
 			Image("UISprite", 0xFFFFFF, 0x313131, 0x3C3C3C, 0x454545),
 			Image("InputFieldBackground", 0xFFFFFF, 0x313131, 0x353535, 0x3C3C3C),
@@ -155,6 +157,7 @@ namespace Arcade.Compose
 		private void Sweep()
 		{
 			nextSweep = Time.unscaledTime + SweepInterval;
+			ApplyWindowTheme();
             staleGraphics.Clear();
             foreach (var pair in painted) if (!pair.Key) staleGraphics.Add(pair.Key);
             foreach (var graphic in staleGraphics) painted.Remove(graphic);
@@ -173,6 +176,7 @@ namespace Arcade.Compose
 				root.GetComponentsInChildren(true, graphics);
 				foreach (Graphic graphic in graphics) Apply(graphic);
 			}
+			ApplyToolbarToggleStates();
 			StyleEditorPanels();
 			AlignDialogControls();
 		}

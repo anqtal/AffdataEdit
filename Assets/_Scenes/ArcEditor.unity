@@ -28829,8 +28829,6 @@ MonoBehaviour:
   CurrentTimingGroup: {fileID: 291582006}
   OpenLabel: {fileID: 1816754927}
   SaveMode: {fileID: 26606696}
-  EnableColor: {r: 0.5707547, g: 1, b: 0.6677098, a: 1}
-  DisableColor: {r: 0.9, g: 0.9, b: 0.9, a: 1}
   FileWatchEnableImage: {fileID: 882634197}
   TutorialCanvasGroup: {fileID: 994086312}
   TutorialText: {fileID: 1006388398}

@@ -69,6 +69,7 @@ namespace Arcade.Compose
             originalSettings = settings.parent.parent.gameObject;
             checkmark = Resources.Load<Sprite>("AffdataEdit/Icons/Checkmark");
             BuildContextMenuSetting(settings.Find("Wraper"));
+            BuildChartSortSetting(settings.Find("Wraper"));
             foreach (Transform row in settings.Find("Wraper"))
                 Register(row, row.name == "DarkUi" ? Page.Appearance : row.name == "Log" ? Page.About
                     : row.name == "PlaybackSync" || row.name == "GlobalAudioOffset" || row.name.StartsWith("WindowsAudio") ? Page.Audio : Page.General);
@@ -104,6 +105,25 @@ namespace Arcade.Compose
             toggle.onValueChanged.AddListener(value =>
             {
                 compose.ArcadePreference.KeepContextMenuOpen = value;
+                compose.SavePreferences();
+            });
+        }
+
+        private void BuildChartSortSetting(Transform parent)
+        {
+            var compose = ArcadeComposeManager.Instance;
+            var template = compose.ResolutionDropdown.GetComponentInParent<HorizontalLayoutGroup>(true).transform;
+            var row = AdeUiKit.CloneRow(template, parent, "ChartSortMode");
+            row.GetComponentInChildren<TMP_Text>(true).text = "谱面保存排序";
+            var dropdown = row.GetComponentInChildren<TMP_Dropdown>(true);
+            dropdown.onValueChanged = new TMP_Dropdown.DropdownEvent();
+            dropdown.ClearOptions();
+            dropdown.AddOptions(new List<string> { "按时间", "按类型" });
+            dropdown.interactable = true;
+            dropdown.SetValueWithoutNotify(compose.ArcadePreference.ChartSortMode == Gameplay.Chart.ChartSortMode.Timing ? 0 : 1);
+            dropdown.onValueChanged.AddListener(value =>
+            {
+                compose.ArcadePreference.ChartSortMode = value == 0 ? Gameplay.Chart.ChartSortMode.Timing : Gameplay.Chart.ChartSortMode.Type;
                 compose.SavePreferences();
             });
         }
@@ -204,6 +224,7 @@ namespace Arcade.Compose
         {
             var compose = ArcadeComposeManager.Instance;
             AdeUiKit.SetOnClick(compose.LeftBarView.Find("Bottom/Setting").GetComponent<Button>(), ToggleSettings);
+            compose.LeftBarView.Find("Top/SaveMode").gameObject.SetActive(false);
             foreach (Page page in SourcePages)
             {
                 string name = page == Page.Audio ? "Volume" : page.ToString();
