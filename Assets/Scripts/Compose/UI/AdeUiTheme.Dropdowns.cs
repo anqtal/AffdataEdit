@@ -37,7 +37,14 @@ namespace Arcade.Compose
             }
             template.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, 228);
             var scroll = template.GetComponent<ScrollRect>();
-            if (scroll) scroll.scrollSensitivity = 28;
+            if (scroll)
+            {
+                var input = UnityEngine.EventSystems.EventSystem.current
+                    ? UnityEngine.EventSystems.EventSystem.current.currentInputModule as UnityEngine.InputSystem.UI.InputSystemUIInputModule : null;
+                float deltaPerTick = input ? Mathf.Abs(input.scrollDeltaPerTick) : 1;
+                // Move one 44-unit option per wheel tick, including the UI module's multiplier.
+                scroll.scrollSensitivity = deltaPerTick > 0 ? 44 / deltaPerTick : 44;
+            }
             if (scroll && scroll.verticalScrollbar)
             {
                 var bar = scroll.verticalScrollbar;
