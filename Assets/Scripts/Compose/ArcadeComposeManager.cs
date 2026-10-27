@@ -32,6 +32,8 @@ namespace Arcade.Compose
 		public bool PlaybackSync = false;
 		public bool ShowSpectrum = false;
 		public bool KeepContextMenuOpen = false;
+		public bool VerticalContextMenu = true;
+		public ContextMenuCustomization ContextMenuItems = new ContextMenuCustomization();
 		public bool Auto;
 		public int GlobalAudioOffset = 0;
 		public Arcade.Gameplay.Chart.ChartSortMode ChartSortMode;

@@ -18,6 +18,8 @@ namespace Arcade.Compose.Operation
 		public MarkingMenuItem Entry;
 		private MarkingMenuItem verticalEntry;
         private MarkingMenuItem convertToSlideEntry;
+        internal MarkingMenuItem VerticalItem => verticalEntry;
+        internal MarkingMenuItem ConvertToSlideItem => convertToSlideEntry;
 		private InputAction verticalMirror;
 
 		public override bool IsOnlyMarkingMenu => false;

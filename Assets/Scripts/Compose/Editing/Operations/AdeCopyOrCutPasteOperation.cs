@@ -22,6 +22,7 @@ namespace Arcade.Compose.Operation
 		public MarkingMenuItem CopyItem;
 		public MarkingMenuItem CutItem;
         private MarkingMenuItem horizontalCutItem;
+        internal MarkingMenuItem HorizontalCutItem => horizontalCutItem;
 
 		public override bool IsOnlyMarkingMenu => false;
 		public override MarkingMenuItem[] MarkingMenuItems

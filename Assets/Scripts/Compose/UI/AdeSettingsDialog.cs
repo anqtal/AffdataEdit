@@ -12,10 +12,10 @@ namespace Arcade.Compose
     // Their original dialogs and callbacks remain available as a fallback if setup fails.
     public sealed partial class AdeSettingsDialog : MonoBehaviour
     {
-        public enum Page { General, Appearance, Audio, Grid, Hotkeys, Account, Storage, About }
+        public enum Page { General, Appearance, Audio, Grid, ContextMenu, Hotkeys, Account, Storage, About }
         public static AdeSettingsDialog Instance { get; private set; }
         public bool Ready { get; private set; }
-        private static readonly string[] Titles = { "常规", "外观", "音频", "网格", "热键", "账号", "存储", "关于" };
+        private static readonly string[] Titles = { "常规", "外观", "音频", "网格", "右键", "热键", "账号", "存储", "关于" };
         private readonly RectTransform[] pages = new RectTransform[Titles.Length];
         private readonly Button[] navigation = new Button[Titles.Length];
         private readonly Graphic[] icons = new Graphic[Titles.Length];
@@ -26,8 +26,6 @@ namespace Arcade.Compose
         private readonly List<BorrowedRow> rows = new List<BorrowedRow>();
         private AdeSingleDialog dialog;
         private RectTransform view;
-        private GameObject originalSettings;
-        private bool originalSettingsVisible;
         private Sprite checkmark;
         private Image sidebar, divider;
         private Button accountAction;
@@ -54,12 +52,12 @@ namespace Arcade.Compose
 
         private IEnumerator Start()
         {
-            // Existing drawers, theme rows and account controls are all built in Start.
+            // Theme rows and account controls are built in Start.
             yield return null;
             var compose = ArcadeComposeManager.Instance;
-            var settings = compose.LeftBar.Find("SettingsDrawer/Viewport/Content");
             var originals = FindObjectsByType<AdeDialog>(FindObjectsInactive.Include);
             var template = originals.OfType<AdeSingleDialog>().FirstOrDefault(d => d.name == "Setting");
+            var settings = template ? AdeUiKit.Content(template) : null;
             sources[(int)Page.Grid] = originals.FirstOrDefault(d => d.name == "Grid");
             sources[(int)Page.Audio] = originals.FirstOrDefault(d => d.name == "Sound");
             sources[(int)Page.Hotkeys] = originals.FirstOrDefault(d => d.name == "Hotkeys");
@@ -75,13 +73,15 @@ namespace Arcade.Compose
                 yield break;
             }
             font = AdeEditorText.Font;
-            originalSettings = settings.parent.parent.gameObject;
             checkmark = Resources.Load<Sprite>("AffdataEdit/Icons/Checkmark");
+            if (Arcade.Audio.BassOutputSettings.IsWindows) AdeAudioOutputSettings.AddTo(compose);
+            BuildSpectrumSetting(settings.Find("Wraper"));
             BuildContextMenuSetting(settings.Find("Wraper"));
             BuildChartSortSetting(settings.Find("Wraper"));
             BuildDragEditingSettings(settings.Find("Wraper"));
             foreach (Transform row in settings.Find("Wraper"))
                 Register(row, row.name == "DarkUi" ? Page.Appearance : row.name == "Log" ? Page.About
+                    : row.name == "KeepContextMenuOpen" || row.name == "VerticalContextMenu" ? Page.ContextMenu
                     : row.name == "PlaybackSync" || row.name == "GlobalAudioOffset" || row.name.StartsWith("WindowsAudio") ? Page.Audio : Page.General);
             foreach (Transform row in settings)
                 if (row.name != "Wraper") Register(row, Page.About);
@@ -104,6 +104,22 @@ namespace Arcade.Compose
         private void Register(Transform row, Page page) => rows.Add(new BorrowedRow
         { Row = row, Parent = row.parent, Index = row.GetSiblingIndex(), Page = page });
 
+        private void BuildSpectrumSetting(Transform parent)
+        {
+            var compose = ArcadeComposeManager.Instance;
+            var template = compose.PlaybackSyncToggle.GetComponentInParent<HorizontalLayoutGroup>(true).transform;
+            var row = AdeUiKit.CloneRow(template, parent, "ShowSpectrum");
+            row.GetComponentInChildren<TMP_Text>(true).text = "显示频谱";
+            var toggle = row.GetComponentInChildren<Toggle>(true);
+            toggle.SetIsOnWithoutNotify(compose.ArcadePreference.ShowSpectrum);
+            toggle.onValueChanged.AddListener(value =>
+            {
+                compose.ArcadePreference.ShowSpectrum = value;
+                compose.SavePreferences();
+            });
+            gameObject.AddComponent<AdeAudioSpectrum>();
+        }
+
         private void BuildContextMenuSetting(Transform parent)
         {
             var compose = ArcadeComposeManager.Instance;
@@ -115,6 +131,16 @@ namespace Arcade.Compose
             toggle.onValueChanged.AddListener(value =>
             {
                 compose.ArcadePreference.KeepContextMenuOpen = value;
+                compose.SavePreferences();
+            });
+
+            var styleRow = AdeUiKit.CloneRow(template, parent, "VerticalContextMenu");
+            styleRow.GetComponentInChildren<TMP_Text>(true).text = "纵向右键菜单";
+            var styleToggle = styleRow.GetComponentInChildren<Toggle>(true);
+            styleToggle.SetIsOnWithoutNotify(compose.ArcadePreference.VerticalContextMenu);
+            styleToggle.onValueChanged.AddListener(value =>
+            {
+                compose.ArcadePreference.VerticalContextMenu = value;
                 compose.SavePreferences();
             });
         }
@@ -197,6 +223,7 @@ namespace Arcade.Compose
             BuildAppearance();
             BuildStorage();
             BuildHotkeyGroups();
+            BuildContextMenuEditor();
             var accountActions = Rect("AccountActions", pages[(int)Page.Account], typeof(HorizontalLayoutGroup));
             var accountLayout = accountActions.GetComponent<HorizontalLayoutGroup>();
             accountLayout.childControlWidth = accountLayout.childControlHeight = true;
@@ -246,8 +273,6 @@ namespace Arcade.Compose
         private void Mount()
         {
             if (mounted) return;
-            originalSettingsVisible = originalSettings.activeSelf;
-            originalSettings.SetActive(false);
             foreach (var row in rows)
             {
                 row.Row.SetParent(row.Host ? row.Host : pages[(int)row.Page], false);
@@ -255,6 +280,7 @@ namespace Arcade.Compose
             }
             darkToggle.transform.parent.SetAsFirstSibling();
             accountAction.transform.parent.SetAsLastSibling();
+            contextEditorRoot.SetAsLastSibling();
             mounted = true;
             Select(activePage, false);
         }
@@ -289,7 +315,6 @@ namespace Arcade.Compose
                 row.Row.SetSiblingIndex(row.Index);
             }
             mounted = false;
-            originalSettings.SetActive(originalSettingsVisible);
         }
 
         private void LateUpdate()
@@ -314,6 +339,7 @@ namespace Arcade.Compose
             StyleAppearance();
             StyleStorage();
             StyleHotkeyGroups();
+            StyleContextMenu();
             sidebar.color = AdeUiTheme.Current.Chrome;
             sidebar.sprite = AdeUiTheme.RoundedSurface;
             sidebar.type = Image.Type.Sliced;
@@ -349,7 +375,13 @@ namespace Arcade.Compose
             var icon = Rect("Icon", button.transform);
             icon.anchorMin = icon.anchorMax = new Vector2(0, .5f);
             icon.anchoredPosition = new Vector2(26, 0); icon.sizeDelta = new Vector2(24, 24);
-            if (page == Page.About)
+            if (page == Page.ContextMenu)
+            {
+                var mouse = icon.gameObject.AddComponent<MarkingMenu.ContextMenuIcon>();
+                mouse.Kind = "mouse";
+                icons[(int)page] = mouse;
+            }
+            else if (page == Page.About)
             {
                 var text = icon.gameObject.AddComponent<TextMeshProUGUI>(); text.font = font;
                 AdeUiIcons.SetText(text, AdeUiIcons.Info);

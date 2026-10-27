@@ -16,7 +16,7 @@ namespace Arcade.Compose
 		public virtual bool IsOnlyMarkingMenu { get => false; }
 		public virtual MarkingMenuItem[] MarkingMenuItems { get => null; }
 	}
-	public class AdeMarkingMenuManager : MonoBehaviour
+	public partial class AdeMarkingMenuManager : MonoBehaviour
 	{
 		public static AdeMarkingMenuManager Instance { get; private set; }
 		public static bool BlocksEditorInput => Instance && (Instance.isOn || Instance.consumedFrame == Time.frameCount);
@@ -26,8 +26,26 @@ namespace Arcade.Compose
 		public MarkingMenuLine Line;
 		public List<AdeMarkingMenuItemProvider> Providers = new List<AdeMarkingMenuItemProvider>();
 
-		private readonly Stack<MarkingMenuItem[]> shownItems = new Stack<MarkingMenuItem[]>();
+		private readonly Stack<MenuPage> shownItems = new Stack<MenuPage>();
 		private readonly List<MarkingMenuItem> parentItems = new List<MarkingMenuItem>();
+		private bool verticalStyle;
+		private struct Placement
+		{
+			public Vector2 Position;
+			public float Degree;
+		}
+		private sealed class MenuPage
+		{
+			public readonly MarkingMenuItem[] Items;
+			public readonly Vector2 Origin;
+			public readonly Placement[] Layout;
+			public MenuPage(MarkingMenuItem[] items, Vector2 origin)
+			{
+				Items = items; Origin = origin;
+				Layout = new Placement[items.Length];
+				for (int i = 0; i < items.Length; i++) Layout[i] = new Placement { Position = items[i].Position, Degree = items[i].Degree };
+			}
+		}
 		private GameObject inputBlocker;
 		private MarkingMenuItem backItem;
 		private ArcChart openedChart;
@@ -73,7 +91,7 @@ namespace Arcade.Compose
 			{
 				var target = PointerTarget();
 				var selected = target ? target.GetComponentInParent<MarkingMenuItem>() : null;
-				if (System.Array.IndexOf(shownItems.Peek(), selected) < 0) selected = null;
+				if (System.Array.IndexOf(shownItems.Peek().Items, selected) < 0) selected = null;
 				Exit();
 				if (selected) selected.OnConfirmed.Invoke();
 			}
@@ -102,6 +120,7 @@ namespace Arcade.Compose
 		private void OnDestroy()
 		{
 			if (inputBlocker) Destroy(inputBlocker);
+			if (menuPanel) Destroy(menuPanel);
 			if (backItem) Destroy(backItem.gameObject);
 			if (Instance == this) Instance = null;
 		}
@@ -117,8 +136,9 @@ namespace Arcade.Compose
 			inputBlocker.SetActive(true);
 			EventSystem.current.SetSelectedGameObject(null);
 			isOn = true;
-			Line.Enable = true;
-			Line.AddJoint();
+			verticalStyle = ArcadeComposeManager.Instance.ArcadePreference.VerticalContextMenu;
+			Line.Enable = !verticalStyle;
+			if (!verticalStyle) Line.AddJoint();
 			ShowAt(InputExtension.scaledMousePosition, items);
 		}
 
@@ -144,20 +164,21 @@ namespace Arcade.Compose
 			consumedFrame = Time.frameCount;
 			isOn = false;
 			Line.Enable = false;
-			foreach (var items in shownItems)
-				foreach (var item in items)
+			foreach (var page in shownItems)
+				foreach (var item in page.Items)
 					item.Hide();
 			shownItems.Clear();
 			parentItems.Clear();
 			if (backItem) backItem.Hide();
 			openedChart = null;
+			if (menuPanel) menuPanel.SetActive(false);
 		}
 
 		public void ClickItem(MarkingMenuItem item)
 		{
 			if (!isOn || !keepOpen) return;
 			if (item == backItem) { ReturnParentMenu(); return; }
-			if (System.Array.IndexOf(shownItems.Peek(), item) < 0) return;
+			if (System.Array.IndexOf(shownItems.Peek().Items, item) < 0) return;
 			if (item.HasSubMenu && item.SubItems.Length > 0)
 			{
 				parentItems.Add(item);
@@ -211,12 +232,14 @@ namespace Arcade.Compose
 				backItem.Text = backItem.StartupText;
 			}
 			backItem.Position = template.Position;
-			backItem.Show();
+			backItem.SetIcon("back");
+			backItem.Show(verticalStyle);
+			if (verticalStyle) LayoutVerticalMenu(shownItems.Peek().Origin, shownItems.Peek().Items, backItem);
 		}
 
 		public void Check()
 		{
-			foreach (var item in shownItems.Peek())
+			foreach (var item in shownItems.Peek().Items)
 			{
 				if (item.PointerHangOver)
 				{
@@ -230,122 +253,34 @@ namespace Arcade.Compose
 				};
 			}
 		}
-		public MarkingMenuItem[] GetCurrentMenuItems()
-		{
-			List<MarkingMenuItem> items = new List<MarkingMenuItem>();
-			foreach (var provider in Providers)
-			{
-				var it = provider.MarkingMenuItems;
-				if (it == null) continue;
-				if (provider.IsOnlyMarkingMenu)
-				{
-					return it;
-				}
-				items.AddRange(it);
-			}
-			return items.ToArray();
-		}
-
 		public void ShowSubMenu(MarkingMenuItem[] items, float from = 0, float to = 360)
 		{
-			Line.AddJoint();
-			var parent = shownItems.Peek();
+			if (!verticalStyle) Line.AddJoint();
+			var parent = shownItems.Peek().Items;
 			foreach (var item in parent) item.Hide();
+			if (backItem) backItem.Hide();
 			ShowAt(InputExtension.scaledMousePosition, items, from, to);
 		}
 		public void ReturnParentMenu()
 		{
 			if (!isOn || shownItems.Count <= 1) return;
 			consumedFrame = Time.frameCount;
-			MarkingMenuItem[] items = shownItems.Pop();
-			foreach (var item in items) item.Hide();
-			items = shownItems.Peek();
-			foreach (var item in items) item.Show();
-			Line.RemoveLastJoint();
+			foreach (var item in shownItems.Pop().Items) item.Hide();
+			var page = shownItems.Peek();
+			for (int i = 0; i < page.Items.Length; i++)
+			{
+				page.Items[i].Show(verticalStyle);
+				page.Items[i].Position = page.Layout[i].Position;
+				page.Items[i].Degree = page.Layout[i].Degree;
+			}
+			if (!verticalStyle) Line.RemoveLastJoint();
 			if (parentItems.Count > 0) parentItems.RemoveAt(parentItems.Count - 1);
 			if (parentItems.Count > 0) ShowBackItem(parentItems[parentItems.Count - 1]);
-			else if (backItem) backItem.Hide();
-		}
-
-		private float GetOptimizedDegree(float degree)
-		{
-			float remain = 0;
-			float normalized = degree;
-			while (normalized >= 180)
+			else
 			{
-				normalized -= 180;
-				remain += 180;
+				if (backItem) backItem.Hide();
+				if (verticalStyle) LayoutVerticalMenu(page.Origin, page.Items);
 			}
-			while (normalized < 0)
-			{
-				normalized += 180;
-				remain -= 180;
-			}
-
-			float d = normalized / 90f - 1;
-			bool neg = d < 0;
-			d = Mathf.Abs(d);
-			d = Mathf.Abs(Mathf.Sin(Mathf.PI * Mathf.Pow(d, 1.2f) / 2));
-			d = (d * (neg ? -1 : 1) + 1) * 90f;
-			d += remain;
-
-			return d;
-		}
-		private float GetEllipseLength(float degree, float itemCount)
-		{
-			if (itemCount > 4) itemCount += itemCount % 2;
-			return MathfExtension.EvaluateEllipse(degree, 60 + 10 * Mathf.Max(6, itemCount), 50 + 12 * Mathf.Max(3, itemCount));
-		}
-
-		private static void SeparateItems(Vector2 center, MarkingMenuItem[] items)
-		{
-			// Keep the existing directions, expanding only enough for the measured labels.
-			const float gap = 12;
-			float scale = 1;
-			for (int i = 0; i < items.Length; i++)
-				for (int j = i + 1; j < items.Length; j++)
-				{
-					Vector2 delta = items[i].Position - items[j].Position;
-					float x = Mathf.Abs(delta.x), y = Mathf.Abs(delta.y);
-					if (x < .001f && y < .001f) continue;
-					Vector2 space = (items[i].ItemRectTransform.rect.size + items[j].ItemRectTransform.rect.size) / 2 + Vector2.one * gap;
-					float horizontal = x < .001f ? float.PositiveInfinity : space.x / x;
-					float vertical = y < .001f ? float.PositiveInfinity : space.y / y;
-					scale = Mathf.Max(scale, Mathf.Min(horizontal, vertical));
-				}
-			if (scale <= 1) return;
-			foreach (var item in items) item.Position = center + (item.Position - center) * scale;
-		}
-
-		public void ShowAt(Vector2 position, MarkingMenuItem[] items, float from = 0, float to = 360)
-		{
-			int itemCount = items.Length;
-			float degreeDelta = (to - from) / (itemCount > 4 ? itemCount % 2 + itemCount : itemCount);
-			for (int i = 0; i < itemCount; ++i)
-			{
-				float degree = from + degreeDelta * i + (itemCount > 4 ? 180 : 0);
-				degree = GetOptimizedDegree(degree);
-				float length = GetEllipseLength(degree, itemCount);
-				items[i].Show();
-				items[i].Position = position + new Vector2(length * Mathf.Cos(degree * Mathf.Deg2Rad), length * Mathf.Sin(degree * Mathf.Deg2Rad));
-				items[i].Degree = degree;
-			}
-			SeparateItems(position, items);
-			shownItems.Push(items);
-		}
-		public void ShowSubMenuAt(Vector2 position, MarkingMenuItem[] items, float from = 0, float to = 360)
-		{
-			int itemCount = items.Length;
-			float degreeDelta = (to - from) / (itemCount - 1 == 0 ? 1 : itemCount - 1);
-			for (int i = 0; i < itemCount; ++i)
-			{
-				float degree = from + degreeDelta * i;
-				float length = MathfExtension.EvaluateEllipse(degree, 180, 100);
-				items[i].Show();
-				items[i].Position = position + new Vector2(length * Mathf.Cos(degree * Mathf.Deg2Rad), length * Mathf.Sin(degree * Mathf.Deg2Rad));
-				items[i].Degree = degree;
-			}
-			shownItems.Push(items);
 		}
 	}
 }

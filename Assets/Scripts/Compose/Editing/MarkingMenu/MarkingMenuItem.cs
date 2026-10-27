@@ -36,8 +36,8 @@ namespace Arcade.Compose.MarkingMenu
 			}
 			set
 			{
-				if (HasSubMenu) value += " ·";
-				ItemText.text = value;
+				caption = value;
+				ItemText.text = value + (HasSubMenu && !verticalStyle ? " ·" : "");
 			}
 		}
 		public Vector2 Position
@@ -63,6 +63,11 @@ namespace Arcade.Compose.MarkingMenu
 		private float pointerInItemTiming;
 		private bool active = false;
 		private bool initialized;
+		private bool verticalStyle;
+		private string caption;
+		private Image separator;
+		private ContextMenuIcon icon;
+		private Text chevron;
 		private MotionHandle fadeMotion;
 		private int themeRevision = -1;
 
@@ -81,19 +86,91 @@ namespace Arcade.Compose.MarkingMenu
 		{
 			fadeMotion.TryCancel();
 		}
-		public void Show()
+		public void Show(bool vertical = false)
 		{
 			gameObject.SetActive(true);
+			verticalStyle = vertical;
 			InitializeText();
+			Text = caption;
+			var layout = GetComponent<VerticalLayoutGroup>();
+			layout.childAlignment = vertical ? TextAnchor.MiddleLeft : TextAnchor.MiddleCenter;
+			layout.childForceExpandWidth = vertical;
+			var padding = layout.padding;
+			padding.top = padding.bottom = vertical ? 4 : 12;
+			padding.left = vertical ? 40 : 12;
+			padding.right = vertical ? 28 : 12;
+			if (icon) icon.gameObject.SetActive(vertical);
+			if (vertical && HasSubMenu && !chevron)
+			{
+				var go = new GameObject("SubmenuArrow", typeof(RectTransform), typeof(TMPro.TextMeshProUGUI), typeof(LayoutElement));
+				go.layer = gameObject.layer;
+				go.transform.SetParent(transform, false);
+				go.GetComponent<LayoutElement>().ignoreLayout = true;
+				chevron = go.GetComponent<Text>();
+				AdeEditorText.Configure(chevron, AdeEditorText.CaptionSize);
+				chevron.text = ">";
+				chevron.alignment = TMPro.TextAlignmentOptions.Center;
+				var rect = chevron.rectTransform;
+				rect.anchorMin = rect.anchorMax = new Vector2(1, .5f);
+				rect.anchoredPosition = new Vector2(-14, 0);
+				rect.sizeDelta = new Vector2(12, 24);
+			}
+			if (chevron) chevron.gameObject.SetActive(vertical && HasSubMenu);
+			if (separator) separator.gameObject.SetActive(false);
+			var fitter = GetComponent<ContentSizeFitter>();
+			fitter.horizontalFit = fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 			active = true;
 			ItemCanvasGroup.blocksRaycasts = true;
-			GetComponent<Canvas>().sortingOrder = AdeMarkingMenuManager.MenuSortingOrder;
+			GetComponent<Canvas>().sortingOrder = AdeMarkingMenuManager.MenuSortingOrder + (vertical ? 1 : 0);
 			fadeMotion.TryComplete();
 			ApplyTheme();
 			LayoutRebuilder.ForceRebuildLayoutImmediate(ItemRectTransform);
 			fadeMotion = LMotion.Create(ItemCanvasGroup.alpha, 1f, 0.15f)
 				.WithEase(Ease.OutQuad).WithScheduler(MotionScheduler.Update)
 				.BindToAlpha(ItemCanvasGroup);
+		}
+		internal void SetIcon(string kind)
+		{
+			if (!icon)
+			{
+				var go = new GameObject("ContextMenuIcon", typeof(RectTransform), typeof(ContextMenuIcon), typeof(LayoutElement));
+				go.layer = gameObject.layer;
+				go.transform.SetParent(transform, false);
+				go.GetComponent<LayoutElement>().ignoreLayout = true;
+				icon = go.GetComponent<ContextMenuIcon>();
+				icon.raycastTarget = false;
+				var rect = icon.rectTransform;
+				rect.anchorMin = rect.anchorMax = new Vector2(0, .5f);
+				rect.anchoredPosition = new Vector2(20, 0);
+				rect.sizeDelta = new Vector2(20, 20);
+			}
+			icon.Kind = kind;
+			icon.SetVerticesDirty();
+			icon.gameObject.SetActive(verticalStyle);
+		}
+		internal void SetRowSize(float width, float height, bool dividerAfter = true)
+		{
+			var fitter = GetComponent<ContentSizeFitter>();
+			fitter.horizontalFit = fitter.verticalFit = ContentSizeFitter.FitMode.Unconstrained;
+			ItemRectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, width);
+			ItemRectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, height);
+			if (!separator)
+			{
+				var go = new GameObject("ContextMenuRowDivider", typeof(RectTransform), typeof(Image), typeof(LayoutElement));
+				go.layer = gameObject.layer;
+				go.transform.SetParent(transform, false);
+				go.GetComponent<LayoutElement>().ignoreLayout = true;
+				separator = go.GetComponent<Image>();
+				separator.raycastTarget = false;
+				var rect = separator.rectTransform;
+				rect.anchorMin = Vector2.zero;
+				rect.anchorMax = new Vector2(1, 0);
+				rect.offsetMin = new Vector2(12, 0);
+				rect.offsetMax = new Vector2(-12, 1);
+			}
+			separator.color = AdeUiTheme.Current.Border;
+			separator.gameObject.SetActive(dividerAfter);
+			LayoutRebuilder.ForceRebuildLayoutImmediate(ItemRectTransform);
 		}
 		public void Hide()
 		{
@@ -102,6 +179,12 @@ namespace Arcade.Compose.MarkingMenu
 			PointerInItem = false;
 			pointerInItemTiming = 0;
 			fadeMotion.TryComplete();
+			if (verticalStyle)
+			{
+				ItemCanvasGroup.alpha = 0;
+				gameObject.SetActive(false);
+				return;
+			}
 			fadeMotion = LMotion.Create(ItemCanvasGroup.alpha, 0f, 0.15f)
 				.WithEase(Ease.OutQuad).WithScheduler(MotionScheduler.Update)
 				.WithOnComplete(() =>
@@ -146,15 +229,21 @@ namespace Arcade.Compose.MarkingMenu
 				return;
 			}
 			themeRevision = AdeUiTheme.Revision;
-			Background.sprite = AdeUiTheme.ContextMenuSurface(PointerInItem);
-			Background.type = Image.Type.Sliced;
-			Background.color = Color.white;
+			Background.sprite = verticalStyle ? null : AdeUiTheme.ContextMenuSurface(PointerInItem);
+			Background.type = verticalStyle ? Image.Type.Simple : Image.Type.Sliced;
+			Background.color = verticalStyle ? (PointerInItem ? AdeUiTheme.Current.Selection : Color.clear) : Color.white;
 			Background.rectTransform.sizeDelta = Vector2.zero;
-			AdeEditorText.Configure(ItemText, AdeEditorText.BodySize);
-			ItemText.alignment = TMPro.TextAlignmentOptions.Center;
+			AdeEditorText.Configure(ItemText, verticalStyle ? 22 : AdeEditorText.BodySize);
+			ItemText.alignment = verticalStyle ? TMPro.TextAlignmentOptions.Left : TMPro.TextAlignmentOptions.Center;
 			ItemText.color = AdeUiTheme.Current.Text;
+			if (icon) icon.color = AdeUiTheme.Current.Muted;
+			if (chevron) chevron.color = AdeUiTheme.Current.Muted;
 			var shadow = Background.GetComponent<Shadow>();
-			if (shadow) shadow.effectColor = new Color(0, 0, 0, AdeUiTheme.Dark ? .24f : .12f);
+			if (shadow)
+			{
+				shadow.enabled = !verticalStyle;
+				shadow.effectColor = new Color(0, 0, 0, AdeUiTheme.Dark ? .24f : .12f);
+			}
 		}
 
 		private void Update()
