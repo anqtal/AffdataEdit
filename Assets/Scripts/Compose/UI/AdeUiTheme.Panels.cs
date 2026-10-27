@@ -110,8 +110,11 @@ namespace Arcade.Compose
 				var input = label.GetComponentInParent<InputField>();
 				if (input && input.textComponent == label)
 				{
-					label.rectTransform.offsetMin = new Vector2(10, 0);
-					label.rectTransform.offsetMax = new Vector2(-10, 0);
+					// A separate TMP text area already supplies the input's padding.
+					bool insetViewport = input.textViewport && input.textViewport != input.transform
+						&& label.rectTransform.parent == input.textViewport;
+					label.rectTransform.offsetMin = insetViewport ? Vector2.zero : new Vector2(10, 0);
+					label.rectTransform.offsetMax = insetViewport ? Vector2.zero : new Vector2(-10, 0);
 				}
 			}
 		}
