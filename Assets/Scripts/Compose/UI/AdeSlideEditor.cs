@@ -26,7 +26,7 @@ namespace Arcade.Compose.UI
         private AdeSlidePreview preview;
         private MarkingMenuItem menu;
         private bool ready;
-        private static readonly string[] CurveNames = { "s", "si", "so", "b" };
+        private static readonly string[] CurveNames = { "S", "SI", "SO", "B" };
 
         private void Start()
         {
