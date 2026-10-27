@@ -1,10 +1,8 @@
 using UnityEngine;
-using UnityEngine.VFX;
 using System.Collections.Generic;
 
 namespace Arcade.Gameplay
 {
-    // The existing VisualEffect reference remains a skin/position anchor for serialized scenes.
     // Alpha's UI-camera world units are mapped into the gameplay camera's effect plane.
     public sealed class ArcLongNoteEffect : MonoBehaviour
     {
@@ -15,7 +13,9 @@ namespace Arcade.Gameplay
             // ResetState disables each effect and removes it from the registry.
             for (int i = activeEffects.Count - 1; i >= 0; i--) activeEffects[i].ResetState();
         }
-        private VisualEffect anchor;
+        public Color StartColor = new Color(.4f, .2f, .4f, 1);
+        public Color EndColor = new Color(.4f, .2f, .8f, 1);
+        public Texture Texture;
         private ParticleSystem particles;
         private Material material;
         private ArcLongNoteParticlePool pool;
@@ -27,31 +27,10 @@ namespace Arcade.Gameplay
         public bool Active => requested || emitting;
         internal ArcArcVisual FollowTarget { get; set; }
 
-        public static ArcLongNoteEffect Get(VisualEffect anchor)
-        {
-            var effect = anchor.GetComponent<ArcLongNoteEffect>();
-            if (!effect) effect = anchor.gameObject.AddComponent<ArcLongNoteEffect>();
-            if (!effect.anchor)
-            {
-                effect.anchor = anchor;
-                DisableAnchor(anchor);
-                effect.enabled = false;
-            }
-            return effect;
-        }
-
-        internal static void DisableAnchor(VisualEffect anchor)
-        {
-            anchor.Stop();
-            anchor.enabled = false;
-            var renderer = anchor.GetComponent<Renderer>();
-            if (renderer) renderer.enabled = false;
-        }
-
         public void RefreshSkin()
         {
             if (!particles) return;
-            Color start = anchor.GetVector4("StartColor"), end = anchor.GetVector4("EndColor");
+            Color start = StartColor, end = EndColor;
             var diff = new Color(.1f, .1f, .1f, .5f);
             var max = new Gradient();
             max.SetKeys(new[] { new GradientColorKey(start - diff, 0), new GradientColorKey(start, .5f),
@@ -61,7 +40,7 @@ namespace Arcade.Gameplay
                 new[] { new GradientAlphaKey(1, 0), new GradientAlphaKey(1, 1) });
             var main = particles.main;
             main.startColor = new ParticleSystem.MinMaxGradient(min, max);
-            material.mainTexture = anchor.GetTexture("Texture");
+            material.mainTexture = Texture;
         }
 
         public void SetEmission(bool value)

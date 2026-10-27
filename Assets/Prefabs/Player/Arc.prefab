@@ -138,8 +138,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d1a9e9267ef45a34182067a903a3000a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   arcMaterial: {fileID: 2100000, guid: fc19cc416dce47b4ba4772e4ad59ac87, type: 2}
   shadowMaterial: {fileID: 2100000, guid: 82043575658889a4bafb43f4397fe61e, type: 2}
   SegmentPrefab: {fileID: 1374156918699440, guid: 65a6ec2a7d2a9b1419fa573cc455d902, type: 3}
@@ -402,83 +402,57 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 9221095579595227807, guid: 1b41ffeda4cbd5846a65ec727c0bb571, type: 3}
-      propertyPath: m_PropertySheet.m_Vector4f.m_Array.Array.size
-      value: 2
-      objectReference: {fileID: 0}
-    - target: {fileID: 9221095579595227807, guid: 1b41ffeda4cbd5846a65ec727c0bb571, type: 3}
-      propertyPath: m_PropertySheet.m_NamedObject.m_Array.Array.size
+      propertyPath: EndColor.a
       value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 9221095579595227807, guid: 1b41ffeda4cbd5846a65ec727c0bb571, type: 3}
-      propertyPath: m_PropertySheet.m_Vector4f.m_Array.Array.data[0].m_Name
-      value: EndColor
-      objectReference: {fileID: 0}
-    - target: {fileID: 9221095579595227807, guid: 1b41ffeda4cbd5846a65ec727c0bb571, type: 3}
-      propertyPath: m_PropertySheet.m_Vector4f.m_Array.Array.data[1].m_Name
-      value: StartColor
-      objectReference: {fileID: 0}
-    - target: {fileID: 9221095579595227807, guid: 1b41ffeda4cbd5846a65ec727c0bb571, type: 3}
-      propertyPath: m_PropertySheet.m_NamedObject.m_Array.Array.data[0].m_Name
-      value: Texture
-      objectReference: {fileID: 0}
-    - target: {fileID: 9221095579595227807, guid: 1b41ffeda4cbd5846a65ec727c0bb571, type: 3}
-      propertyPath: m_PropertySheet.m_Vector4f.m_Array.Array.data[0].m_Value.w
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 9221095579595227807, guid: 1b41ffeda4cbd5846a65ec727c0bb571, type: 3}
-      propertyPath: m_PropertySheet.m_Vector4f.m_Array.Array.data[0].m_Value.x
+      propertyPath: EndColor.r
       value: 0.4
       objectReference: {fileID: 0}
     - target: {fileID: 9221095579595227807, guid: 1b41ffeda4cbd5846a65ec727c0bb571, type: 3}
-      propertyPath: m_PropertySheet.m_Vector4f.m_Array.Array.data[0].m_Value.y
+      propertyPath: EndColor.g
       value: 0.2
       objectReference: {fileID: 0}
     - target: {fileID: 9221095579595227807, guid: 1b41ffeda4cbd5846a65ec727c0bb571, type: 3}
-      propertyPath: m_PropertySheet.m_Vector4f.m_Array.Array.data[0].m_Value.z
+      propertyPath: EndColor.b
       value: 0.8
       objectReference: {fileID: 0}
     - target: {fileID: 9221095579595227807, guid: 1b41ffeda4cbd5846a65ec727c0bb571, type: 3}
-      propertyPath: m_PropertySheet.m_Vector4f.m_Array.Array.data[1].m_Value.w
+      propertyPath: StartColor.a
       value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 9221095579595227807, guid: 1b41ffeda4cbd5846a65ec727c0bb571, type: 3}
-      propertyPath: m_PropertySheet.m_Vector4f.m_Array.Array.data[1].m_Value.x
+      propertyPath: StartColor.r
       value: 0.4
       objectReference: {fileID: 0}
     - target: {fileID: 9221095579595227807, guid: 1b41ffeda4cbd5846a65ec727c0bb571, type: 3}
-      propertyPath: m_PropertySheet.m_Vector4f.m_Array.Array.data[1].m_Value.y
+      propertyPath: StartColor.g
       value: 0.2
       objectReference: {fileID: 0}
     - target: {fileID: 9221095579595227807, guid: 1b41ffeda4cbd5846a65ec727c0bb571, type: 3}
-      propertyPath: m_PropertySheet.m_Vector4f.m_Array.Array.data[1].m_Value.z
+      propertyPath: StartColor.b
       value: 0.4
       objectReference: {fileID: 0}
     - target: {fileID: 9221095579595227807, guid: 1b41ffeda4cbd5846a65ec727c0bb571, type: 3}
-      propertyPath: m_PropertySheet.m_NamedObject.m_Array.Array.data[0].m_Value
+      propertyPath: Texture
       value: 
       objectReference: {fileID: 2800000, guid: dc8e04064e5760b439e4c2970a2a9767, type: 3}
-    - target: {fileID: 9221095579595227807, guid: 1b41ffeda4cbd5846a65ec727c0bb571, type: 3}
-      propertyPath: m_PropertySheet.m_Vector4f.m_Array.Array.data[0].m_Overridden
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 9221095579595227807, guid: 1b41ffeda4cbd5846a65ec727c0bb571, type: 3}
-      propertyPath: m_PropertySheet.m_Vector4f.m_Array.Array.data[1].m_Overridden
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 9221095579595227807, guid: 1b41ffeda4cbd5846a65ec727c0bb571, type: 3}
-      propertyPath: m_PropertySheet.m_NamedObject.m_Array.Array.data[0].m_Overridden
-      value: 1
-      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 1b41ffeda4cbd5846a65ec727c0bb571, type: 3}
---- !u!2083052967 &25487763692296057 stripped
-VisualEffect:
+--- !u!114 &25487763692296057 stripped
+MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 9221095579595227807, guid: 1b41ffeda4cbd5846a65ec727c0bb571, type: 3}
   m_PrefabInstance: {fileID: 9200121139346363878}
   m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6efbd701f71994fe09b153d4ebd7269d, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
 --- !u!4 &9196981963716723102 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 4322389996328056, guid: 1b41ffeda4cbd5846a65ec727c0bb571, type: 3}

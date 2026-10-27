@@ -1,5 +1,4 @@
 using UnityEngine;
-using UnityEngine.VFX;
 
 namespace Arcade.Gameplay
 {
@@ -20,7 +19,7 @@ namespace Arcade.Gameplay
 		public SpriteRenderer HeightIndicatorRenderer;
 		public Transform ArcCap;
 		public SpriteRenderer ArcCapRenderer;
-		public VisualEffect JudgeEffect;
+		public ArcLongNoteEffect JudgeEffect;
 		public Transform JudgeEffectTransform;
 		public Texture2D DefaultTexture, HighlightTexture;
 

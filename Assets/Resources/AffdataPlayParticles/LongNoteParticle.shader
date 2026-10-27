@@ -1,8 +1,9 @@
-﻿Shader "AffdataEdit/AlphaLongNoteJudge"
+﻿Shader "Gameplay/LongNoteParticle"
 {
 	Properties
 	{
 		_MainTex ("Texture", 2D) = "white" {}
+		// _Alpha ("Alpha", Float) = 1.0
 	}
 	SubShader
 	{
@@ -36,6 +37,8 @@
 
 			sampler2D _MainTex;
 			float4 _MainTex_ST;
+			
+			uniform float _Alpha;
 
 			v2f vert (appdata v)
 			{
@@ -43,6 +46,8 @@
 				o.vertex = UnityObjectToClipPos(v.vertex);
 				o.uv = TRANSFORM_TEX(v.uv, _MainTex);
 				o.color = v.color;
+				// o.color.a += 0.05;
+				// o.color.a = min(1.25, o.color.a);
 				return o;
 			}
 			
@@ -50,6 +55,7 @@
 			{
 				fixed4 c = tex2D(_MainTex,i.uv) * i.color;
 				c.rgb *= c.a;
+				// c.a *= _Alpha;
 				return c;
 			}
 			ENDCG

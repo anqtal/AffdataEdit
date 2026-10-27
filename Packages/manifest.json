@@ -10,7 +10,6 @@
     "com.unity.render-pipelines.universal": "17.6.0",
     "com.unity.test-framework": "1.8.0",
     "com.unity.ugui": "2.6.0",
-    "com.unity.visualeffectgraph": "17.6.0",
     "net.affdata.core": "https://github.com/anqtal/Affdata.Core.git#8893599abd03993a0c005e330d3af26c74abebfb",
     "com.unity.modules.accessibility": "1.0.0",
     "com.unity.modules.androidjni": "1.0.0",

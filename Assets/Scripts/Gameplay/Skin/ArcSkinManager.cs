@@ -176,6 +176,7 @@ namespace Arcade.Gameplay
 			Color ComboTextColor = themeSideData.ComboTextColor;
 			ComboText.color = ComboTextColor;
 			ArcEffectManager.Instance.SetTapEffectTexture(themeSideData.ParticleNote.value);
+			ArcEffectManager.Instance.SetTapEffectConflictBlend(side == Side.Conflict);
 			ArcEffectManager.Instance.SetParticleArcColor(themeSideData.ParticleArcStartColor, themeSideData.ParticleArcEndColor);
 		}
 

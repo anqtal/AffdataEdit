@@ -5,7 +5,6 @@ using Arcade.Compose;
 using Arcade.Gameplay.Chart;
 using Arcade.Util.Pooling;
 using UnityEngine;
-using UnityEngine.VFX;
 
 namespace Arcade.Gameplay
 {
@@ -25,14 +24,14 @@ namespace Arcade.Gameplay
 			for (int i = 0; i < 6; ++i)
 			{
 				HoldNoteEffectPosition[i] = HoldNoteEffects[i].transform.position;
-                ArcLongNoteEffect.DisableAnchor(HoldNoteEffects[i]);
+                HoldNoteEffects[i].ResetState();
 			};
 		}
 
 		public GameObject TapNoteJudgeEffect;
 		public GameObject SfxTapNoteJudgeEffect;
 		public GameObject[] LaneHits = new GameObject[6];
-		public VisualEffect[] HoldNoteEffects = new VisualEffect[6];
+		public ArcLongNoteEffect[] HoldNoteEffects = new ArcLongNoteEffect[6];
 		public Vector3[] HoldNoteEffectPosition = new Vector3[6];
 		public Transform EffectLayer;
 		[System.NonSerialized] public BassClip TapAudio, ArcAudio;
@@ -45,44 +44,43 @@ namespace Arcade.Gameplay
 		// color (GetArcParticle(color)). HoldNoteEffects stay as skin/position templates.
 		private sealed class HoldEffect
 		{
-			public VisualEffect Effect;
+			public ArcLongNoteEffect Effect;
 			public bool Requested;
 		}
 		private readonly Dictionary<ArcHold, HoldEffect> holdEffects = new Dictionary<ArcHold, HoldEffect>();
-		private readonly Stack<VisualEffect> freeHoldEffects = new Stack<VisualEffect>();
+		private readonly Stack<ArcLongNoteEffect> freeHoldEffects = new Stack<ArcLongNoteEffect>();
 		private readonly List<ArcHold> releasedHolds = new List<ArcHold>();
 
 		private sealed class ArcEffect
 		{
-			public VisualEffect Effect;
+			public ArcLongNoteEffect Effect;
 			public readonly List<ArcArcVisual> Owners = new List<ArcArcVisual>();
 		}
 		private readonly Dictionary<int, ArcEffect> arcEffects = new Dictionary<int, ArcEffect>();
 
-		private VisualEffect CreateLongNoteAnchor(string name, VisualEffect template)
+		private ArcLongNoteEffect CreateLongNoteAnchor(string name, ArcLongNoteEffect template)
 		{
-			var go = new GameObject(name, typeof(VisualEffect));
+			var go = new GameObject(name, typeof(ArcLongNoteEffect));
 			go.layer = template.gameObject.layer;
 			go.transform.SetParent(HoldNoteEffects[0].transform.parent, false);
-			var effect = go.GetComponent<VisualEffect>();
-			effect.visualEffectAsset = template.visualEffectAsset;
+			var effect = go.GetComponent<ArcLongNoteEffect>();
+			effect.enabled = false;
 			CopyLongNoteSkin(template, effect);
-			ArcLongNoteEffect.Get(effect);
 			return effect;
 		}
 
-		private static void CopyLongNoteSkin(VisualEffect from, VisualEffect to)
+		private static void CopyLongNoteSkin(ArcLongNoteEffect from, ArcLongNoteEffect to)
 		{
-			to.SetVector4("StartColor", from.GetVector4("StartColor"));
-			to.SetVector4("EndColor", from.GetVector4("EndColor"));
-			to.SetTexture("Texture", from.GetTexture("Texture"));
+			to.StartColor = from.StartColor;
+			to.EndColor = from.EndColor;
+			to.Texture = from.Texture;
 		}
 
 		public void SetHoldNoteEffect(ArcHold note)
 		{
 			if (!holdEffects.TryGetValue(note, out var state) || !state.Effect)
 			{
-				VisualEffect effect = null;
+				ArcLongNoteEffect effect = null;
 				while (freeHoldEffects.Count > 0 && !effect) effect = freeHoldEffects.Pop();
 				state = new HoldEffect { Effect = effect ? effect : CreateLongNoteAnchor("Hold hit", HoldNoteEffects[0]) };
 				holdEffects[note] = state;
@@ -100,10 +98,10 @@ namespace Arcade.Gameplay
 			ReleaseHoldEffect(state.Effect);
 		}
 
-		private void ReleaseHoldEffect(VisualEffect effect)
+		private void ReleaseHoldEffect(ArcLongNoteEffect effect)
 		{
 			if (!effect) return;
-			ArcLongNoteEffect.Get(effect).ResetState();
+			effect.ResetState();
 			freeHoldEffects.Push(effect);
 		}
 
@@ -118,12 +116,12 @@ namespace Arcade.Gameplay
 			}
 			var skin = ArcArcManager.Instance.ArcSkin.JudgeEffect;
 			bool registered = state.Owners.Contains(renderer);
-            if (registered == enable && (!enable || (state.Effect && ArcLongNoteEffect.Get(state.Effect).Active))) return;
+            if (registered == enable && (!enable || (state.Effect && state.Effect.Active))) return;
 			if (enable && !registered) state.Owners.Add(renderer);
 			else if (!enable) state.Owners.Remove(renderer);
 			if (!state.Effect) state.Effect = CreateLongNoteAnchor($"Arc hit {color}", skin);
 			ArcArcVisual current = state.Owners.Count > 0 ? state.Owners[state.Owners.Count - 1] : null;
-			var effect = ArcLongNoteEffect.Get(state.Effect);
+			var effect = state.Effect;
 			if (current != null)
 			{
 				// Keep the shared anchor outside pooled Arc objects; follow the judge point in LateUpdate.
@@ -166,7 +164,7 @@ namespace Arcade.Gameplay
 			releasedHolds.Clear();
 			foreach (var pair in holdEffects)
 			{
-				var effect = ArcLongNoteEffect.Get(pair.Value.Effect);
+				var effect = pair.Value.Effect;
 				effect.SetEmission(pair.Value.Requested);
 				// Return the anchor once its 200 ms stop delay has finished.
 				if (!pair.Value.Requested && !effect.Active) releasedHolds.Add(pair.Key);
@@ -240,26 +238,32 @@ namespace Arcade.Gameplay
 		public void SetParticleArcColor(Color particleArcStartColor, Color particleArcEndColor)
 		{
 
-			foreach (VisualEffect holdEffect in HoldNoteEffects)
+			foreach (ArcLongNoteEffect holdEffect in HoldNoteEffects)
 			{
-				holdEffect.SetVector4("StartColor", particleArcStartColor);
-				holdEffect.SetVector4("EndColor", particleArcEndColor);
-                holdEffect.GetComponent<ArcLongNoteEffect>()?.RefreshSkin();
+				holdEffect.StartColor = particleArcStartColor;
+				holdEffect.EndColor = particleArcEndColor;
+                holdEffect.RefreshSkin();
 			}
-			foreach (VisualEffect effect in LongNoteAnchors())
+			foreach (ArcLongNoteEffect effect in LongNoteAnchors())
 			{
-				effect.SetVector4("StartColor", particleArcStartColor);
-				effect.SetVector4("EndColor", particleArcEndColor);
-				effect.GetComponent<ArcLongNoteEffect>()?.RefreshSkin();
+				effect.StartColor = particleArcStartColor;
+				effect.EndColor = particleArcEndColor;
+				effect.RefreshSkin();
 			}
             ArcArcManager.Instance.SetParticleArcColor(particleArcStartColor, particleArcEndColor);
 		}
 
-		private IEnumerable<VisualEffect> LongNoteAnchors()
+		private IEnumerable<ArcLongNoteEffect> LongNoteAnchors()
 		{
 			foreach (var state in holdEffects.Values) if (state.Effect) yield return state.Effect;
-			foreach (VisualEffect effect in freeHoldEffects) if (effect) yield return effect;
+			foreach (ArcLongNoteEffect effect in freeHoldEffects) if (effect) yield return effect;
 			foreach (var state in arcEffects.Values) if (state.Effect) yield return state.Effect;
+		}
+
+		internal void SetTapEffectConflictBlend(bool value)
+		{
+			tapNoteEffectPool.Modify(effect => effect.SetConflictBlend(value));
+			sfxTapNoteEffectPool.Modify(effect => effect.SetConflictBlend(value));
 		}
 
 		internal void SetTapEffectTexture(Texture2D particleTap)
@@ -281,15 +285,15 @@ namespace Arcade.Gameplay
 		internal void SetParticleArcTexture(Texture2D texture)
 		{
 
-			foreach (VisualEffect holdEffect in HoldNoteEffects)
+			foreach (ArcLongNoteEffect holdEffect in HoldNoteEffects)
 			{
-				holdEffect.SetTexture("Texture", texture);
-                holdEffect.GetComponent<ArcLongNoteEffect>()?.RefreshSkin();
+				holdEffect.Texture = texture;
+                holdEffect.RefreshSkin();
 			}
-			foreach (VisualEffect effect in LongNoteAnchors())
+			foreach (ArcLongNoteEffect effect in LongNoteAnchors())
 			{
-				effect.SetTexture("Texture", texture);
-				effect.GetComponent<ArcLongNoteEffect>()?.RefreshSkin();
+				effect.Texture = texture;
+				effect.RefreshSkin();
 			}
             ArcArcManager.Instance.SetParticleArcTexture(texture);
 		}

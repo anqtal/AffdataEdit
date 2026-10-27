@@ -192,15 +192,6 @@
         "com.unity.modules.physics": "1.0.0"
       }
     },
-    "com.unity.visualeffectgraph": {
-      "version": "17.6.0",
-      "depth": 0,
-      "source": "builtin",
-      "dependencies": {
-        "com.unity.shadergraph": "17.6.0",
-        "com.unity.render-pipelines.core": "17.6.0"
-      }
-    },
     "net.affdata.core": {
       "version": "https://github.com/anqtal/Affdata.Core.git#8893599abd03993a0c005e330d3af26c74abebfb",
       "depth": 0,

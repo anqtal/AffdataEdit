@@ -8,6 +8,7 @@ namespace Arcade.Gameplay
 	public class ArcArcManager : MonoBehaviour
 	{
 		public static ArcArcManager Instance { get; private set; }
+
         // Visible Arcs borrow plain render state objects; no note owns a GameObject.
         private const int MaxIdleVisuals = 256;
         private readonly Stack<ArcArcVisual> idleVisuals = new Stack<ArcArcVisual>();
@@ -458,8 +459,8 @@ namespace Arcade.Gameplay
 
 		public void SetParticleArcColor(Color particleArcStartColor, Color particleArcEndColor)
 		{
-			ArcSkin.JudgeEffect.SetVector4("StartColor", particleArcStartColor);
-			ArcSkin.JudgeEffect.SetVector4("EndColor", particleArcEndColor);
+			ArcSkin.JudgeEffect.StartColor = particleArcStartColor;
+			ArcSkin.JudgeEffect.EndColor = particleArcEndColor;
 		}
 
 		public void SetArcTapSkin(Texture2D texture)
@@ -467,7 +468,6 @@ namespace Arcade.Gameplay
 			ArcTapSkin = texture;
 			ArcTapMaterial.mainTexture = texture;
 		}
-
 
 		public void SetSfxArcTapSkin(Texture2D noteTexture, Texture2D coreTexture)
 		{
@@ -479,7 +479,7 @@ namespace Arcade.Gameplay
 
 		internal void SetParticleArcTexture(Texture2D texture)
 		{
-			ArcSkin.JudgeEffect.SetTexture("Texture", texture);
+			ArcSkin.JudgeEffect.Texture = texture;
 		}
 	}
 }
