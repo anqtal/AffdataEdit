@@ -253,15 +253,17 @@ namespace Arcade.Compose
         private void Apply(Graphic graphic)
         {
             if (graphic.GetComponentInParent<ArcBitmapText>()) return;
-            var button = graphic is Text ? graphic.GetComponentInParent<Button>() : null;
+            var button = graphic is Text ? graphic.GetComponentInParent<Button>(true) : null;
             if (button && button.image && button.image.sprite && button.image.sprite.name == "ThemeCloseButton")
             {
                 graphic.color = C(0x141413);
                 return;
             }
-            if (button && button.image && button.image.sprite && button.image.sprite.name == "ThemePrimary")
+            if (button && button.image && button.image.sprite
+                && (button.image.sprite.name == "ThemePrimary" || button.image.sprite.name == "ThemeSecondary"))
             {
-                graphic.color = button.IsInteractable() ? Current.AccentText : Current.Muted;
+                graphic.color = !button.IsInteractable() ? Current.Muted
+                    : button.image.sprite.name == "ThemePrimary" ? Current.AccentText : Current.Text;
                 return;
             }
             bool text = graphic is Text;
@@ -343,7 +345,7 @@ namespace Arcade.Compose
 				dialog.SetDialogSkin(Get(0), Get(1),
 					whiteClose ? Shape("ThemeCloseButton", ControlRadius, Color.white, Current.Border) : Get(2), Get(3),
 					whiteClose ? Shape("ThemeCloseButtonPressed", ControlRadius, C(0xE6E6E6), Current.Border) : Get(4));
-				dialog.ButtonText.color = whiteClose ? C(0x141413) : Current.AccentText;
+				Apply(dialog.ButtonText);
 				var basic = dialog.GetComponent<Dialog.AdeBasicSingleDialogContent>();
 				if (basic && basic.CopyButton)
 				{
@@ -352,7 +354,12 @@ namespace Arcade.Compose
 				}
 			}
 			foreach (AdeDualDialog dialog in skin.DualDialogs)
-				if (dialog) { dialog.SetDialogSkin(Get(0), Get(1), Get(5), Get(6), Get(7), Get(8), Get(9), Get(10)); dialog.LeftButtonText.color = Current.Text; dialog.RightButtonText.color = dialog.RightButton.IsInteractable() ? Current.AccentText : Current.Muted; }
+			{
+				if (!dialog) continue;
+				dialog.SetDialogSkin(Get(0), Get(1), Get(5), Get(6), Get(7), Get(8), Get(9), Get(10));
+				Apply(dialog.LeftButtonText);
+				Apply(dialog.RightButtonText);
+			}
 			skin.Toast.sprite = Get(1);
 			StylePlaybackHud();
 		}

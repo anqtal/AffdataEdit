@@ -111,7 +111,7 @@ namespace Arcade.Compose
             bool failed = !isChecking && !updateRequired;
             dialog.LeftButton.gameObject.SetActive(failed || updateRequired);
             dialog.LeftButtonText.text = updateRequired ? "立即更新" : "重试";
-            dialog.RightButton.interactable = !isChecking;
+            AdeUiKit.SetInteractable(dialog.RightButton, !isChecking);
             dialog.RightButtonText.text = updateRequired ? "退出" : "继续使用";
             // The dark theme's close button is only offered once the check has failed.
             Transform close = dialog.View.transform.Find("ThemeClose");
@@ -293,7 +293,7 @@ namespace Arcade.Compose
         // Opens the updater (in Terminal on macOS) and quits so it can replace AffdataEdit.
         private IEnumerator LaunchUpdater()
         {
-            dialog.LeftButton.interactable = false;
+            AdeUiKit.SetInteractable(dialog.LeftButton, false);
             while (refreshingUpdater) yield return null;
             string updater = Path.Combine(Folder, UpdaterName);
             try
@@ -307,7 +307,7 @@ namespace Arcade.Compose
                 || error is System.ComponentModel.Win32Exception)
             {
                 Debug.Log($"Updater launch failed: {error.Message}");
-                dialog.LeftButton.interactable = true;
+                AdeUiKit.SetInteractable(dialog.LeftButton, true);
                 messageText.text = $"无法启动更新器，请关闭 AffdataEdit 后手动运行\n{updater}";
             }
         }

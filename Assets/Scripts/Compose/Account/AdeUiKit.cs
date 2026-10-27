@@ -26,6 +26,7 @@ namespace Arcade.Compose
 			dialog.View.SetActive(false);
 			if (dialog is AdeSingleDialog single) ArcSkinManager.Instance.SingleDialogs.Add(single);
 			if (dialog is AdeDualDialog dual) ArcSkinManager.Instance.DualDialogs.Add(dual);
+			AdeUiTheme.OnSkinApplied();
 			return dialog;
 		}
 
@@ -109,6 +110,12 @@ namespace Arcade.Compose
 			Image image = entry.transform.Find("Image")?.GetComponent<Image>();
 			if (image != null) image.sprite = Resources.Load<Sprite>("AffdataEdit/Icons/" + icon);
 			return image;
+		}
+
+		public static void SetInteractable(Button button, bool interactable)
+		{
+			button.interactable = interactable;
+			AdeUiTheme.Refresh();
 		}
 
 		public static void SetOnClick(Button button, UnityAction action)
