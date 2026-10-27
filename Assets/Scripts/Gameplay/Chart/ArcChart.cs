@@ -537,6 +537,9 @@ namespace Arcade.Gameplay.Chart
 		private int track;
         public int Track { get => track; set { track = value; FloatLane = null; } }
         public float? FloatLane;
+        // Kept so the chart saves unchanged; drawing still uses the default size.
+        public float Width = 1;
+        public bool IsMine;
         public float WorldX => LanePosition.WorldX(Track, FloatLane);
 		public ArcTimingGroup TimingGroup { get; set; }
 
@@ -550,6 +553,8 @@ namespace Arcade.Gameplay.Chart
 			Timing = rawAffTap.Timing;
 			Track = rawAffTap.Track;
             FloatLane = rawAffTap.FloatLane;
+            Width = rawAffTap.Width;
+            IsMine = rawAffTap.IsMine;
 			TimingGroup = timingGroup;
 		}
 
@@ -560,6 +565,8 @@ namespace Arcade.Gameplay.Chart
 				Timing = Timing,
 				Track = Track,
                 FloatLane = FloatLane,
+                Width = Width,
+                IsMine = IsMine,
 			};
 		}
 
@@ -578,6 +585,8 @@ namespace Arcade.Gameplay.Chart
 				Timing = Timing,
 				Track = Track,
                 FloatLane = FloatLane,
+                Width = Width,
+                IsMine = IsMine,
 				TimingGroup = TimingGroup
 			};
 		}
@@ -587,6 +596,8 @@ namespace Arcade.Gameplay.Chart
 			ArcTap n = newValues as ArcTap;
 			Track = n.Track;
             FloatLane = n.FloatLane;
+            Width = n.Width;
+            IsMine = n.IsMine;
 			TimingGroup = n.TimingGroup;
 		}
 		public override void Instantiate()
@@ -640,6 +651,8 @@ namespace Arcade.Gameplay.Chart
 		private int track;
         public int Track { get => track; set { track = value; FloatLane = null; } }
         public float? FloatLane;
+        // Kept so the chart saves unchanged; drawing still uses the default size.
+        public float Width = 1;
         public float WorldX => LanePosition.WorldX(Track, FloatLane);
 		public ArcTimingGroup TimingGroup { get; set; }
 
@@ -658,6 +671,7 @@ namespace Arcade.Gameplay.Chart
 				EndTiming = EndTiming,
 				Track = Track,
                 FloatLane = FloatLane,
+                Width = Width,
 				TimingGroup = TimingGroup,
 			};
 		}
@@ -667,6 +681,7 @@ namespace Arcade.Gameplay.Chart
 			ArcHold n = newValues as ArcHold;
 			Track = n.Track;
             FloatLane = n.FloatLane;
+            Width = n.Width;
 			TimingGroup = n.TimingGroup;
 			CalculateJudgeTimings();
 		}
@@ -719,6 +734,7 @@ namespace Arcade.Gameplay.Chart
 			EndTiming = rawAffHold.EndTiming;
 			Track = rawAffHold.Track;
             FloatLane = rawAffHold.FloatLane;
+            Width = rawAffHold.Width;
 			TimingGroup = timingGroup;
 		}
 		public IRawAffItem IntoRawItem()
@@ -729,6 +745,7 @@ namespace Arcade.Gameplay.Chart
 				EndTiming = EndTiming,
 				Track = Track,
                 FloatLane = FloatLane,
+                Width = Width,
 			};
 		}
 	}
@@ -780,6 +797,9 @@ namespace Arcade.Gameplay.Chart
 		public ArcTimingGroup TimingGroup { get => Arc.TimingGroup; }
 
 		public bool IsConvertedVariousSizedArctap = false;
+        // Kept so the chart saves unchanged; drawing still uses the default size.
+        public float Width = 1;
+        public bool IsMine;
 
 		public Transform Model;
 		public Transform Shadow;
@@ -852,11 +872,16 @@ namespace Arcade.Gameplay.Chart
 			return new ArcArcTap()
 			{
 				Timing = Timing,
+				Width = Width,
+				IsMine = IsMine,
 			};
 		}
 		public override void Assign(ArcEvent newValues)
 		{
 			base.Assign(newValues);
+			var n = (ArcArcTap)newValues;
+			Width = n.Width;
+			IsMine = n.IsMine;
 		}
 		public void Instantiate(ArcArc arc)
 		{
@@ -1118,6 +1143,8 @@ namespace Arcade.Gameplay.Chart
 		public ArcArcTap(RawAffArctap arctap)
 		{
 			Timing = arctap.Timing;
+			Width = arctap.Width;
+			IsMine = arctap.IsMine;
 		}
 	}
 	public class ArcArc : ArcLongNote, IIntoRawItem, IHasTimingGroup, ISetableTimingGroup
@@ -1439,7 +1466,7 @@ namespace Arcade.Gameplay.Chart
 				LineType = LineType,
 				TraceColor = TraceColor,
 				Smoothness = Smoothness,
-				ArcTaps = ArcTaps.Select((arctap) => new RawAffArctap() { Timing = arctap.Timing, }).ToList(),
+				ArcTaps = ArcTaps.Select((arctap) => new RawAffArctap() { Timing = arctap.Timing, Width = arctap.Width, IsMine = arctap.IsMine }).ToList(),
 			};
 		}
 
