@@ -15,7 +15,7 @@ namespace Arcade.Compose
         public enum Page { General, Appearance, Audio, Grid, Hotkeys, Account, Storage, About }
         public static AdeSettingsDialog Instance { get; private set; }
         public bool Ready { get; private set; }
-        private static readonly string[] Titles = { "常规", "外观", "音频", "网格", "快捷键", "账号", "存储", "关于" };
+        private static readonly string[] Titles = { "常规", "外观", "音频", "网格", "热键", "账号", "存储", "关于" };
         private readonly RectTransform[] pages = new RectTransform[Titles.Length];
         private readonly Button[] navigation = new Button[Titles.Length];
         private readonly Graphic[] icons = new Graphic[Titles.Length];
