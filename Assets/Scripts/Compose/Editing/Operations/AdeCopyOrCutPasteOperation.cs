@@ -132,6 +132,7 @@ namespace Arcade.Compose.Operation
 			if (oldNotes.Length == 0) return;
 			List<ICommand> commands = new List<ICommand>();
 			List<ArcNote> newNotes = new List<ArcNote>();
+			var arcTapCommands = new Dictionary<ArcArcTap, List<ICommand>>();
 			foreach (var oldNote in oldNotes)
 			{
 				ArcEvent newNote = oldNote.Clone();
@@ -141,11 +142,16 @@ namespace Arcade.Compose.Operation
 					{
 						continue;
 					}
-					commands.Add(new AddArcTapCommand((oldNote as ArcArcTap).Arc, newNote as ArcArcTap));
+					var tapCommands = new List<ICommand>
+					{
+						new AddArcTapCommand((oldNote as ArcArcTap).Arc, newNote as ArcArcTap)
+					};
 					if (isCut)
 					{
-						commands.Add(new RemoveArcTapCommand((oldNote as ArcArcTap).Arc, oldNote as ArcArcTap));
+						tapCommands.Add(new RemoveArcTapCommand((oldNote as ArcArcTap).Arc, oldNote as ArcArcTap));
 					}
+					arcTapCommands.Add((ArcArcTap)newNote, tapCommands);
+					commands.AddRange(tapCommands);
 				}
 				else
 				{
@@ -206,34 +212,23 @@ namespace Arcade.Compose.Operation
 						}
 					}
 				};
-				while (true)
+				var newTiming = await AdeCursorManager.Instance.SelectTiming(Progress.Create(updateTiming), cancellationToken);
+				updateTiming(newTiming);
+				var skipped = arcTapCommands.Keys.Where(note => note.Timing < note.Arc.Timing
+					|| note.Timing > note.Arc.EndTiming).ToArray();
+				if (skipped.Length > 0)
 				{
-					var newTiming = await AdeCursorManager.Instance.SelectTiming(Progress.Create(updateTiming), cancellationToken);
-					updateTiming(newTiming);
-					bool hasIllegalArcTap = false;
-					foreach (var n in newNotes)
+					// Roll back the preview before rebuilding the command, so skipped cut notes stay intact.
+					AdeCommandManager.Instance.Cancel();
+					foreach (var note in skipped)
 					{
-						switch (n)
-						{
-							case ArcArcTap note:
-								if (note.Arc.Timing > note.Timing || note.Arc.EndTiming < note.Timing)
-								{
-									hasIllegalArcTap = true;
-								}
-								break;
-							default:
-								break;
-						}
+						foreach (var command in arcTapCommands[note]) commands.Remove(command);
+						newNotes.Remove(note);
 					}
-
-					if (!hasIllegalArcTap)
-					{
-						break;
-					}
-					else
-					{
-						AdeToast.Instance.Show("粘贴的 Arctap 中有一部分超出了所在 Arc 的时间范围，无法粘贴");
-					}
+					if (commands.Count > 0)
+						AdeCommandManager.Instance.Prepare(new BatchCommand(commands.ToArray(), isCut ? "剪切" : "复制"));
+					AdeToast.Instance.Show($"已跳过 {skipped.Length} 个超出所在黑线时间范围的 ArcTap"
+						+ (newNotes.Count > 0 ? "，其余音符已粘贴" : "，未粘贴任何音符"));
 				}
 			}
 			catch (OperationCanceledException ex)
