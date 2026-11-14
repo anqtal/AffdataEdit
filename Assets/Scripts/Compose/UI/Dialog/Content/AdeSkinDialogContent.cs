@@ -148,9 +148,6 @@ namespace Arcade.Compose.Dialog
 			NoteDropdown.onValueChanged.AddListener(SelectNote);
 			ThemeDropdown.onValueChanged.AddListener(SelectTheme);
 			BackgroundSearchInput.onValueChanged.AddListener(UpdateBackgroundFilterResult);
-			// Retain the dropdowns as data/template bindings; their obsolete rows leave the custom-page layout.
-			ThemeDropdown.transform.parent.gameObject.SetActive(false);
-			NoteDropdown.transform.parent.gameObject.SetActive(false);
 			LoadPreferences();
 			SideDropdown.transform.parent.Find("Label").GetComponent<Text>().text = "主题";
 			SideDropdown.ClearOptions();
@@ -194,6 +191,8 @@ namespace Arcade.Compose.Dialog
 				ThemeIds.Add(themes[i], i);
 			}
 			ThemeDropdown.AddOptions(themes);
+			ThemeDropdown.transform.parent.Find("Label").GetComponent<Text>().text = "皮肤主题";
+			ThemeDropdown.transform.parent.gameObject.SetActive(themes.Count > 1);
 
 			NoteDropdown.ClearOptions();
 			List<string> notes = new List<string>(AdeSkinHost.Instance.skinData.NoteDatas.Keys);
@@ -203,6 +202,7 @@ namespace Arcade.Compose.Dialog
 				NoteIds.Add(notes[i], i);
 			}
 			NoteDropdown.AddOptions(notes);
+			NoteDropdown.transform.parent.gameObject.SetActive(notes.Count > 1);
 
 			if (InternalBackgroundButtons != null)
 			{
