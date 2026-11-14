@@ -109,13 +109,15 @@ namespace Arcade.Compose
 		private void Awake()
 		{
 			Instance = this;
+			// The first dialog can force a canvas rebuild from another component's Start.
+			// Replace the legacy tiled backgrounds before that first rebuild.
+			ApplySkinSprites();
 		}
 
 		private void Start()
 		{
 			CollectRoots();
 			AddToggle();
-			ApplySkinSprites();
 			Sweep();
 		}
 
