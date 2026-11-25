@@ -49,8 +49,16 @@ namespace Arcade.Gameplay
 			set
 			{
 				SeekVersion++;
+                float previousTiming = AudioTimingWithoutGlobalOffset;
 				audioTiming = value / 1000f;
-				ArcAudioManager.Instance.Timing = Mathf.Max(0, audioTiming);
+                var audio = ArcAudioManager.Instance;
+                float transportTiming = AudioTimingWithoutGlobalOffset;
+                if (IsPlaying && audio.Clip && (transportTiming < 0 || audio.StartScheduled ||
+                    transportTiming >= audio.Clip.length || previousTiming >= audio.Clip.length))
+                    Play();
+                else
+                    audio.Timing = Mathf.Max(0, transportTiming);
+                lastDspTime = BassAudio.Clock;
 			}
 		}
 		private float AudioTimingWithoutGlobalOffset
@@ -156,7 +164,8 @@ namespace Arcade.Gameplay
 				syncSeekVersion = SeekVersion;
 				syncVoiceVersion = voiceVersion;
 				syncSpeed = playBackSpeed;
-				if (EnablePlaybackSync && AudioTimingWithoutGlobalOffset <= Length) SyncToMusic();
+				var clip = ArcAudioManager.Instance.Clip;
+				if (EnablePlaybackSync && clip && AudioTimingWithoutGlobalOffset < clip.length) SyncToMusic();
 			}
 			syncWasPlaying = IsPlaying;
 			if (AudioTiming > Length)
@@ -248,25 +257,38 @@ namespace Arcade.Gameplay
 			Length = 0;
 		}
 
-		public void ResetJudge()
+        public void ResetJudge() => ResetJudge(false);
+
+        internal void ResetJudge(bool afterScroll)
 		{
-            if (ArcTapNoteManager.Instance) ArcTapNoteManager.Instance.ResetJudgement();
-            if (ArcArcManager.Instance) ArcArcManager.Instance.ResetJudgement();
+            int soundStart = afterScroll ? SoundChartTiming : int.MinValue;
+            if (ArcTapNoteManager.Instance) ArcTapNoteManager.Instance.ResetJudgement(soundStart);
+            if (ArcArcManager.Instance) ArcArcManager.Instance.ResetJudgement(soundStart);
             if (ArcEffectManager.Instance) ArcEffectManager.Instance.ResetHitSoundDeduplication();
             ArcLongNoteEffect.ResetAll();
 			if (ArcSlideManager.Instance) ArcSlideManager.Instance.ResetFeedback();
+            if (afterScroll && ArcSlideManager.Instance) ArcSlideManager.Instance.ResumeSoundFrom(soundStart);
 			if (Chart != null)
 			{
 				foreach (var t in Chart.Arcs)
 				{
 					foreach (var a in t.ArcTaps) { a.Judged = false; }
-					t.Judged = false; t.Judging = false; t.AudioPlayed = false;
+					t.Judged = false; t.Judging = false; t.AudioPlayed = t.Timing < soundStart;
+                    if (afterScroll)
+                    {
+                        t.ShouldPlayAudio = !t.AudioPlayed;
+                        if (t.CreationPreviewSoundTiming.HasValue) t.CreationPreviewSoundTiming = soundStart;
+                    }
 					if (t.ConvertedVariousSizedArctap != null)
 					{
 						t.ConvertedVariousSizedArctap.Judged = false;
 					}
 				};
-				foreach (var t in Chart.Holds) { t.Judged = false; t.Judging = false; t.AudioPlayed = false; };
+                foreach (var t in Chart.Holds)
+                {
+                    t.Judged = false; t.Judging = false; t.AudioPlayed = t.Timing < soundStart;
+                    if (afterScroll) t.ShouldPlayAudio = !t.AudioPlayed;
+                }
 				foreach (var t in Chart.Taps) { t.Judged = false; };
 			}
 		}
@@ -284,19 +306,19 @@ namespace Arcade.Gameplay
 
 		public void Play()
 		{
-			if (AudioTimingWithoutGlobalOffset < 0)
+			var audio = ArcAudioManager.Instance;
+			float transportTiming = AudioTimingWithoutGlobalOffset;
+			if (transportTiming < 0)
 			{
-				ArcAudioManager.Instance.Stop();
-				ArcAudioManager.Instance.Timing = 0;
-				ArcAudioManager.Instance.PlayDelayed(-AudioTimingWithoutGlobalOffset / ArcAudioManager.Instance.PlayBackSpeed);
+				audio.Stop();
+				audio.Timing = 0;
+				audio.PlayDelayed(-transportTiming / audio.PlayBackSpeed);
 			}
 			else
 			{
-				ArcAudioManager.Instance.Timing = AudioTimingWithoutGlobalOffset;
-				if (AudioTimingWithoutGlobalOffset <= Length)
-				{
-					ArcAudioManager.Instance.Play();
-				}
+				audio.Timing = transportTiming;
+				if (audio.Clip && transportTiming < audio.Clip.length) audio.Play();
+				else audio.Pause();
 			}
 			// Seeking and starting the stream can prepare buffers synchronously.
 			lastDspTime = BassAudio.Clock;

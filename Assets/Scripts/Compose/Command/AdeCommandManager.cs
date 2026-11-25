@@ -59,6 +59,35 @@ namespace Arcade.Compose.Command
         internal const long HistoryMemoryLimitBytes = 128L * 1024 * 1024;
         private readonly Dictionary<ICommand, (long Cost, int References)> memoryCosts = new Dictionary<ICommand, (long, int)>();
         internal long HistoryMemoryBytes { get; private set; }
+        // Edit position for the unsaved-changes indicator. A saved position of -1 can no longer be reached.
+        private long editPosition, savedPosition;
+        public bool HasUnsavedChanges => preparing != null || editPosition != savedPosition;
+        internal sealed class SavePoint { internal long Position; }
+        private readonly List<SavePoint> pendingSaves = new List<SavePoint>();
+        internal SavePoint CaptureSavePoint()
+        {
+            var point = new SavePoint { Position = preparing == null ? editPosition : -1 };
+            pendingSaves.Add(point);
+            return point;
+        }
+        internal void FinishSave(SavePoint point, bool saved)
+        {
+            if (pendingSaves.Remove(point) && saved) savedPosition = point.Position;
+        }
+        public void MarkSaved() => savedPosition = editPosition;
+        public void MarkChanged()
+        {
+            savedPosition = -1;
+            foreach (var point in pendingSaves) point.Position = -1;
+        }
+        private void AdvanceEdit()
+        {
+            // A new edit after undoing past the saved state discards that state from redo.
+            if (editPosition < savedPosition) savedPosition = -1;
+            foreach (var point in pendingSaves)
+                if (editPosition < point.Position) point.Position = -1;
+            editPosition++;
+        }
 
 		private void Update()
 		{
@@ -81,12 +110,13 @@ namespace Arcade.Compose.Command
 				throw new Exception("有正在进行的命令，暂时不能执行新命令");
 			}
 			command.Do();
-			onCommandExecuted(command, false);
 			Debug.Log($"Add: {command.Name}");
 			undo.AddLast(command);
+            AdvanceEdit();
             Remember(command);
             ClearRedo();
             TrimHistory();
+			onCommandExecuted?.Invoke(command, false);
 		}
 		public void Undo()
 		{
@@ -102,11 +132,12 @@ namespace Arcade.Compose.Command
 			}
 			if (undo.Count == 0) return;
 			ICommand cmd = undo.Last.Value;
-			undo.RemoveLast();
 			cmd.Undo();
-			onCommandExecuted(preparing, true);
+			undo.RemoveLast();
+			editPosition--;
 			Debug.Log($"Undo: {cmd.Name}");
 			redo.AddLast(cmd);
+			onCommandExecuted?.Invoke(cmd, true);
 		}
 		public void Redo()
 		{
@@ -117,11 +148,12 @@ namespace Arcade.Compose.Command
 			}
 			if (redo.Count == 0) return;
 			ICommand cmd = redo.Last.Value;
-			redo.RemoveLast();
 			cmd.Do();
-			onCommandExecuted(cmd, false);
+			redo.RemoveLast();
+			editPosition++;
 			Debug.Log($"Redo: {cmd.Name}");
 			undo.AddLast(cmd);
+			onCommandExecuted?.Invoke(cmd, false);
 		}
 		public void Clear()
 		{
@@ -129,6 +161,8 @@ namespace Arcade.Compose.Command
 			undo.Clear();
 			redo.Clear();
             memoryCosts.Clear(); HistoryMemoryBytes = 0;
+            pendingSaves.Clear();
+            editPosition = savedPosition = 0;
 		}
 
 		public void SetBufferSize(uint size)
@@ -151,11 +185,13 @@ namespace Arcade.Compose.Command
 			{
 				Debug.Log($"Add: {preparing.Name}");
 				undo.AddLast(preparing);
+                AdvanceEdit();
                 Remember(preparing);
                 ClearRedo();
                 TrimHistory();
-				onCommandExecuted(preparing, false);
+				var committed = preparing;
 				preparing = null;
+				onCommandExecuted?.Invoke(committed, false);
 			}
 		}
 		public void Cancel()

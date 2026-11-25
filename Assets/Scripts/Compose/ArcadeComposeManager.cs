@@ -118,6 +118,7 @@ namespace Arcade.Compose
 		public Sprite DefaultSliderSprite, GlowSliderSprite;
 		[Header("Auto")]
 		public Button AutoButton;
+		private int autoThemeRevision = -1;
 		[Header("Misc")]
 
 		public UnityEvent OnPlay = new UnityEvent();
@@ -313,12 +314,18 @@ namespace Arcade.Compose
 			if (GameplayManager.ChartTiming != Mathf.RoundToInt(timing))
 			{
 				GameplayManager.ChartTiming = Mathf.RoundToInt(timing);
-				GameplayManager.ResetJudge();
+				GameplayManager.ResetJudge(afterScroll: true);
 			}
 		}
 
 		private void Update()
 		{
+			// AUTO keeps its own tint, so repaint it with the new preset's accent after a theme change.
+			if (autoThemeRevision != AdeUiTheme.Revision && AutoButton && ArcGameplayManager.Instance)
+			{
+				autoThemeRevision = AdeUiTheme.Revision;
+				if (ArcGameplayManager.Instance.Auto) UpdateAutoButton();
+			}
 			CheckScroll();
 			if (AdeDragEdit.Instance && AdeDragEdit.Instance.IsDragging)
 			{
@@ -684,13 +691,17 @@ namespace Arcade.Compose
 		}
 		public void OnShutdownClicked()
 		{
-			AdeProjectManager.Instance.SaveProject();
-			Application.Quit();
+			AdeProjectManager.Instance.SaveAndQuit();
 		}
 
 		public void SetUndoBufferSize(string x)
 		{
-			uint size = uint.Parse(x, CultureInfo.InvariantCulture);
+			if (!uint.TryParse(x, NumberStyles.Integer, CultureInfo.InvariantCulture, out uint size))
+			{
+				UndoBufferSizeInput.SetTextWithoutNotify(ArcadePreference.UndoBufferSize.ToString(CultureInfo.InvariantCulture));
+				return;
+			}
+			UndoBufferSizeInput.SetTextWithoutNotify(size.ToString(CultureInfo.InvariantCulture));
 			ArcadePreference.UndoBufferSize = size;
 			SavePreferences();
 			AdeCommandManager.Instance.SetBufferSize(size);
@@ -705,7 +716,12 @@ namespace Arcade.Compose
 
 		public void SetGlobalAudioOffset(string x)
 		{
-			int offset = int.Parse(x, CultureInfo.InvariantCulture);
+			if (!int.TryParse(x, NumberStyles.Integer, CultureInfo.InvariantCulture, out int offset))
+			{
+				GlobalAudioOffsetInput.SetTextWithoutNotify(ArcadePreference.GlobalAudioOffset.ToString(CultureInfo.InvariantCulture));
+				return;
+			}
+			GlobalAudioOffsetInput.SetTextWithoutNotify(offset.ToString(CultureInfo.InvariantCulture));
 			ArcadePreference.GlobalAudioOffset = offset;
 			SavePreferences();
 			ArcGameplayManager.Instance.GlobalAudioOffset = offset;
